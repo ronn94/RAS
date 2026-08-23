@@ -2,19 +2,52 @@
 
 공공하수처리장 위험성평가 업무용 대시보드. PC · 아이패드 · 아이폰 대응.
 
+## 아키텍처
+
+Worker 하나가 정적 SPA와 API를 함께 서비스한다(`worker/index.ts`, Hono).
+
+```
+브라우저(React SPA) ── /api/* ──▶ Worker ── D1(ras-db)    평가표·유해위험정보·설정(JSON)
+                                        └── R2(ras-photos) 사진 원본
+```
+
+- **D1**: `assessments` / `hazard_infos` / `settings` 테이블에 프런트엔드 객체를 JSON 그대로 저장한다
+  (`src/lib/types.ts`가 여전히 유일한 정본 스키마 — 서버는 재모델링하지 않는다)
+- **R2**: 업로드 시 서버가 새 id를 발급해 저장하고(`POST /api/photos`), `<img src="/api/photos/:id">`로
+  바로 불러온다. `photo_meta` 테이블에 크기·생성일만 별도로 남겨 저장소 화면 집계에 쓴다
+- **로그인**: Cloudflare Access가 앞단에서 처리하고, Worker가 `Cf-Access-Authenticated-User-Email`
+  헤더(Access가 엣지에서 항상 덮어씀 — 위조 불가)를 읽어 `/api/identity`로 알려준다
+- 브라우저에는 더 이상 데이터가 남지 않는다 — 로그인하면 어느 기기에서도 같은 자료를 본다.
+  `src/lib/localdb.ts`는 3단계 이전(IndexedDB) 시절의 흔적으로, 그 브라우저에 남은 옛 데이터를
+  서버로 옮기는 마이그레이션 브리지 용도로만 쓴다(설정 → 백업·복원 화면에 자동으로 뜬다)
+
 ## 실행
 
 ```bash
 npm install
-npm run dev      # 개발 서버
-npm run build    # dist/ 생성
+npm run build            # worker가 서비스할 dist/ 를 미리 만들어 둔다
+npm run db:migrate:local # 로컬 D1 스키마 적용 (최초 1회)
+npm run dev:api          # Worker + D1 + R2 (포트 8788)
+npm run dev              # Vite dev server — /api는 위 Worker로 프록시 (포트 5173)
 ```
+
+두 명령을 각각 다른 터미널에서 띄워야 한다. `npm run dev`만 켜면 프런트는 HMR로 빠르게 도는데
+`/api/*`가 8788로 프록시되므로 `dev:api`가 먼저 떠 있어야 정상 동작한다.
 
 ## 배포 (Cloudflare Workers)
 
 ```bash
-npm run build
-npx wrangler deploy
+npm run db:migrate   # 원격 D1 스키마 적용 (스키마를 바꿨을 때만)
+npm run deploy        # build + wrangler deploy
+```
+
+첫 배포 전에 D1 데이터베이스와 R2 버킷을 한 번 만들어야 한다(이미 만들어져 있고 `wrangler.toml`에
+바인딩돼 있음 — 새 환경에 옮길 때만 다시 필요):
+
+```bash
+npx wrangler d1 create ras-db        # → database_id를 wrangler.toml에 반영
+npx wrangler r2 bucket create ras-photos
+npm run db:migrate
 ```
 
 배포 주소: https://ras.hubfib.workers.dev · 저장소: https://github.com/ronn94/RAS
@@ -43,23 +76,22 @@ npx wrangler deploy
   - 인쇄 서식은 화면 밖(`left:-20000px`)에 렌더된다 — 폭 측정을 위해 `display:none`을 쓸 수 없다
 - 위험성평가표 화면에는 결재란이 없다. **엑셀 내보내기는 컬럼 머리말 + 데이터만** 내보내고, 결재란은 PDF 출력물(위험성 평가표·유해위험정보)에만 남는다
 - 화면의 도구 버튼(엑셀·인쇄·PDF·추가·백업)은 아이콘만 표시한다. 확인 다이얼로그의 취소/삭제 버튼은 글자를 유지한다
-- 데이터는 브라우저 IndexedDB에 저장. 상단 우측 아이콘으로 JSON 백업·복원
-  - 2단계에서 Cloudflare D1(데이터) + R2(사진)로 이식 예정 — `src/lib/db.ts`의 함수 시그니처만 유지하면 됨
+- 데이터는 Cloudflare D1(자료) + R2(사진)에 저장된다. 설정 → 백업·복원에서 JSON 백업·복원(병합)
 
-## 로그인 (Cloudflare Access)
+## 로그인 (Cloudflare Access) — 아직 미설정, 대시보드에서 한 번만 하면 됨
 
-앱에 계정 서버를 두지 않고 **Cloudflare Zero Trust의 Access**로 사이트 전체를 보호한다.
+앱에 계정 서버를 두지 않고 **Cloudflare Zero Trust의 Access**로 이 Worker를 보호한다.
+지금 배포에 쓴 API 토큰은 Access 관리 권한이 없어 CLI로는 못 만들고, **대시보드에서 한 번만** 만들면 된다.
 
-1. Cloudflare 대시보드 → Zero Trust → Access → Applications → Self-hosted 추가
-2. 도메인에 Pages 배포 주소를 지정하고, 허용할 이메일(또는 도메인)로 정책 작성
-3. 배포 후 접속하면 Cloudflare 로그인 화면을 거친다
+1. Cloudflare 대시보드 → **Zero Trust** (팀 도메인을 처음 만드는 경우 안내에 따라 이름만 정하면 됨, 무료)
+2. **Access → Applications → Add an application → Self-hosted**
+3. Application domain에 `ras.hubfib.workers.dev` 입력
+4. Policy에서 허용할 이메일(또는 회사 도메인 전체)을 지정 — 안전팀 인원만 넣는다
+5. 저장하면 그 순간부터 이 주소는 Cloudflare 로그인을 거쳐야 들어온다
 
-앱은 `/cdn-cgi/access/get-identity`로 로그인한 사용자를 읽어 사이드바에 표시하고,
-로그아웃은 `/cdn-cgi/access/logout`으로 보낸다. Access가 없는 환경(로컬 개발)에서는
-설정에 저장한 프로필 이름·직책을 대신 표시한다.
-
-> 로그인은 **접근 통제**일 뿐 데이터 공유가 아니다. 데이터는 여전히 각자의 브라우저에 저장되므로,
-> 여러 명이 같은 자료를 보려면 2단계(Cloudflare D1 + R2) 이식이 필요하다.
+Worker(`worker/index.ts`의 `/api/identity`)가 Access의 인증 헤더를 읽어 로그인한 사용자를
+사이드바에 표시하고, 로그아웃은 `/cdn-cgi/access/logout`으로 보낸다. Access를 아직 안 걸었으면
+(지금 상태) 이 주소는 **누구나 접근 가능**하니, 실제 데이터를 넣기 전에 먼저 걸어두는 것을 권한다.
 
 ## 차트
 

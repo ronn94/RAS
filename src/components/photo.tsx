@@ -1,31 +1,13 @@
 import * as React from "react";
 import { Camera, ImageOff, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui";
-import { getPhoto, putPhoto, deletePhoto } from "@/lib/db";
+import { photoUrl, uploadPhoto, deletePhoto } from "@/lib/db";
 import { processPhoto } from "@/lib/photo";
 import { cn } from "@/lib/utils";
 
-/** 사진 id → objectURL (해제까지 관리) */
+/** 사진 id → 서버 URL. 같은 출처 요청이라 Cloudflare Access 로그인 쿠키가 그대로 실린다. */
 export function usePhotoUrl(id?: string): string | null {
-  const [url, setUrl] = React.useState<string | null>(null);
-  React.useEffect(() => {
-    let revoked: string | null = null;
-    let alive = true;
-    if (!id) {
-      setUrl(null);
-      return;
-    }
-    void getPhoto(id).then((blob) => {
-      if (!alive || !blob) return;
-      revoked = URL.createObjectURL(blob);
-      setUrl(revoked);
-    });
-    return () => {
-      alive = false;
-      if (revoked) URL.revokeObjectURL(revoked);
-    };
-  }, [id]);
-  return url;
+  return id ? photoUrl(id) : null;
 }
 
 export function PhotoThumb({ id, className }: { id?: string; className?: string }) {
@@ -59,8 +41,7 @@ export function PhotoSlot({
       setBusy(true);
       try {
         const blob = await processPhoto(file);
-        const id = crypto.randomUUID();
-        await putPhoto(id, blob);
+        const id = await uploadPhoto(blob);
         if (photoId) await deletePhoto(photoId);
         onChange(id);
       } catch (e) {

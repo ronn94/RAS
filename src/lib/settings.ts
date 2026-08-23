@@ -60,7 +60,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 };
 
 /** 저장된 설정에 기본값을 채워 넣는다(항목이 추가돼도 안전하게 열리도록) */
-export function withDefaults(saved: Partial<AppSettings> | undefined): AppSettings {
+export function withDefaults(saved: Partial<AppSettings> | undefined | null): AppSettings {
   if (!saved) return { ...DEFAULT_SETTINGS };
   return {
     org: { ...DEFAULT_SETTINGS.org, ...saved.org, approver: { ...DEFAULT_SETTINGS.org.approver, ...saved.org?.approver } },

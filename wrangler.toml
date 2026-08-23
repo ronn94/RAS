@@ -1,7 +1,20 @@
 name = "ras"
+main = "worker/index.ts"
 compatibility_date = "2026-08-23"
+compatibility_flags = ["nodejs_compat"]
 
-# 정적 파일만 서비스하는 Worker. SPA라 없는 경로는 index.html로 넘긴다.
+# 정적 SPA는 assets가 서비스한다. /api/*만 Worker가 먼저 가로챈다.
 [assets]
 directory = "./dist"
 not_found_handling = "single-page-application"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "ras_db"
+database_name = "ras-db"
+database_id = "923f87c5-ea9d-4c34-893e-024827af7cde"
+
+[[r2_buckets]]
+binding = "ras_photos"
+bucket_name = "ras-photos"

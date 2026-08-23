@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Download, Eraser, HardDrive, Trash2, Upload } from "lucide-react";
+import { Download, Eraser, HardDrive, HardDriveDownload, Trash2, Upload } from "lucide-react";
 import {
   Button,
   Card,
@@ -14,6 +14,7 @@ import {
   Input,
 } from "@/components/ui";
 import { cleanupOrphanPhotos, exportBackup, importBackup, storageUsage, wipeAll } from "@/lib/db";
+import { exportBackup as exportLocalBrowserBackup } from "@/lib/localdb";
 import { isHighRisk } from "@/lib/risk";
 import { useStore } from "@/store";
 
@@ -36,10 +37,18 @@ export function BackupPage() {
   const [busy, setBusy] = React.useState<string | null>(null);
   const [confirmWipe, setConfirmWipe] = React.useState(false);
   const [wipeText, setWipeText] = React.useState("");
+  const [localCount, setLocalCount] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     void storageUsage().then(setUsage);
   }, [assessments, hazardInfos]);
+
+  React.useEffect(() => {
+    // 이 기기에 3단계 이전(IndexedDB) 데이터가 남아 있는지 조용히 확인한다
+    void exportLocalBrowserBackup()
+      .then((json) => setLocalCount((JSON.parse(json).assessments ?? []).length))
+      .catch(() => setLocalCount(0));
+  }, []);
 
   const rows = assessments.flatMap((a) => a.rows);
   const photos = rows.filter((r) => r.beforePhoto).length + rows.filter((r) => r.afterPhoto).length;
@@ -82,11 +91,40 @@ export function BackupPage() {
     { label: "첨부 사진", value: photos },
   ];
 
+  const migrateLocal = async () => {
+    setBusy("이 브라우저의 예전 데이터를 서버로 옮기는 중…");
+    try {
+      const json = await exportLocalBrowserBackup();
+      const n = await importBackup(json);
+      await reload();
+      setLocalCount(0);
+      alert(`이 브라우저에 남아 있던 평가표 ${n}건을 서버로 옮겼습니다.`);
+    } catch (e) {
+      alert(`가져오지 못했습니다: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <p className="mt-1 text-sm text-muted-foreground">
-        데이터는 이 브라우저 안에만 저장됩니다. 기기를 바꾸거나 컴퓨터를 정리하기 전에 반드시 백업하세요.
+        데이터는 서버(Cloudflare D1·R2)에 저장됩니다. 로그인하면 어느 기기에서도 같은 자료를 보고 수정할 수
+        있습니다. 그래도 정기적으로 백업 파일을 내려받아 별도로 보관하세요.
       </p>
+
+      {!!localCount && (
+        <Card className="shadow-xs ring-1 ring-ring/30" data-size="sm">
+          <CardContent className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm">
+              이 브라우저에 서버로 옮기지 않은 예전 데이터가 <strong>{localCount}건</strong> 남아 있습니다.
+            </p>
+            <Button size="icon-sm" onClick={() => void migrateLocal()} disabled={!!busy} aria-label="서버로 옮기기">
+              <HardDriveDownload className="size-3.5" />
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {stale && (
         <Card className="shadow-xs ring-1 ring-destructive/20" data-size="sm">

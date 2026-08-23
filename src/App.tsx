@@ -8,6 +8,8 @@ import { SettingsPage } from "@/pages/Settings";
 import { BackupPage } from "@/pages/Backup";
 import { LOGOUT_URL } from "@/lib/auth";
 import { StoreProvider, useStore } from "@/store";
+import { AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui";
 
 const TITLES: Record<ViewKey, string> = {
   dashboard: "대시보드",
@@ -19,7 +21,7 @@ const TITLES: Record<ViewKey, string> = {
 };
 
 function Router() {
-  const { identity } = useStore();
+  const { identity, error, reload } = useStore();
   const [view, setView] = React.useState<ViewKey>("assessments");
   const [openId, setOpenId] = React.useState<string | null>(null);
 
@@ -48,6 +50,16 @@ function Router() {
       {view === "hazardinfo" && <HazardInfoPage openId={openId} onOpen={setOpenId} />}
       {view === "settings" && <SettingsPage />}
       {view === "backup" && <BackupPage />}
+
+      {error && (
+        <div className="no-print fixed inset-x-0 bottom-4 z-50 mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-2xl bg-destructive/10 px-4 py-2 text-sm text-destructive ring-1 ring-destructive/20">
+          <AlertTriangle className="size-3.5 shrink-0" />
+          <span className="truncate">서버에 연결하지 못했습니다: {error}</span>
+          <Button variant="destructive" size="sm" onClick={() => void reload()}>
+            다시 시도
+          </Button>
+        </div>
+      )}
     </Shell>
   );
 }

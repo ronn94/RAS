@@ -7,6 +7,7 @@ import { fetchIdentity, type Identity } from "@/lib/auth";
 
 type Ctx = {
   loading: boolean;
+  error: string | null;
   assessments: Assessment[];
   reload: () => Promise<void>;
   createAssessment: () => Promise<Assessment>;
@@ -38,17 +39,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   });
   const [lastBackup, setLastBackup] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
   const reload = React.useCallback(async () => {
-    setAssessments(await db.listAssessments());
-    setHazardInfos(await db.listHazardInfos());
-    const s = await db.loadSettings();
-    setSettings(s);
-    setRiskThreshold(s.risk.threshold);
-    setLastBackup((await db.getLastBackup()) ?? null);
-    const who = await fetchIdentity();
-    setIdentity(who ?? { name: s.profile.name, email: "", role: s.profile.role, authenticated: false });
-    setLoading(false);
+    try {
+      setAssessments(await db.listAssessments());
+      setHazardInfos(await db.listHazardInfos());
+      const s = await db.loadSettings();
+      setSettings(s);
+      setRiskThreshold(s.risk.threshold);
+      setLastBackup((await db.getLastBackup()) ?? null);
+      const who = await fetchIdentity();
+      setIdentity(who ?? { name: s.profile.name, email: "", role: s.profile.role, authenticated: false });
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "서버에 연결하지 못했습니다");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   React.useEffect(() => {
@@ -141,6 +149,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const value = React.useMemo(
     () => ({
       loading,
+      error,
       assessments,
       reload,
       createAssessment,
@@ -159,6 +168,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       loading,
+      error,
       assessments,
       reload,
       createAssessment,

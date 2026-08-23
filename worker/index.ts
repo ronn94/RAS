@@ -1,0 +1,260 @@
+/**
+ * RAS API Worker.
+ *
+ * 데이터 모델은 그대로 JSON 블롭으로 D1에 저장한다(IndexedDB 시절 구조와 1:1) —
+ * src/lib/types.ts가 여전히 유일한 정본이며, 서버는 재모델링하지 않는다.
+ * 사진은 R2에 원본 그대로 저장하고(프런트엔드가 이미 업로드 전 리사이즈함),
+ * photo_meta 테이블에 크기·생성일만 별도로 남겨 저장소 화면 집계에 쓴다.
+ *
+ * 인증은 Cloudflare Access가 앞단에서 처리한다. Access가 붙은 라우트에서는
+ * Cf-Access-Authenticated-User-Email 헤더가 항상 엣지에서 덮어써지므로
+ * (클라이언트가 위조할 수 없다) 신원 표시 용도로 그대로 신뢰한다.
+ */
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+
+type Bindings = {
+  ras_db: D1Database;
+  ras_photos: R2Bucket;
+};
+
+const app = new Hono<{ Bindings: Bindings }>();
+
+app.use("/api/*", cors());
+
+/* ── 신원 ────────────────────────────────────────────────── */
+app.get("/api/identity", (c) => {
+  const email = c.req.header("Cf-Access-Authenticated-User-Email");
+  if (!email) return c.json({ authenticated: false });
+  return c.json({
+    authenticated: true,
+    email,
+    name: email.split("@")[0],
+  });
+});
+
+/* ── 공용: JSON 문서 컬렉션(assessments / hazard_infos) ──────── */
+function collection(table: "assessments" | "hazard_infos") {
+  const r = new Hono<{ Bindings: Bindings }>();
+
+  r.get("/", async (c) => {
+    const { results } = await c.env.ras_db
+      .prepare(`SELECT data FROM ${table} ORDER BY updated_at DESC`)
+      .all<{ data: string }>();
+    return c.json(results.map((row) => JSON.parse(row.data)));
+  });
+
+  r.put("/:id", async (c) => {
+    const id = c.req.param("id");
+    const body = await c.req.json<Record<string, unknown>>();
+    const updatedAt = Date.now();
+    const doc = { ...body, id, updatedAt };
+    await c.env.ras_db
+      .prepare(
+        `INSERT INTO ${table} (id, data, facility, process, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(id) DO UPDATE SET data = ?2, facility = ?3, process = ?4, updated_at = ?5`,
+      )
+      .bind(id, JSON.stringify(doc), String(body.facility ?? ""), String(body.process ?? ""), updatedAt)
+      .run();
+    return c.json(doc);
+  });
+
+  r.delete("/:id", async (c) => {
+    const id = c.req.param("id");
+    await c.env.ras_db.prepare(`DELETE FROM ${table} WHERE id = ?1`).bind(id).run();
+    return c.json({ ok: true });
+  });
+
+  return r;
+}
+
+app.route("/api/assessments", collection("assessments"));
+app.route("/api/hazardinfos", collection("hazard_infos"));
+
+/* ── 설정 (단일 레코드) ────────────────────────────────────── */
+app.get("/api/settings", async (c) => {
+  const row = await c.env.ras_db
+    .prepare("SELECT data FROM settings WHERE id = 'app'")
+    .first<{ data: string }>();
+  return c.json(row ? JSON.parse(row.data) : null);
+});
+
+app.put("/api/settings", async (c) => {
+  const body = await c.req.json();
+  const updatedAt = Date.now();
+  const doc = { ...body, updatedAt };
+  await c.env.ras_db
+    .prepare(
+      `INSERT INTO settings (id, data, updated_at) VALUES ('app', ?1, ?2)
+       ON CONFLICT(id) DO UPDATE SET data = ?1, updated_at = ?2`,
+    )
+    .bind(JSON.stringify(doc), updatedAt)
+    .run();
+  return c.json(doc);
+});
+
+/* ── 사진 (R2) ──────────────────────────────────────────────
+   업로드 시 서버에서 새 id를 발급한다 — 클라이언트가 id를 정하지 않는다. */
+app.post("/api/photos", async (c) => {
+  const body = await c.req.arrayBuffer();
+  if (body.byteLength === 0) return c.json({ error: "빈 파일입니다" }, 400);
+  const id = crypto.randomUUID();
+  const contentType = c.req.header("content-type") || "image/jpeg";
+  await c.env.ras_photos.put(id, body, { httpMetadata: { contentType } });
+  await c.env.ras_db
+    .prepare("INSERT INTO photo_meta (id, size, content_type, created_at) VALUES (?1, ?2, ?3, ?4)")
+    .bind(id, body.byteLength, contentType, Date.now())
+    .run();
+  return c.json({ id, size: body.byteLength });
+});
+
+app.get("/api/photos/:id", async (c) => {
+  const obj = await c.env.ras_photos.get(c.req.param("id"));
+  if (!obj) return c.notFound();
+  return new Response(obj.body, {
+    headers: {
+      "content-type": obj.httpMetadata?.contentType ?? "image/jpeg",
+      "cache-control": "private, max-age=31536000, immutable",
+    },
+  });
+});
+
+app.delete("/api/photos/:id", async (c) => {
+  const id = c.req.param("id");
+  await c.env.ras_photos.delete(id);
+  await c.env.ras_db.prepare("DELETE FROM photo_meta WHERE id = ?1").bind(id).run();
+  return c.json({ ok: true });
+});
+
+/** 사용 중인(참조된) 사진 id 목록을 받아 그 외의 것을 정리한다 */
+app.post("/api/photos/cleanup", async (c) => {
+  const { used } = await c.req.json<{ used: string[] }>();
+  const usedSet = new Set(used);
+  const { results } = await c.env.ras_db.prepare("SELECT id FROM photo_meta").all<{ id: string }>();
+  let removed = 0;
+  for (const row of results) {
+    if (!usedSet.has(row.id)) {
+      await c.env.ras_photos.delete(row.id);
+      await c.env.ras_db.prepare("DELETE FROM photo_meta WHERE id = ?1").bind(row.id).run();
+      removed += 1;
+    }
+  }
+  return c.json({ removed });
+});
+
+/* ── 저장소 사용량 ──────────────────────────────────────────── */
+app.get("/api/storage", async (c) => {
+  const row = await c.env.ras_db
+    .prepare("SELECT COUNT(*) as n, COALESCE(SUM(size), 0) as bytes FROM photo_meta")
+    .first<{ n: number; bytes: number }>();
+  return c.json({ photoCount: row?.n ?? 0, photoBytes: row?.bytes ?? 0 });
+});
+
+/* ── 전체 백업 · 복원 ───────────────────────────────────────── */
+app.get("/api/backup", async (c) => {
+  const [assessments, hazardInfos, settingsRow] = await Promise.all([
+    c.env.ras_db.prepare("SELECT data FROM assessments").all<{ data: string }>(),
+    c.env.ras_db.prepare("SELECT data FROM hazard_infos").all<{ data: string }>(),
+    c.env.ras_db.prepare("SELECT data FROM settings WHERE id = 'app'").first<{ data: string }>(),
+  ]);
+
+  const usedPhotoIds = new Set<string>();
+  for (const row of assessments.results) {
+    const a = JSON.parse(row.data) as { rows?: { beforePhoto?: string; afterPhoto?: string }[] };
+    for (const r of a.rows ?? []) {
+      if (r.beforePhoto) usedPhotoIds.add(r.beforePhoto);
+      if (r.afterPhoto) usedPhotoIds.add(r.afterPhoto);
+    }
+  }
+
+  const photos: Record<string, string> = {};
+  for (const id of usedPhotoIds) {
+    const obj = await c.env.ras_photos.get(id);
+    if (!obj) continue;
+    const buf = await obj.arrayBuffer();
+    const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+    const ct = obj.httpMetadata?.contentType ?? "image/jpeg";
+    photos[id] = `data:${ct};base64,${b64}`;
+  }
+
+  return c.json({
+    version: 3,
+    assessments: assessments.results.map((r) => JSON.parse(r.data)),
+    hazardInfos: hazardInfos.results.map((r) => JSON.parse(r.data)),
+    settings: settingsRow ? JSON.parse(settingsRow.data) : undefined,
+    photos,
+  });
+});
+
+app.post("/api/backup/restore", async (c) => {
+  const data = await c.req.json<{
+    assessments?: { id: string; facility?: string; process?: string }[];
+    hazardInfos?: { id: string; facility?: string; process?: string }[];
+    settings?: Record<string, unknown>;
+    photos?: Record<string, string>;
+  }>();
+
+  const now = Date.now();
+
+  for (const a of data.assessments ?? []) {
+    await c.env.ras_db
+      .prepare(
+        `INSERT INTO assessments (id, data, facility, process, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(id) DO UPDATE SET data = ?2, facility = ?3, process = ?4, updated_at = ?5`,
+      )
+      .bind(a.id, JSON.stringify(a), a.facility ?? "", a.process ?? "", now)
+      .run();
+  }
+
+  for (const h of data.hazardInfos ?? []) {
+    await c.env.ras_db
+      .prepare(
+        `INSERT INTO hazard_infos (id, data, facility, process, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(id) DO UPDATE SET data = ?2, facility = ?3, process = ?4, updated_at = ?5`,
+      )
+      .bind(h.id, JSON.stringify(h), h.facility ?? "", h.process ?? "", now)
+      .run();
+  }
+
+  if (data.settings) {
+    await c.env.ras_db
+      .prepare(
+        `INSERT INTO settings (id, data, updated_at) VALUES ('app', ?1, ?2)
+         ON CONFLICT(id) DO UPDATE SET data = ?1, updated_at = ?2`,
+      )
+      .bind(JSON.stringify(data.settings), now)
+      .run();
+  }
+
+  for (const [id, dataUrl] of Object.entries(data.photos ?? {})) {
+    const existing = await c.env.ras_photos.head(id);
+    if (existing) continue; // 이미 있으면 건너뛴다(같은 사진 재업로드 방지)
+    const m = dataUrl.match(/^data:(.+?);base64,(.+)$/);
+    if (!m) continue;
+    const [, contentType, b64] = m;
+    const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+    await c.env.ras_photos.put(id, bytes, { httpMetadata: { contentType } });
+    await c.env.ras_db
+      .prepare(
+        "INSERT INTO photo_meta (id, size, content_type, created_at) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(id) DO NOTHING",
+      )
+      .bind(id, bytes.byteLength, contentType, now)
+      .run();
+  }
+
+  return c.json({ assessments: data.assessments?.length ?? 0 });
+});
+
+/* ── 전체 초기화 ────────────────────────────────────────────── */
+app.post("/api/wipe", async (c) => {
+  const { results } = await c.env.ras_db.prepare("SELECT id FROM photo_meta").all<{ id: string }>();
+  for (const row of results) await c.env.ras_photos.delete(row.id);
+  await c.env.ras_db.batch([
+    c.env.ras_db.prepare("DELETE FROM assessments"),
+    c.env.ras_db.prepare("DELETE FROM hazard_infos"),
+    c.env.ras_db.prepare("DELETE FROM photo_meta"),
+  ]);
+  return c.json({ ok: true });
+});
+
+export default app;
