@@ -1,15 +1,25 @@
 /**
  * 위험성 평가표 인쇄 서식 — 첨부 원본(위험성평가표.pdf) 구조 재현.
- * A4 가로 · 여백 15mm. 항목 수만큼만 출력하되, 한 페이지에 11행씩 나눠
- * 페이지마다 머리말(대상시설·공정명·결재란)과 컬럼 헤더를 통째로 반복한다.
- * (표 하나가 여러 장에 걸쳐 흐르면 브라우저 인쇄가 <thead>를 페이지마다
- * 안정적으로 반복해 주지 않으므로, 페이지마다 독립된 완전한 표를 그린다)
+ * A4 가로 · 여백 15mm. 페이지마다 머리말(대상시설·공정명·결재란)과 컬럼 헤더를
+ * 통째로 반복하기 위해, 페이지 수만큼 독립된 완전한 표를 그린다.
+ *
+ * 페이지를 나누는 기준은 **행 개수가 아니라 실제 높이**다. 행 높이는 내용이
+ * 몇 줄로 줄바꿈되느냐에 따라 11mm~40mm 넘게까지 달라지기 때문에, 고정 행수로
+ * 자르면 묶음이 한 장을 넘쳐 브라우저가 페이지를 강제로 쪼갠다. 그러면
+ *   ① 잘린 조각에는 머리말 표가 안 찍히고
+ *   ② Chrome이 조각의 세로 테두리를 누락시킨다
+ * 두 증상이 한꺼번에 나온다. 그래서 화면 밖에서 한 번 재보고 나눈다.
  */
+import * as React from "react";
 import { riskAfter, riskBefore } from "@/lib/risk";
 import type { Assessment, RiskItem } from "@/lib/types";
 import { useStore } from "@/store";
 
-const ROWS_PER_PAGE = 11;
+/** A4 가로 210mm − 상하 여백 15mm×2 */
+const PAGE_CONTENT_MM = 180;
+/** 반올림 오차로 한 줄이 넘치는 것을 막는 여유 */
+const SAFETY_MM = 3;
+const PX_PER_MM = 96 / 25.4;
 
 function HeadTable({
   assessment,
@@ -159,9 +169,63 @@ export function AssessmentSheet({ assessment }: { assessment: Assessment }) {
     approve: assessment.approver.approve || settings.org.approver.approve,
   };
 
-  const pages: RiskItem[][] = [];
-  for (let i = 0; i < assessment.rows.length; i += ROWS_PER_PAGE) pages.push(assessment.rows.slice(i, i + ROWS_PER_PAGE));
-  if (pages.length === 0) pages.push([]);
+  const measureRef = React.useRef<HTMLDivElement>(null);
+  const [pages, setPages] = React.useState<RiskItem[][] | null>(null);
+
+  // 내용이 바뀌면 다시 재야 한다(줄바꿈이 달라지면 행 높이도 달라진다)
+  const signature = JSON.stringify(assessment.rows);
+  React.useLayoutEffect(() => {
+    setPages(null);
+  }, [signature]);
+
+  React.useLayoutEffect(() => {
+    if (pages !== null) return;
+    const el = measureRef.current;
+    if (!el) return;
+
+    const height = (node: Element | null) => node?.getBoundingClientRect().height ?? 0;
+    const available =
+      (PAGE_CONTENT_MM - SAFETY_MM) * PX_PER_MM - height(el.querySelector(".head")) - height(el.querySelector(".body thead"));
+
+    const trs = [...el.querySelectorAll<HTMLTableRowElement>(".body tbody tr")];
+    const chunks: RiskItem[][] = [];
+    let current: RiskItem[] = [];
+    let used = 0;
+
+    trs.forEach((tr, i) => {
+      const h = tr.getBoundingClientRect().height;
+      // 한 행이 통째로 한 장보다 클 때는 어차피 쪼개지므로 혼자 한 페이지를 쓰게 둔다
+      if (current.length > 0 && used + h > available) {
+        chunks.push(current);
+        current = [];
+        used = 0;
+      }
+      current.push(assessment.rows[i]);
+      used += h;
+    });
+    if (current.length > 0) chunks.push(current);
+
+    setPages(chunks.length > 0 ? chunks : [[]]);
+  }, [pages, signature, assessment.rows]);
+
+  // 1단계: 전체 행을 한 번에 그려 높이를 잰다(화면 밖이라 사용자에게는 안 보인다)
+  if (pages === null) {
+    return (
+      <div className="print-root sheet sheet-assessment" ref={measureRef} aria-hidden>
+        <div className="print-page">
+          <HeadTable assessment={assessment} approver={approver} />
+          <BodyTable rows={assessment.rows} startNo={1} />
+        </div>
+      </div>
+    );
+  }
+
+  // 2단계: 잰 높이대로 나눈 페이지를 그린다.
+  // No.는 페이지가 넘어가도 이어져야 하므로 앞 페이지들의 행 수를 누적해 시작 번호를 구한다.
+  const startNos = pages.reduce<number[]>((acc, _page, i) => {
+    acc.push(i === 0 ? 1 : acc[i - 1] + pages[i - 1].length);
+    return acc;
+  }, []);
 
   return (
     <div className="print-root sheet sheet-assessment">
@@ -169,7 +233,7 @@ export function AssessmentSheet({ assessment }: { assessment: Assessment }) {
       {pages.map((pageRows, i) => (
         <div key={i} className="print-page">
           <HeadTable assessment={assessment} approver={approver} />
-          <BodyTable rows={pageRows} startNo={i * ROWS_PER_PAGE + 1} />
+          <BodyTable rows={pageRows} startNo={startNos[i]} />
         </div>
       ))}
     </div>
