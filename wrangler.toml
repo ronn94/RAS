@@ -1,3 +1,7 @@
 name = "ras"
 compatibility_date = "2026-08-23"
-pages_build_output_dir = "dist"
+
+# 정적 파일만 서비스하는 Worker. SPA라 없는 경로는 index.html로 넘긴다.
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"

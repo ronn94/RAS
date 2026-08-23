@@ -10,12 +10,14 @@ npm run dev      # 개발 서버
 npm run build    # dist/ 생성
 ```
 
-## 배포 (Cloudflare Pages)
+## 배포 (Cloudflare Workers)
 
 ```bash
 npm run build
-npx wrangler pages deploy dist --project-name ras
+npx wrangler deploy
 ```
+
+배포 주소: https://ras.hubfib.workers.dev · 저장소: https://github.com/ronn94/RAS
 
 ## 구성
 
