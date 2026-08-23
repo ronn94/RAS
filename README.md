@@ -15,8 +15,8 @@ Worker 하나가 정적 SPA와 API를 함께 서비스한다(`worker/index.ts`, 
   (`src/lib/types.ts`가 여전히 유일한 정본 스키마 — 서버는 재모델링하지 않는다)
 - **R2**: 업로드 시 서버가 새 id를 발급해 저장하고(`POST /api/photos`), `<img src="/api/photos/:id">`로
   바로 불러온다. `photo_meta` 테이블에 크기·생성일만 별도로 남겨 저장소 화면 집계에 쓴다
-- **로그인**: Cloudflare Access가 앞단에서 처리하고, Worker가 `Cf-Access-Authenticated-User-Email`
-  헤더(Access가 엣지에서 항상 덮어씀 — 위조 불가)를 읽어 `/api/identity`로 알려준다
+- **로그인**: SSM 대시보드와 같은 방식 — 아이디·비밀번호(Worker 시크릿) + HMAC 서명 세션 쿠키.
+  `worker/auth.ts`가 발급·검증하고, `/api/*`는 로그인·로그아웃 경로를 빼고 전부 이 세션을 요구한다
 - 브라우저에는 더 이상 데이터가 남지 않는다 — 로그인하면 어느 기기에서도 같은 자료를 본다.
   `src/lib/localdb.ts`는 3단계 이전(IndexedDB) 시절의 흔적으로, 그 브라우저에 남은 옛 데이터를
   서버로 옮기는 마이그레이션 브리지 용도로만 쓴다(설정 → 백업·복원 화면에 자동으로 뜬다)
@@ -78,20 +78,25 @@ npm run db:migrate
 - 화면의 도구 버튼(엑셀·인쇄·PDF·추가·백업)은 아이콘만 표시한다. 확인 다이얼로그의 취소/삭제 버튼은 글자를 유지한다
 - 데이터는 Cloudflare D1(자료) + R2(사진)에 저장된다. 설정 → 백업·복원에서 JSON 백업·복원(병합)
 
-## 로그인 (Cloudflare Access) — 아직 미설정, 대시보드에서 한 번만 하면 됨
+## 로그인 (아이디·비밀번호)
 
-앱에 계정 서버를 두지 않고 **Cloudflare Zero Trust의 Access**로 이 Worker를 보호한다.
-지금 배포에 쓴 API 토큰은 Access 관리 권한이 없어 CLI로는 못 만들고, **대시보드에서 한 번만** 만들면 된다.
+SSM 대시보드와 같은 방식 — 계정을 여러 개 두지 않고, 안전팀이 공유하는 관리자 계정 하나를 쓴다.
+`worker/auth.ts`가 HMAC로 서명한 세션 쿠키(HttpOnly·Secure·SameSite=Strict, 12시간 만료)를 발급하고,
+비밀번호 자체는 어디에도 저장하지 않고 매 요청마다 시간 상수 비교(`timingSafeEqual`)만 한다.
+`/api/*`는 로그인·로그아웃 두 경로를 빼고 전부 이 세션이 있어야 통과한다(`worker/index.ts`).
 
-1. Cloudflare 대시보드 → **Zero Trust** (팀 도메인을 처음 만드는 경우 안내에 따라 이름만 정하면 됨, 무료)
-2. **Access → Applications → Add an application → Self-hosted**
-3. Application domain에 `ras.hubfib.workers.dev` 입력
-4. Policy에서 허용할 이메일(또는 회사 도메인 전체)을 지정 — 안전팀 인원만 넣는다
-5. 저장하면 그 순간부터 이 주소는 Cloudflare 로그인을 거쳐야 들어온다
+계정 정보는 코드·저장소에 없고 Worker 시크릿으로만 존재한다. 바꾸려면:
 
-Worker(`worker/index.ts`의 `/api/identity`)가 Access의 인증 헤더를 읽어 로그인한 사용자를
-사이드바에 표시하고, 로그아웃은 `/cdn-cgi/access/logout`으로 보낸다. Access를 아직 안 걸었으면
-(지금 상태) 이 주소는 **누구나 접근 가능**하니, 실제 데이터를 넣기 전에 먼저 걸어두는 것을 권한다.
+```bash
+printf "새아이디" | npx wrangler secret put ADMIN_USERNAME
+printf "새비밀번호" | npx wrangler secret put ADMIN_PASSWORD
+```
+
+로컬 개발은 `.dev.vars`(gitignore됨)에 `ADMIN_USERNAME`·`ADMIN_PASSWORD`·`SESSION_SECRET`을 넣어 쓴다.
+
+> 이전에는 Cloudflare Access(Zero Trust)로 앞단을 막는 방식을 썼다. Access와 자체 로그인 화면은
+> 함께 못 쓴다 — Access가 우리 로그인 페이지보다 먼저 요청을 가로채 버린다. 지금은 Access를
+> 완전히 제거하고 이 방식으로 바꿨다.
 
 ## 차트
 

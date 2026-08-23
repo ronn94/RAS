@@ -83,7 +83,7 @@ function ScaleEditor({ value, onChange }: { value: ScaleLabel[]; onChange: (v: S
 }
 
 export function SettingsPage() {
-  const { settings, updateSettings, identity } = useStore();
+  const { settings, updateSettings } = useStore();
   const [saved, setSaved] = React.useState(false);
 
   const patch = async (p: Partial<AppSettings>) => {
@@ -106,9 +106,7 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle>계정</CardTitle>
           <CardDescription>
-            {identity.authenticated
-              ? `Cloudflare Access로 로그인되어 있습니다 · ${identity.email}`
-              : "현재 로그인 없이 사용 중입니다. 배포 후 Cloudflare Access를 연결하면 실제 계정으로 바뀝니다."}
+            아이디·비밀번호로 로그인되어 있습니다. 아래 이름·직책은 사이드바 표시와 인쇄물 기본값에만 쓰입니다.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -116,7 +114,6 @@ export function SettingsPage() {
             <Label>이름</Label>
             <Input
               value={settings.profile.name}
-              disabled={identity.authenticated}
               onChange={(e) => void patch({ profile: { ...settings.profile, name: e.target.value } })}
             />
           </div>
@@ -124,7 +121,6 @@ export function SettingsPage() {
             <Label>직책</Label>
             <Input
               value={settings.profile.role}
-              disabled={identity.authenticated}
               onChange={(e) => void patch({ profile: { ...settings.profile, role: e.target.value } })}
             />
           </div>

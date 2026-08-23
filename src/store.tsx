@@ -3,11 +3,12 @@ import * as db from "@/lib/db";
 import { reassignCodes, setRiskThreshold } from "@/lib/risk";
 import { emptyAssessment, emptyHazardInfo, type Assessment, type HazardInfo, type RiskItem } from "@/lib/types";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
-import { fetchIdentity, type Identity } from "@/lib/auth";
+
 
 type Ctx = {
   loading: boolean;
   error: string | null;
+  unauthorized: boolean;
   assessments: Assessment[];
   reload: () => Promise<void>;
   createAssessment: () => Promise<Assessment>;
@@ -17,7 +18,6 @@ type Ctx = {
   hazardInfos: HazardInfo[];
   settings: AppSettings;
   updateSettings: (patch: Partial<AppSettings>) => Promise<void>;
-  identity: Identity;
   lastBackup: number | null;
   markBackedUp: () => Promise<void>;
   createHazardInfo: () => Promise<HazardInfo>;
@@ -31,15 +31,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [assessments, setAssessments] = React.useState<Assessment[]>([]);
   const [hazardInfos, setHazardInfos] = React.useState<HazardInfo[]>([]);
   const [settings, setSettings] = React.useState<AppSettings>(DEFAULT_SETTINGS);
-  const [identity, setIdentity] = React.useState<Identity>({
-    name: DEFAULT_SETTINGS.profile.name,
-    email: "",
-    role: DEFAULT_SETTINGS.profile.role,
-    authenticated: false,
-  });
   const [lastBackup, setLastBackup] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [unauthorized, setUnauthorized] = React.useState(false);
 
   const reload = React.useCallback(async () => {
     try {
@@ -49,8 +44,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setSettings(s);
       setRiskThreshold(s.risk.threshold);
       setLastBackup((await db.getLastBackup()) ?? null);
-      const who = await fetchIdentity();
-      setIdentity(who ?? { name: s.profile.name, email: "", role: s.profile.role, authenticated: false });
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "서버에 연결하지 못했습니다");
@@ -62,6 +55,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     void reload();
   }, [reload]);
+
+  React.useEffect(() => {
+    // 세션이 끊기면(쿠키 만료 등) db.ts가 여기로 알려준다 — 로그인 화면으로 되돌린다
+    db.setOnUnauthorized(() => setUnauthorized(true));
+    return () => db.setOnUnauthorized(null);
+  }, []);
 
   const saveAssessment = React.useCallback(async (a: Assessment) => {
     const withCodes = reassignCodes(a);
@@ -133,9 +132,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       await db.saveSettings(next);
       setSettings(next);
       setRiskThreshold(next.risk.threshold);
-      setIdentity((prev) =>
-        prev.authenticated ? prev : { ...prev, name: next.profile.name, role: next.profile.role },
-      );
     },
     [settings],
   );
@@ -150,6 +146,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     () => ({
       loading,
       error,
+      unauthorized,
       assessments,
       reload,
       createAssessment,
@@ -162,13 +159,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       removeHazardInfo,
       settings,
       updateSettings,
-      identity,
       lastBackup,
       markBackedUp,
     }),
     [
       loading,
       error,
+      unauthorized,
       assessments,
       reload,
       createAssessment,
@@ -181,7 +178,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       removeHazardInfo,
       settings,
       updateSettings,
-      identity,
       lastBackup,
       markBackedUp,
     ],

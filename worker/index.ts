@@ -12,25 +12,42 @@
  */
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { login, logout, readSession } from "./auth";
 
 type Bindings = {
   ras_db: D1Database;
   ras_photos: R2Bucket;
+  ADMIN_USERNAME?: string;
+  ADMIN_PASSWORD?: string;
+  SESSION_SECRET?: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
 
 app.use("/api/*", cors());
 
-/* ── 신원 ────────────────────────────────────────────────── */
-app.get("/api/identity", (c) => {
-  const email = c.req.header("Cf-Access-Authenticated-User-Email");
-  if (!email) return c.json({ authenticated: false });
-  return c.json({
-    authenticated: true,
-    email,
-    name: email.split("@")[0],
-  });
+/* ── 로그인 (SSM과 같은 방식: 아이디·비밀번호 + 서명 세션 쿠키) ──── */
+app.post("/api/auth/login", login);
+app.post("/api/auth/logout", logout);
+
+/** 로그인·로그아웃을 제외한 모든 /api/*는 유효한 세션이 있어야 통과한다 */
+app.use("/api/*", async (c, next) => {
+  if (c.req.path === "/api/auth/login" || c.req.path === "/api/auth/logout") return next();
+  const session = await readSession(c);
+  if (!session) return c.json({ error: "로그인이 필요합니다." }, 401);
+  await next();
+});
+
+app.get("/api/auth/status", async (c) => {
+  const session = await readSession(c);
+  return c.json({ authenticated: !!session, username: session?.sub });
+});
+
+/* ── 신원(대시보드 사이드바 표시용) ─────────────────────────── */
+app.get("/api/identity", async (c) => {
+  const session = await readSession(c);
+  if (!session) return c.json({ authenticated: false });
+  return c.json({ authenticated: true, name: session.sub });
 });
 
 /* ── 공용: JSON 문서 컬렉션(assessments / hazard_infos) ──────── */

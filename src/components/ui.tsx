@@ -47,9 +47,11 @@ export function Button({ className, variant = "default", size = "default", ...pr
 const FIELD_BASE =
   "w-full min-w-0 rounded-2xl border border-transparent bg-input/50 text-base transition-[color,box-shadow] duration-200 outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm";
 
-export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn(FIELD_BASE, "h-8 px-2.5 py-1", className)} {...props} />;
-}
+export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+  function Input({ className, ...props }, ref) {
+    return <input ref={ref} className={cn(FIELD_BASE, "h-8 px-2.5 py-1", className)} {...props} />;
+  },
+);
 
 export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (

@@ -10,11 +10,23 @@
 import type { Assessment, HazardInfo } from "./types";
 import { withDefaults, type AppSettings } from "./settings";
 
+/** 세션이 끊겼을 때(401) store.tsx가 로그인 화면으로 되돌릴 수 있도록 알린다.
+   (namespace import로 가져온 `let` export는 외부에서 재대입할 수 없으므로 setter를 둔다) */
+let onUnauthorized: (() => void) | null = null;
+export const setOnUnauthorized = (fn: (() => void) | null) => {
+  onUnauthorized = fn;
+};
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     ...init,
+    credentials: "same-origin",
     headers: { "content-type": "application/json", ...init?.headers },
   });
+  if (res.status === 401) {
+    onUnauthorized?.();
+    throw new Error("로그인이 필요합니다.");
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`서버 요청에 실패했습니다 (${res.status}) ${text}`.trim());
@@ -57,9 +69,14 @@ export const photoUrl = (id: string) => `/api/photos/${id}`;
 export async function uploadPhoto(blob: Blob): Promise<string> {
   const res = await fetch("/api/photos", {
     method: "POST",
+    credentials: "same-origin",
     headers: { "content-type": blob.type || "image/jpeg" },
     body: blob,
   });
+  if (res.status === 401) {
+    onUnauthorized?.();
+    throw new Error("로그인이 필요합니다.");
+  }
   if (!res.ok) throw new Error(`사진 업로드에 실패했습니다 (${res.status})`);
   const data = (await res.json()) as { id: string };
   return data.id;
