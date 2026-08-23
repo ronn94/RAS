@@ -5,7 +5,8 @@ import {
   LayoutDashboard,
   ListChecks,
   LogOut,
-  PanelLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings2,
   ShieldAlert,
   X,
@@ -62,12 +63,20 @@ function SidebarInner({
   onSelect,
   user,
   onLogout,
+  hiddenViews,
 }: {
   view: ViewKey;
   onSelect: (v: ViewKey) => void;
   user: { name: string; role: string };
   onLogout: () => void;
+  hiddenViews?: Set<ViewKey>;
 }) {
+  const groups = hiddenViews
+    ? NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((item) => !hiddenViews.has(item.key)) })).filter(
+        (g) => g.items.length > 0,
+      )
+    : NAV_GROUPS;
+  const secondary = hiddenViews ? NAV_SECONDARY.filter((item) => !hiddenViews.has(item.key)) : NAV_SECONDARY;
   return (
     <div className="flex size-full flex-col bg-sidebar [--radius:var(--radius-xl)]">
       <div className="flex flex-col gap-2 p-2">
@@ -79,7 +88,7 @@ function SidebarInner({
         </div>
       </div>
       <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-auto overscroll-contain">
-        {NAV_GROUPS.map((group, i) => (
+        {groups.map((group, i) => (
           <div key={group.label ?? i} className="relative flex w-full min-w-0 flex-col p-2 py-1">
             {group.label && (
               <div className="flex h-8 shrink-0 items-center rounded-xl px-3 text-xs font-medium text-sidebar-foreground/70">
@@ -91,7 +100,7 @@ function SidebarInner({
         ))}
       </div>
       <div className="flex flex-col gap-2 p-2">
-        <NavList items={NAV_SECONDARY} view={view} onSelect={onSelect} />
+        {secondary.length > 0 && <NavList items={secondary} view={view} onSelect={onSelect} />}
         <div className="flex h-12 items-center gap-2 rounded-xl px-3">
           <div className="grid size-8 shrink-0 place-content-center rounded-lg bg-sidebar-accent text-xs font-medium text-sidebar-accent-foreground">
             {user.name.slice(0, 1).toUpperCase()}
@@ -116,6 +125,7 @@ export function Shell({
   actions,
   user,
   onLogout,
+  hiddenViews,
   children,
 }: {
   view: ViewKey;
@@ -124,19 +134,42 @@ export function Shell({
   actions?: React.ReactNode;
   user: { name: string; role: string };
   onLogout: () => void;
+  hiddenViews?: Set<ViewKey>;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = React.useState(false);
+  const [desktopOpen, setDesktopOpen] = React.useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("ras.sidebarOpen") !== "0";
+  });
+
+  const toggleDesktop = () => {
+    setDesktopOpen((prev) => {
+      const next = !prev;
+      localStorage.setItem("ras.sidebarOpen", next ? "1" : "0");
+      return next;
+    });
+  };
 
   return (
     <div
       className="group/sidebar-wrapper flex min-h-svh w-full bg-sidebar"
       style={{ ["--sidebar-width" as string]: "calc(var(--spacing) * 60)", ["--header-height" as string]: "calc(var(--spacing) * 12)" }}
     >
-      {/* 데스크톱 사이드바 (자리 + 고정 패널 2단) */}
-      <div className="no-print relative hidden w-(--sidebar-width) bg-transparent md:block" />
-      <div className="no-print fixed inset-y-0 left-0 z-10 hidden h-svh w-(--sidebar-width) p-2 md:flex">
-        <SidebarInner view={view} onSelect={onSelect} user={user} onLogout={onLogout} />
+      {/* 데스크톱 사이드바 (자리 + 고정 패널 2단) — 접으면 폭 0 · 화면 밖으로 슬라이드 */}
+      <div
+        className={cn(
+          "no-print relative hidden bg-transparent transition-[width] duration-200 ease-linear md:block",
+          desktopOpen ? "w-(--sidebar-width)" : "w-0",
+        )}
+      />
+      <div
+        className={cn(
+          "no-print fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) p-2 transition-[left] duration-200 ease-linear md:flex",
+          desktopOpen ? "left-0" : "left-[calc(var(--sidebar-width)*-1)]",
+        )}
+      >
+        <SidebarInner view={view} onSelect={onSelect} user={user} onLogout={onLogout} hiddenViews={hiddenViews} />
       </div>
 
       {/* 모바일 오버레이 사이드바 */}
@@ -165,6 +198,7 @@ export function Shell({
                 }}
                 user={user}
                 onLogout={onLogout}
+                hiddenViews={hiddenViews}
               />
             </div>
           </div>
@@ -177,8 +211,17 @@ export function Shell({
       >
         <header className="no-print sticky top-0 z-20 h-(--header-height) shrink-0 rounded-t-2xl border-b bg-background/95 supports-backdrop-filter:backdrop-blur">
           <div className="flex h-full w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden md:inline-flex"
+              onClick={toggleDesktop}
+              aria-label={desktopOpen ? "사이드바 접기" : "사이드바 펼치기"}
+            >
+              {desktopOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
+            </Button>
             <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setOpen(true)} aria-label="메뉴 열기">
-              <PanelLeft />
+              <PanelLeftOpen />
             </Button>
             <h1 className="font-heading truncate text-base font-medium">{title}</h1>
             <div className="ml-auto flex items-center gap-2">{actions}</div>

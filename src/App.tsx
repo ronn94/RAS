@@ -9,7 +9,7 @@ import { DashboardPage } from "@/pages/Dashboard";
 import { SettingsPage } from "@/pages/Settings";
 import { BackupPage } from "@/pages/Backup";
 import { LoginPage } from "@/pages/Login";
-import { checkAuth, logout as apiLogout } from "@/lib/auth";
+import { checkAuth, logout as apiLogout, type Identity } from "@/lib/auth";
 import { StoreProvider, useStore } from "@/store";
 
 const TITLES: Record<ViewKey, string> = {
@@ -21,33 +21,43 @@ const TITLES: Record<ViewKey, string> = {
   backup: "백업·복원",
 };
 
-function Router() {
+/** 관리자 전용 화면 — 게스트가 직접 상태를 조작해도 여기서 막는다 */
+const ADMIN_ONLY_VIEWS = new Set<ViewKey>(["settings", "backup"]);
+
+function Router({ identity }: { identity: Identity }) {
   const { settings, error, unauthorized, reload } = useStore();
   const [view, setView] = React.useState<ViewKey>("assessments");
   const [openId, setOpenId] = React.useState<string | null>(null);
+  const isAdmin = identity.role === "admin";
+  const activeView = !isAdmin && ADMIN_ONLY_VIEWS.has(view) ? "assessments" : view;
 
   const logout = async () => {
     await apiLogout();
     location.reload();
   };
 
+  const displayName = identity.role === "guest" ? "게스트" : settings.profile.name || "관리자";
+  const displayRole = identity.role === "guest" ? "보기 전용" : settings.profile.role;
+
   return (
     <Shell
-      view={view}
+      view={activeView}
       onSelect={(v) => {
+        if (!isAdmin && ADMIN_ONLY_VIEWS.has(v)) return;
         setView(v);
         setOpenId(null);
       }}
-      title={TITLES[view]}
-      user={{ name: settings.profile.name || "관리자", role: settings.profile.role }}
+      title={TITLES[activeView]}
+      user={{ name: displayName, role: displayRole }}
       onLogout={() => void logout()}
+      hiddenViews={isAdmin ? undefined : ADMIN_ONLY_VIEWS}
     >
-      {view === "dashboard" && <DashboardPage onNavigate={setView} />}
-      {view === "assessments" && <AssessmentsPage openId={openId} onOpen={setOpenId} />}
-      {view === "highrisk" && <HighRiskPage />}
-      {view === "hazardinfo" && <HazardInfoPage openId={openId} onOpen={setOpenId} />}
-      {view === "settings" && <SettingsPage />}
-      {view === "backup" && <BackupPage />}
+      {activeView === "dashboard" && <DashboardPage onNavigate={setView} />}
+      {activeView === "assessments" && <AssessmentsPage openId={openId} onOpen={setOpenId} />}
+      {activeView === "highrisk" && <HighRiskPage />}
+      {activeView === "hazardinfo" && <HazardInfoPage openId={openId} onOpen={setOpenId} />}
+      {isAdmin && activeView === "settings" && <SettingsPage />}
+      {isAdmin && activeView === "backup" && <BackupPage />}
 
       {(error || unauthorized) && (
         <div className="no-print fixed inset-x-0 bottom-4 z-50 mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-2xl bg-destructive/10 px-4 py-2 text-sm text-destructive ring-1 ring-destructive/20">
@@ -68,21 +78,23 @@ function Router() {
   );
 }
 
-/** 로그인 여부를 한 번 확인하고 통과시킨다. 확인 전에는 아무것도 그리지 않는다. */
-function AuthGate({ children }: { children: React.ReactNode }) {
-  const [state, setState] = React.useState<"checking" | "in" | "out">("checking");
+type AuthState = { status: "checking" } | { status: "out" } | { status: "in"; identity: Identity };
+
+export default function App() {
+  const [state, setState] = React.useState<AuthState>({ status: "checking" });
 
   React.useEffect(() => {
     let alive = true;
-    void checkAuth().then((identity) => {
-      if (alive) setState(identity.authenticated ? "in" : "out");
+    void checkAuth().then((who) => {
+      if (!alive) return;
+      setState(who.authenticated ? { status: "in", identity: who } : { status: "out" });
     });
     return () => {
       alive = false;
     };
   }, []);
 
-  if (state === "checking") {
+  if (state.status === "checking") {
     return (
       <div className="flex min-h-svh items-center justify-center">
         <p className="text-sm text-muted-foreground">확인 중…</p>
@@ -90,17 +102,17 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (state === "out") return <LoginPage onSuccess={() => setState("in")} />;
+  if (state.status === "out") {
+    return (
+      <LoginPage
+        onSuccess={() => void checkAuth().then((who) => setState(who.authenticated ? { status: "in", identity: who } : { status: "out" }))}
+      />
+    );
+  }
 
-  return <>{children}</>;
-}
-
-export default function App() {
   return (
-    <AuthGate>
-      <StoreProvider>
-        <Router />
-      </StoreProvider>
-    </AuthGate>
+    <StoreProvider identity={state.identity}>
+      <Router identity={state.identity} />
+    </StoreProvider>
   );
 }

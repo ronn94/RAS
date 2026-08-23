@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Plus, X } from "lucide-react";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@/components/ui";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Input, Label } from "@/components/ui";
 import { DEFAULT_SETTINGS, type AppSettings, type ScaleLabel } from "@/lib/settings";
 import { useStore } from "@/store";
 
@@ -177,6 +177,37 @@ export function SettingsPage() {
               }
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* 게스트 권한 */}
+      <Card className="shadow-xs">
+        <CardHeader>
+          <CardTitle>게스트 권한</CardTitle>
+          <CardDescription>
+            로그인 화면의 &lsquo;게스트로 보기&rsquo;로 들어온 사용자에게 켠 항목만 허용합니다. 설정·백업·복원
+            화면과 전체 초기화는 게스트에게 항상 막혀 있습니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-4">
+          {(
+            [
+              { key: "edit", label: "편집", hint: "항목 추가·수정" },
+              { key: "delete", label: "삭제", hint: "행·평가표·유해위험정보 삭제" },
+              { key: "photo", label: "사진 첨부", hint: "개선 전·후 사진 업로드·삭제" },
+            ] as const
+          ).map((p) => (
+            <label key={p.key} className="flex items-center gap-2.5 rounded-xl bg-muted/40 px-3 py-2.5">
+              <Checkbox
+                checked={settings.permissions[p.key]}
+                onChange={(e) => void patch({ permissions: { ...settings.permissions, [p.key]: e.target.checked } })}
+              />
+              <span>
+                <span className="block text-sm font-medium">{p.label}</span>
+                <span className="block text-xs text-muted-foreground">{p.hint}</span>
+              </span>
+            </label>
+          ))}
         </CardContent>
       </Card>
 

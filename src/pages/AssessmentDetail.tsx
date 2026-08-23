@@ -57,7 +57,7 @@ const COLS: { key: string; label: string; sub?: string; className?: string }[] =
 ];
 
 export function AssessmentDetail({ assessment, onBack }: { assessment: Assessment; onBack: () => void }) {
-  const { saveAssessment, settings } = useStore();
+  const { saveAssessment, settings, canEdit, canDelete } = useStore();
   const [draft, setDraft] = React.useState<Assessment>(assessment);
   const [q, setQ] = React.useState("");
   const [fClass, setFClass] = React.useState("");
@@ -158,7 +158,14 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
               if (f) void readFile(f);
             }}
           />
-          <Button variant="outline" size="icon-lg" onClick={() => fileRef.current?.click()} aria-label="엑셀 불러오기">
+          <Button
+            variant="outline"
+            size="icon-lg"
+            disabled={!canEdit}
+            onClick={() => fileRef.current?.click()}
+            aria-label="엑셀 불러오기"
+            title={canEdit ? undefined : "보기 전용 계정입니다"}
+          >
             <FileUp />
           </Button>
           <Button variant="outline" size="icon-lg" onClick={() => void exportAssessment(draft)} aria-label="엑셀 내보내기">
@@ -167,7 +174,13 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
           <Button variant="outline" size="icon-lg" onClick={() => window.print()} aria-label="PDF 출력">
             <Printer />
           </Button>
-          <Button size="icon-lg" onClick={addRow} aria-label="행 추가">
+          <Button
+            size="icon-lg"
+            disabled={!canEdit}
+            onClick={addRow}
+            aria-label="행 추가"
+            title={canEdit ? undefined : "보기 전용 계정입니다"}
+          >
             <Plus />
           </Button>
         </div>
@@ -178,19 +191,25 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
         <CardContent className="grid grid-cols-1 gap-3 py-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1.5">
             <Label>대상시설</Label>
-            <Input value={draft.facility} onChange={(e) => patch({ facility: e.target.value })} placeholder="○○공공하수처리시설" />
+            <Input
+              disabled={!canEdit}
+              value={draft.facility}
+              onChange={(e) => patch({ facility: e.target.value })}
+              placeholder="○○공공하수처리시설"
+            />
           </div>
           <div className="space-y-1.5">
             <Label>공정명</Label>
-            <ProcessSelect value={draft.process} onChange={(v) => patch({ process: v })} />
+            <ProcessSelect value={draft.process} onChange={(v) => patch({ process: v })} disabled={!canEdit} />
           </div>
           <div className="space-y-1.5">
             <Label>평가일시</Label>
-            <Input type="date" value={draft.date} onChange={(e) => patch({ date: e.target.value })} />
+            <Input disabled={!canEdit} type="date" value={draft.date} onChange={(e) => patch({ date: e.target.value })} />
           </div>
           <div className="space-y-1.5">
             <Label>공정순번 <span className="text-muted-foreground">(평가코드 중간 숫자)</span></Label>
             <Input
+              disabled={!canEdit}
               type="number"
               min={1}
               value={draft.processNo}
@@ -257,30 +276,37 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
                         <TD className="text-center text-muted-foreground tabular-nums">{idx + 1}</TD>
                         <TD className="whitespace-normal">
                           <CellTextarea
+                            disabled={!canEdit}
                             value={r.subProcess}
                             onChange={(e) => patchRow(r.id, { subProcess: e.target.value })}
                           />
                         </TD>
                         <TD>
                           <HazardClassSelect
+                            disabled={!canEdit}
                             value={r.hazardClass}
                             onChange={(e) => patchRow(r.id, { hazardClass: e.target.value as RiskItem["hazardClass"] })}
                           />
                         </TD>
                         <TD className="whitespace-normal">
-                          <CellTextarea value={r.hazard} onChange={(e) => patchRow(r.id, { hazard: e.target.value })} />
+                          <CellTextarea
+                            disabled={!canEdit}
+                            value={r.hazard}
+                            onChange={(e) => patchRow(r.id, { hazard: e.target.value })}
+                          />
                         </TD>
                         <TD className="whitespace-normal">
                           <CellTextarea
+                            disabled={!canEdit}
                             value={r.currentControl}
                             onChange={(e) => patchRow(r.id, { currentControl: e.target.value })}
                           />
                         </TD>
                         <TD>
-                          <ScoreSelect kind="p" value={r.p} onChange={(v) => patchRow(r.id, { p: v })} />
+                          <ScoreSelect disabled={!canEdit} kind="p" value={r.p} onChange={(v) => patchRow(r.id, { p: v })} />
                         </TD>
                         <TD>
-                          <ScoreSelect kind="s" value={r.s} onChange={(v) => patchRow(r.id, { s: v })} />
+                          <ScoreSelect disabled={!canEdit} kind="s" value={r.s} onChange={(v) => patchRow(r.id, { s: v })} />
                         </TD>
                         <TD className="text-center">
                           <Badge variant="secondary" className={riskBadgeClass(before)}>
@@ -289,6 +315,7 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
                         </TD>
                         <TD className="text-center">
                           <CellInput
+                            disabled={!canEdit}
                             className="text-center tabular-nums"
                             value={r.code}
                             placeholder={isHighRisk(r) ? "" : "-"}
@@ -296,16 +323,25 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
                           />
                         </TD>
                         <TD className="whitespace-normal">
-                          <CellTextarea value={r.measure} onChange={(e) => patchRow(r.id, { measure: e.target.value })} />
+                          <CellTextarea
+                            disabled={!canEdit}
+                            value={r.measure}
+                            onChange={(e) => patchRow(r.id, { measure: e.target.value })}
+                          />
                         </TD>
                         <TD>
-                          <CellInput type="date" value={r.dueDate} onChange={(e) => patchRow(r.id, { dueDate: e.target.value })} />
+                          <CellInput
+                            disabled={!canEdit}
+                            type="date"
+                            value={r.dueDate}
+                            onChange={(e) => patchRow(r.id, { dueDate: e.target.value })}
+                          />
                         </TD>
                         <TD>
-                          <ScoreSelect kind="p" value={r.p2} onChange={(v) => patchRow(r.id, { p2: v })} />
+                          <ScoreSelect disabled={!canEdit} kind="p" value={r.p2} onChange={(v) => patchRow(r.id, { p2: v })} />
                         </TD>
                         <TD>
-                          <ScoreSelect kind="s" value={r.s2} onChange={(v) => patchRow(r.id, { s2: v })} />
+                          <ScoreSelect disabled={!canEdit} kind="s" value={r.s2} onChange={(v) => patchRow(r.id, { s2: v })} />
                         </TD>
                         <TD className="text-center">
                           <Badge variant="secondary" className={riskBadgeClass(after)}>
@@ -313,28 +349,51 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
                           </Badge>
                         </TD>
                         <TD>
-                          <StatusSelect value={r.status} onChange={(e) => patchRow(r.id, { status: e.target.value as RiskItem["status"] })} />
+                          <StatusSelect
+                            disabled={!canEdit}
+                            value={r.status}
+                            onChange={(e) => patchRow(r.id, { status: e.target.value as RiskItem["status"] })}
+                          />
                         </TD>
                         <TD>
-                          <OwnerInput value={r.owner} onChange={(e) => patchRow(r.id, { owner: e.target.value })} />
+                          <OwnerInput disabled={!canEdit} value={r.owner} onChange={(e) => patchRow(r.id, { owner: e.target.value })} />
                         </TD>
                         <TD className="whitespace-normal">
-                          <CellTextarea value={r.note} onChange={(e) => patchRow(r.id, { note: e.target.value })} />
+                          <CellTextarea disabled={!canEdit} value={r.note} onChange={(e) => patchRow(r.id, { note: e.target.value })} />
                         </TD>
                         <TD>
                           <div className="flex items-center gap-0.5">
-                            <Button variant="ghost" size="icon-sm" onClick={() => moveRow(r.id, -1)} aria-label="위로">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={!canEdit}
+                              onClick={() => moveRow(r.id, -1)}
+                              aria-label="위로"
+                            >
                               <ChevronUp className="size-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon-sm" onClick={() => moveRow(r.id, 1)} aria-label="아래로">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={!canEdit}
+                              onClick={() => moveRow(r.id, 1)}
+                              aria-label="아래로"
+                            >
                               <ChevronDown className="size-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon-sm" onClick={() => duplicateRow(r.id)} aria-label="복제">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={!canEdit}
+                              onClick={() => duplicateRow(r.id)}
+                              aria-label="복제"
+                            >
                               <Copy className="size-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon-sm"
+                              disabled={!canDelete}
                               className="text-destructive hover:text-destructive"
                               onClick={() => removeRow(r.id)}
                               aria-label="삭제"
@@ -354,7 +413,7 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
       </Card>
 
       <div className="no-print flex justify-center">
-        <Button variant="outline" size="icon-lg" onClick={addRow} aria-label="행 추가">
+        <Button variant="outline" size="icon-lg" disabled={!canEdit} onClick={addRow} aria-label="행 추가">
           <Plus />
         </Button>
       </div>

@@ -3,12 +3,18 @@ import * as db from "@/lib/db";
 import { reassignCodes, setRiskThreshold } from "@/lib/risk";
 import { emptyAssessment, emptyHazardInfo, type Assessment, type HazardInfo, type RiskItem } from "@/lib/types";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
+import type { Identity } from "@/lib/auth";
 
 
 type Ctx = {
   loading: boolean;
   error: string | null;
   unauthorized: boolean;
+  identity: Identity;
+  /** role==="admin" 이거나, 게스트인데 설정에서 해당 권한을 켠 경우 true */
+  canEdit: boolean;
+  canDelete: boolean;
+  canUploadPhoto: boolean;
   assessments: Assessment[];
   reload: () => Promise<void>;
   createAssessment: () => Promise<Assessment>;
@@ -27,7 +33,7 @@ type Ctx = {
 
 const StoreContext = React.createContext<Ctx | null>(null);
 
-export function StoreProvider({ children }: { children: React.ReactNode }) {
+export function StoreProvider({ identity, children }: { identity: Identity; children: React.ReactNode }) {
   const [assessments, setAssessments] = React.useState<Assessment[]>([]);
   const [hazardInfos, setHazardInfos] = React.useState<HazardInfo[]>([]);
   const [settings, setSettings] = React.useState<AppSettings>(DEFAULT_SETTINGS);
@@ -142,11 +148,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setLastBackup(t);
   }, []);
 
+  const isAdmin = identity.role === "admin";
+  const canEdit = isAdmin || settings.permissions.edit;
+  const canDelete = isAdmin || settings.permissions.delete;
+  const canUploadPhoto = isAdmin || settings.permissions.photo;
+
   const value = React.useMemo(
     () => ({
       loading,
       error,
       unauthorized,
+      identity,
+      canEdit,
+      canDelete,
+      canUploadPhoto,
       assessments,
       reload,
       createAssessment,
@@ -166,6 +181,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       loading,
       error,
       unauthorized,
+      identity,
+      canEdit,
+      canDelete,
+      canUploadPhoto,
       assessments,
       reload,
       createAssessment,

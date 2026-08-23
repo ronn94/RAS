@@ -1,25 +1,37 @@
 import * as React from "react";
-import { LogIn, TriangleAlert } from "lucide-react";
+import { Eye, LogIn, TriangleAlert } from "lucide-react";
 import { Button, Card, CardContent, Input, Label } from "@/components/ui";
-import { login } from "@/lib/auth";
+import { login, loginGuest } from "@/lib/auth";
 
 export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
   const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
-  const [busy, setBusy] = React.useState(false);
+  const [busy, setBusy] = React.useState<"login" | "guest" | null>(null);
   const passwordRef = React.useRef<HTMLInputElement>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBusy(true);
+    setBusy("login");
     setError(null);
     const res = await login(username, password);
-    setBusy(false);
+    setBusy(null);
     if (!res.ok) {
       setError(res.message);
       setPassword("");
       passwordRef.current?.focus();
+      return;
+    }
+    onSuccess();
+  };
+
+  const guest = async () => {
+    setBusy("guest");
+    setError(null);
+    const res = await loginGuest();
+    setBusy(null);
+    if (!res.ok) {
+      setError(res.message);
       return;
     }
     onSuccess();
@@ -76,15 +88,28 @@ export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
                 </div>
               )}
 
-              <Button type="submit" size="lg" disabled={busy || !password || !username}>
+              <Button type="submit" size="lg" disabled={!!busy || !password || !username}>
                 <LogIn className="size-3.5" />
-                {busy ? "확인 중…" : "로그인"}
+                {busy === "login" ? "확인 중…" : "로그인"}
               </Button>
             </form>
+
+            <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="h-px flex-1 bg-border" />
+              또는
+              <span className="h-px flex-1 bg-border" />
+            </div>
+
+            <Button variant="outline" size="lg" className="w-full" disabled={!!busy} onClick={() => void guest()}>
+              <Eye className="size-3.5" />
+              {busy === "guest" ? "접속 중…" : "게스트로 보기"}
+            </Button>
           </CardContent>
         </Card>
 
-        <p className="text-center text-sm text-muted-foreground">안전팀 관리자만 접속할 수 있습니다.</p>
+        <p className="text-center text-sm text-muted-foreground">
+          게스트는 조회만 가능합니다. 편집 권한은 관리자가 설정에서 켤 수 있습니다.
+        </p>
       </div>
     </div>
   );

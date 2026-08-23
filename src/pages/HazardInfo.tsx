@@ -28,7 +28,7 @@ export function HazardInfoPage({
   openId: string | null;
   onOpen: (id: string | null) => void;
 }) {
-  const { hazardInfos, loading, createHazardInfo, removeHazardInfo } = useStore();
+  const { hazardInfos, loading, createHazardInfo, removeHazardInfo, canEdit, canDelete } = useStore();
   const [deleteTarget, setDeleteTarget] = React.useState<HazardInfo | null>(null);
 
   const current = hazardInfos.find((h) => h.id === openId) ?? null;
@@ -44,11 +44,13 @@ export function HazardInfoPage({
         </div>
         <Button
           size="icon-lg"
+          disabled={!canEdit}
           onClick={async () => {
             const h = await createHazardInfo();
             onOpen(h.id);
           }}
           aria-label="새 유해위험정보"
+          title={canEdit ? undefined : "보기 전용 계정입니다"}
         >
           <Plus />
         </Button>
@@ -87,6 +89,7 @@ export function HazardInfoPage({
                         <Button
                           variant="ghost"
                           size="icon-sm"
+                          disabled={!canDelete}
                           className="text-destructive hover:text-destructive"
                           onClick={() => setDeleteTarget(h)}
                           aria-label="삭제"

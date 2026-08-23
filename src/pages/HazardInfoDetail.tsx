@@ -60,7 +60,7 @@ function Chk({
 }
 
 export function HazardInfoDetail({ info, onBack }: { info: HazardInfo; onBack: () => void }) {
-  const { saveHazardInfo, assessments } = useStore();
+  const { saveHazardInfo, assessments, canEdit, canDelete } = useStore();
   const [draft, setDraft] = React.useState<HazardInfo>(info);
 
   const first = React.useRef(true);
@@ -122,7 +122,13 @@ export function HazardInfoDetail({ info, onBack }: { info: HazardInfo; onBack: (
           <Button variant="outline" size="icon-lg" onClick={() => window.print()} aria-label="인쇄 · PDF">
             <Printer />
           </Button>
-          <Button size="icon-lg" onClick={addStep} aria-label="행 추가">
+          <Button
+            size="icon-lg"
+            disabled={!canEdit}
+            onClick={addStep}
+            aria-label="행 추가"
+            title={canEdit ? undefined : "보기 전용 계정입니다"}
+          >
             <Plus />
           </Button>
         </div>
@@ -135,6 +141,7 @@ export function HazardInfoDetail({ info, onBack }: { info: HazardInfo; onBack: (
             <Label>연동 평가표</Label>
             <Select
               className="w-full"
+              disabled={!canEdit}
               value={draft.assessmentId ?? ""}
               onChange={(ev) => linkAssessment(ev.target.value)}
             >
@@ -148,15 +155,15 @@ export function HazardInfoDetail({ info, onBack }: { info: HazardInfo; onBack: (
           </div>
           <div className="space-y-1.5">
             <Label>대상시설</Label>
-            <Input value={draft.facility} onChange={(ev) => patch({ facility: ev.target.value })} />
+            <Input disabled={!canEdit} value={draft.facility} onChange={(ev) => patch({ facility: ev.target.value })} />
           </div>
           <div className="space-y-1.5">
             <Label>공정명</Label>
-            <ProcessSelect value={draft.process} onChange={(v) => patch({ process: v })} />
+            <ProcessSelect value={draft.process} onChange={(v) => patch({ process: v })} disabled={!canEdit} />
           </div>
           <div className="space-y-1.5">
             <Label>작성일</Label>
-            <Input type="date" value={draft.date} onChange={(ev) => patch({ date: ev.target.value })} />
+            <Input disabled={!canEdit} type="date" value={draft.date} onChange={(ev) => patch({ date: ev.target.value })} />
           </div>
         </CardContent>
       </Card>
@@ -183,23 +190,33 @@ export function HazardInfoDetail({ info, onBack }: { info: HazardInfo; onBack: (
                   <TR key={s.id} className="align-top">
                     <TD className="text-center tabular-nums text-muted-foreground">{i + 1}</TD>
                     <TD className="whitespace-normal">
-                      <CellInput value={s.order} onChange={(ev) => patchStep(s.id, { order: ev.target.value })} />
-                    </TD>
-                    <TD>
-                      <CellInput value={s.equipName} onChange={(ev) => patchStep(s.id, { equipName: ev.target.value })} />
+                      <CellInput disabled={!canEdit} value={s.order} onChange={(ev) => patchStep(s.id, { order: ev.target.value })} />
                     </TD>
                     <TD>
                       <CellInput
+                        disabled={!canEdit}
+                        value={s.equipName}
+                        onChange={(ev) => patchStep(s.id, { equipName: ev.target.value })}
+                      />
+                    </TD>
+                    <TD>
+                      <CellInput
+                        disabled={!canEdit}
                         className="text-center"
                         value={s.equipQty}
                         onChange={(ev) => patchStep(s.id, { equipQty: ev.target.value })}
                       />
                     </TD>
                     <TD>
-                      <CellInput value={s.chemName} onChange={(ev) => patchStep(s.id, { chemName: ev.target.value })} />
+                      <CellInput
+                        disabled={!canEdit}
+                        value={s.chemName}
+                        onChange={(ev) => patchStep(s.id, { chemName: ev.target.value })}
+                      />
                     </TD>
                     <TD>
                       <CellInput
+                        disabled={!canEdit}
                         className="text-center"
                         value={s.chemAmount}
                         onChange={(ev) => patchStep(s.id, { chemAmount: ev.target.value })}
@@ -207,6 +224,7 @@ export function HazardInfoDetail({ info, onBack }: { info: HazardInfo; onBack: (
                     </TD>
                     <TD>
                       <CellInput
+                        disabled={!canEdit}
                         className="text-center"
                         value={s.chemTime}
                         onChange={(ev) => patchStep(s.id, { chemTime: ev.target.value })}
@@ -214,15 +232,16 @@ export function HazardInfoDetail({ info, onBack }: { info: HazardInfo; onBack: (
                     </TD>
                     <TD>
                       <div className="flex items-center gap-0.5">
-                        <Button variant="ghost" size="icon-sm" onClick={() => moveStep(s.id, -1)} aria-label="위로">
+                        <Button variant="ghost" size="icon-sm" disabled={!canEdit} onClick={() => moveStep(s.id, -1)} aria-label="위로">
                           <ChevronUp className="size-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon-sm" onClick={() => moveStep(s.id, 1)} aria-label="아래로">
+                        <Button variant="ghost" size="icon-sm" disabled={!canEdit} onClick={() => moveStep(s.id, 1)} aria-label="아래로">
                           <ChevronDown className="size-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon-sm"
+                          disabled={!canDelete}
                           className="text-destructive hover:text-destructive"
                           onClick={() => removeStep(s.id)}
                           aria-label="삭제"
@@ -240,7 +259,7 @@ export function HazardInfoDetail({ info, onBack }: { info: HazardInfo; onBack: (
       </Card>
 
       <div className="no-print flex justify-center">
-        <Button variant="outline" size="icon-lg" onClick={addStep} aria-label="행 추가">
+        <Button variant="outline" size="icon-lg" disabled={!canEdit} onClick={addStep} aria-label="행 추가">
           <Plus />
         </Button>
       </div>
@@ -250,7 +269,8 @@ export function HazardInfoDetail({ info, onBack }: { info: HazardInfo; onBack: (
         <CardHeader>
           <CardTitle>그 밖의 유해위험정보 (유/무 Check)</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
+          <fieldset disabled={!canEdit} className="space-y-4">
           <Group title="3년간 재해발생 사례">
             <YesNoSelect value={e.accident3y.flag} onChange={(v) => patchExtra({ accident3y: { ...e.accident3y, flag: v } })} />
             <Input
@@ -354,6 +374,7 @@ export function HazardInfoDetail({ info, onBack }: { info: HazardInfo; onBack: (
               onChange={(ev) => patchExtra({ specialEdu: { ...e.specialEdu, detail: ev.target.value } })}
             />
           </Group>
+          </fieldset>
         </CardContent>
       </Card>
 

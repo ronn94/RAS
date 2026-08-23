@@ -25,10 +25,12 @@ export function PhotoSlot({
   label,
   photoId,
   onChange,
+  disabled,
 }: {
   label: string;
   photoId?: string;
   onChange: (id: string | undefined) => void;
+  disabled?: boolean;
 }) {
   const url = usePhotoUrl(photoId);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -38,6 +40,7 @@ export function PhotoSlot({
 
   const upload = React.useCallback(
     async (file: File) => {
+      if (disabled) return;
       setBusy(true);
       try {
         const blob = await processPhoto(file);
@@ -50,7 +53,7 @@ export function PhotoSlot({
         setBusy(false);
       }
     },
-    [onChange, photoId],
+    [onChange, photoId, disabled],
   );
 
   const fromClipboard = (items: DataTransferItemList | null) => {
@@ -72,13 +75,20 @@ export function PhotoSlot({
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="icon-xs" onClick={() => inputRef.current?.click()} aria-label={`${label} 파일 선택`}>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            disabled={disabled}
+            onClick={() => inputRef.current?.click()}
+            aria-label={`${label} 파일 선택`}
+          >
             <Camera />
           </Button>
           {photoId && (
             <Button
               variant="ghost"
               size="icon-xs"
+              disabled={disabled}
               className="text-destructive hover:text-destructive"
               onClick={async () => {
                 await deletePhoto(photoId);
@@ -105,26 +115,29 @@ export function PhotoSlot({
       />
       <div
         role="button"
-        tabIndex={0}
+        tabIndex={disabled ? -1 : 0}
+        aria-disabled={disabled}
         aria-label={`${label} — 클릭 후 붙여넣기 또는 더블클릭으로 파일 선택`}
-        onFocus={() => setFocused(true)}
+        onFocus={() => !disabled && setFocused(true)}
         onBlur={() => setFocused(false)}
-        onDoubleClick={() => inputRef.current?.click()}
+        onDoubleClick={() => !disabled && inputRef.current?.click()}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
+          if (!disabled && (e.key === "Enter" || e.key === " ")) {
             e.preventDefault();
             inputRef.current?.click();
           }
         }}
         onPaste={(e) => {
-          if (fromClipboard(e.clipboardData?.items ?? null)) e.preventDefault();
+          if (!disabled && fromClipboard(e.clipboardData?.items ?? null)) e.preventDefault();
         }}
         onDragOver={(e) => {
+          if (disabled) return;
           e.preventDefault();
           setDragOver(true);
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => {
+          if (disabled) return;
           e.preventDefault();
           setDragOver(false);
           const f = e.dataTransfer.files?.[0];
@@ -132,7 +145,8 @@ export function PhotoSlot({
           else fromClipboard(e.dataTransfer.items);
         }}
         className={cn(
-          "flex aspect-[4/3] w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-input/50 ring-1 ring-foreground/5 transition-colors outline-none hover:bg-input/70",
+          "flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl bg-input/50 ring-1 ring-foreground/5 transition-colors outline-none",
+          disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-input/70",
           (focused || dragOver) && "ring-3 ring-ring/30",
         )}
       >
@@ -141,7 +155,7 @@ export function PhotoSlot({
         ) : (
           <span className="flex flex-col items-center gap-1.5 px-2 text-center text-xs text-muted-foreground">
             <Camera className="size-5" />
-            {busy ? "저장 중…" : focused ? "Ctrl/⌘+V 로 붙여넣기" : "클릭 후 붙여넣기 · 두 번 클릭 시 파일 선택"}
+            {disabled ? "보기 전용 계정입니다" : busy ? "저장 중…" : focused ? "Ctrl/⌘+V 로 붙여넣기" : "클릭 후 붙여넣기 · 두 번 클릭 시 파일 선택"}
           </span>
         )}
       </div>

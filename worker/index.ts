@@ -6,13 +6,13 @@
  * 사진은 R2에 원본 그대로 저장하고(프런트엔드가 이미 업로드 전 리사이즈함),
  * photo_meta 테이블에 크기·생성일만 별도로 남겨 저장소 화면 집계에 쓴다.
  *
- * 인증은 Cloudflare Access가 앞단에서 처리한다. Access가 붙은 라우트에서는
- * Cf-Access-Authenticated-User-Email 헤더가 항상 엣지에서 덮어써지므로
- * (클라이언트가 위조할 수 없다) 신원 표시 용도로 그대로 신뢰한다.
+ * 로그인은 아이디·비밀번호(HMAC 서명 세션 쿠키) 또는 비밀번호 없는 게스트
+ * 세션(sub: "guest") 둘 중 하나다. 게스트는 설정(settings.permissions)에서
+ * 켠 항목만 쓸 수 있고, 관리 기능(설정 변경·백업·초기화)은 항상 막힌다.
  */
-import { Hono } from "hono";
+import { Hono, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
-import { login, logout, readSession } from "./auth";
+import { login, loginGuest, logout, readSession } from "./auth";
 
 type Bindings = {
   ras_db: D1Database;
@@ -22,21 +22,49 @@ type Bindings = {
   SESSION_SECRET?: string;
 };
 
-const app = new Hono<{ Bindings: Bindings }>();
+type Variables = { role: "admin" | "guest" };
+
+const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 app.use("/api/*", cors());
 
-/* ── 로그인 (SSM과 같은 방식: 아이디·비밀번호 + 서명 세션 쿠키) ──── */
+/* ── 로그인 (SSM과 같은 방식: 아이디·비밀번호 + 서명 세션 쿠키 / 게스트) ── */
 app.post("/api/auth/login", login);
+app.post("/api/auth/login-guest", loginGuest);
 app.post("/api/auth/logout", logout);
+
+const PUBLIC_PATHS = new Set(["/api/auth/login", "/api/auth/login-guest", "/api/auth/logout"]);
 
 /** 로그인·로그아웃을 제외한 모든 /api/*는 유효한 세션이 있어야 통과한다 */
 app.use("/api/*", async (c, next) => {
-  if (c.req.path === "/api/auth/login" || c.req.path === "/api/auth/logout") return next();
+  if (PUBLIC_PATHS.has(c.req.path)) return next();
   const session = await readSession(c);
   if (!session) return c.json({ error: "로그인이 필요합니다." }, 401);
+  c.set("role", session.sub === "guest" ? "guest" : "admin");
   await next();
 });
+
+/** 게스트는 켜진 권한만, 관리자는 항상 통과 */
+async function loadPermissions(db: D1Database) {
+  const row = await db.prepare("SELECT data FROM settings WHERE id = 'app'").first<{ data: string }>();
+  const parsed = row ? (JSON.parse(row.data) as { permissions?: Record<string, boolean> }) : null;
+  return parsed?.permissions ?? {};
+}
+
+function requirePermission(key: "edit" | "delete" | "photo"): MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> {
+  return async (c, next) => {
+    if (c.get("role") !== "guest") return next();
+    const permissions = await loadPermissions(c.env.ras_db);
+    if (!permissions[key]) return c.json({ error: "게스트 계정에는 이 권한이 없습니다." }, 403);
+    await next();
+  };
+}
+
+/** 관리자 전용 — 게스트는 설정 변경·백업·초기화를 절대 할 수 없다 */
+const adminOnly: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
+  if (c.get("role") !== "admin") return c.json({ error: "관리자만 사용할 수 있습니다." }, 403);
+  await next();
+};
 
 app.get("/api/auth/status", async (c) => {
   const session = await readSession(c);
@@ -47,12 +75,12 @@ app.get("/api/auth/status", async (c) => {
 app.get("/api/identity", async (c) => {
   const session = await readSession(c);
   if (!session) return c.json({ authenticated: false });
-  return c.json({ authenticated: true, name: session.sub });
+  return c.json({ authenticated: true, name: session.sub, role: session.sub === "guest" ? "guest" : "admin" });
 });
 
 /* ── 공용: JSON 문서 컬렉션(assessments / hazard_infos) ──────── */
 function collection(table: "assessments" | "hazard_infos") {
-  const r = new Hono<{ Bindings: Bindings }>();
+  const r = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
   r.get("/", async (c) => {
     const { results } = await c.env.ras_db
@@ -61,7 +89,7 @@ function collection(table: "assessments" | "hazard_infos") {
     return c.json(results.map((row) => JSON.parse(row.data)));
   });
 
-  r.put("/:id", async (c) => {
+  r.put("/:id", requirePermission("edit"), async (c) => {
     const id = c.req.param("id");
     const body = await c.req.json<Record<string, unknown>>();
     const updatedAt = Date.now();
@@ -76,7 +104,7 @@ function collection(table: "assessments" | "hazard_infos") {
     return c.json(doc);
   });
 
-  r.delete("/:id", async (c) => {
+  r.delete("/:id", requirePermission("delete"), async (c) => {
     const id = c.req.param("id");
     await c.env.ras_db.prepare(`DELETE FROM ${table} WHERE id = ?1`).bind(id).run();
     return c.json({ ok: true });
@@ -96,7 +124,7 @@ app.get("/api/settings", async (c) => {
   return c.json(row ? JSON.parse(row.data) : null);
 });
 
-app.put("/api/settings", async (c) => {
+app.put("/api/settings", adminOnly, async (c) => {
   const body = await c.req.json();
   const updatedAt = Date.now();
   const doc = { ...body, updatedAt };
@@ -112,7 +140,7 @@ app.put("/api/settings", async (c) => {
 
 /* ── 사진 (R2) ──────────────────────────────────────────────
    업로드 시 서버에서 새 id를 발급한다 — 클라이언트가 id를 정하지 않는다. */
-app.post("/api/photos", async (c) => {
+app.post("/api/photos", requirePermission("photo"), async (c) => {
   const body = await c.req.arrayBuffer();
   if (body.byteLength === 0) return c.json({ error: "빈 파일입니다" }, 400);
   const id = crypto.randomUUID();
@@ -136,7 +164,7 @@ app.get("/api/photos/:id", async (c) => {
   });
 });
 
-app.delete("/api/photos/:id", async (c) => {
+app.delete("/api/photos/:id", requirePermission("photo"), async (c) => {
   const id = c.req.param("id");
   await c.env.ras_photos.delete(id);
   await c.env.ras_db.prepare("DELETE FROM photo_meta WHERE id = ?1").bind(id).run();
@@ -144,7 +172,7 @@ app.delete("/api/photos/:id", async (c) => {
 });
 
 /** 사용 중인(참조된) 사진 id 목록을 받아 그 외의 것을 정리한다 */
-app.post("/api/photos/cleanup", async (c) => {
+app.post("/api/photos/cleanup", adminOnly, async (c) => {
   const { used } = await c.req.json<{ used: string[] }>();
   const usedSet = new Set(used);
   const { results } = await c.env.ras_db.prepare("SELECT id FROM photo_meta").all<{ id: string }>();
@@ -160,7 +188,7 @@ app.post("/api/photos/cleanup", async (c) => {
 });
 
 /* ── 저장소 사용량 ──────────────────────────────────────────── */
-app.get("/api/storage", async (c) => {
+app.get("/api/storage", adminOnly, async (c) => {
   const row = await c.env.ras_db
     .prepare("SELECT COUNT(*) as n, COALESCE(SUM(size), 0) as bytes FROM photo_meta")
     .first<{ n: number; bytes: number }>();
@@ -168,7 +196,7 @@ app.get("/api/storage", async (c) => {
 });
 
 /* ── 전체 백업 · 복원 ───────────────────────────────────────── */
-app.get("/api/backup", async (c) => {
+app.get("/api/backup", adminOnly, async (c) => {
   const [assessments, hazardInfos, settingsRow] = await Promise.all([
     c.env.ras_db.prepare("SELECT data FROM assessments").all<{ data: string }>(),
     c.env.ras_db.prepare("SELECT data FROM hazard_infos").all<{ data: string }>(),
@@ -203,7 +231,7 @@ app.get("/api/backup", async (c) => {
   });
 });
 
-app.post("/api/backup/restore", async (c) => {
+app.post("/api/backup/restore", adminOnly, async (c) => {
   const data = await c.req.json<{
     assessments?: { id: string; facility?: string; process?: string }[];
     hazardInfos?: { id: string; facility?: string; process?: string }[];
@@ -263,7 +291,7 @@ app.post("/api/backup/restore", async (c) => {
 });
 
 /* ── 전체 초기화 ────────────────────────────────────────────── */
-app.post("/api/wipe", async (c) => {
+app.post("/api/wipe", adminOnly, async (c) => {
   const { results } = await c.env.ras_db.prepare("SELECT id FROM photo_meta").all<{ id: string }>();
   for (const row of results) await c.env.ras_photos.delete(row.id);
   await c.env.ras_db.batch([

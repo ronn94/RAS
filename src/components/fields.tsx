@@ -4,7 +4,7 @@ import { useStore } from "@/store";
 
 /** 표 안에서 쓰는 인라인 입력 — 평소엔 선이 없고, 포커스 시에만 채워진 필드가 된다 */
 export const cellBase =
-  "w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm outline-none transition-[color,box-shadow,background-color] duration-200 hover:bg-input/40 focus:bg-input/50 focus:border-ring focus:ring-3 focus:ring-ring/30";
+  "w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm outline-none transition-[color,box-shadow,background-color] duration-200 hover:bg-input/40 focus:bg-input/50 focus:border-ring focus:ring-3 focus:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent";
 
 export function CellInput({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(cellBase, "h-8", className)} {...props} />;
@@ -88,18 +88,21 @@ export function ProcessSelect({
   value,
   onChange,
   className,
+  disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
   className?: string;
+  disabled?: boolean;
 }) {
   const { settings } = useStore();
   const options = value && !settings.processes.includes(value) ? [...settings.processes, value] : settings.processes;
 
   return (
     <select
+      disabled={disabled}
       className={cn(
-        "flex h-8 w-full items-center rounded-2xl border border-transparent bg-input/50 px-2.5 text-base transition-[color,box-shadow] duration-200 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:text-sm",
+        "flex h-8 w-full items-center rounded-2xl border border-transparent bg-input/50 px-2.5 text-base transition-[color,box-shadow] duration-200 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:text-sm disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       value={value}

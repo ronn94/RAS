@@ -45,7 +45,7 @@ type AuthEnv = { ADMIN_USERNAME?: string; ADMIN_PASSWORD?: string; SESSION_SECRE
 const SESSION_HOURS = 12;
 const COOKIE_NAME = "ras_session";
 
-export async function readSession<E extends AuthEnv>(c: Context<{ Bindings: E }>): Promise<SessionPayload | null> {
+export async function readSession<Env extends { Bindings: AuthEnv }>(c: Context<Env>): Promise<SessionPayload | null> {
   const secret = c.env.SESSION_SECRET;
   const token = readCookie(c.req.header("cookie"), COOKIE_NAME);
   if (!token || !secret) return null;
@@ -60,7 +60,7 @@ export async function readSession<E extends AuthEnv>(c: Context<{ Bindings: E }>
   }
 }
 
-export async function login<E extends AuthEnv>(c: Context<{ Bindings: E }>) {
+export async function login<Env extends { Bindings: AuthEnv }>(c: Context<Env>) {
   const { ADMIN_USERNAME, ADMIN_PASSWORD, SESSION_SECRET } = c.env;
   if (!ADMIN_PASSWORD || !SESSION_SECRET) {
     return c.json({ error: "관리자 계정이 아직 설정되지 않았습니다." }, 503);
@@ -83,6 +83,20 @@ export async function login<E extends AuthEnv>(c: Context<{ Bindings: E }>) {
     `${COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_HOURS * 3600}`,
   );
   return c.json({ ok: true, username });
+}
+
+export async function loginGuest<Env extends { Bindings: AuthEnv }>(c: Context<Env>) {
+  const secret = c.env.SESSION_SECRET;
+  if (!secret) return c.json({ error: "서버 설정이 완료되지 않았습니다." }, 503);
+  const payloadB64 = b64(
+    encoder.encode(JSON.stringify({ sub: "guest", exp: Date.now() + SESSION_HOURS * 60 * 60 * 1000 })),
+  );
+  const token = `${payloadB64}.${b64(await sign(payloadB64, secret))}`;
+  c.header(
+    "set-cookie",
+    `${COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_HOURS * 3600}`,
+  );
+  return c.json({ ok: true, username: "guest" });
 }
 
 export function logout(c: Context) {

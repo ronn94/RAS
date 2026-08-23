@@ -36,7 +36,7 @@ const statusBadge = (s: RiskItem["status"]) =>
       : "bg-destructive/10 text-destructive";
 
 export function HighRiskPage() {
-  const { assessments, updateRow, settings } = useStore();
+  const { assessments, updateRow, settings, canEdit, canUploadPhoto } = useStore();
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [editId, setEditId] = React.useState<string | null>(null);
   const [fClass, setFClass] = React.useState("");
@@ -313,13 +313,16 @@ export function HighRiskPage() {
                   label="개선 전 사진"
                   photoId={editing.row.beforePhoto}
                   onChange={(id) => patch(editing, { beforePhoto: id })}
+                  disabled={!canUploadPhoto}
                 />
                 <PhotoSlot
                   label="개선 후 사진"
                   photoId={editing.row.afterPhoto}
                   onChange={(id) => patch(editing, { afterPhoto: id })}
+                  disabled={!canUploadPhoto}
                 />
               </div>
+              <fieldset disabled={!canEdit} className="space-y-4">
               <div className="space-y-1.5">
                 <Label>위험내용</Label>
                 <Textarea
@@ -377,6 +380,7 @@ export function HighRiskPage() {
                   </Select>
                 </div>
               </div>
+              </fieldset>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditId(null)}>

@@ -31,7 +31,7 @@ export function AssessmentsPage({
   openId: string | null;
   onOpen: (id: string | null) => void;
 }) {
-  const { assessments, loading, createAssessment, saveAssessment, removeAssessment } = useStore();
+  const { assessments, loading, createAssessment, saveAssessment, removeAssessment, canEdit, canDelete } = useStore();
   const [deleteTarget, setDeleteTarget] = React.useState<Assessment | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
@@ -71,18 +71,22 @@ export function AssessmentsPage({
           <Button
             variant="outline"
             size="icon-lg"
+            disabled={!canEdit}
             onClick={() => fileRef.current?.click()}
             aria-label="엑셀 가져오기"
+            title={canEdit ? undefined : "보기 전용 계정입니다"}
           >
             <FileUp />
           </Button>
           <Button
             size="icon-lg"
+            disabled={!canEdit}
             onClick={async () => {
               const a = await createAssessment();
               onOpen(a.id);
             }}
             aria-label="새 평가표"
+            title={canEdit ? undefined : "보기 전용 계정입니다"}
           >
             <Plus />
           </Button>
@@ -135,6 +139,7 @@ export function AssessmentsPage({
                           <Button
                             variant="ghost"
                             size="icon-sm"
+                            disabled={!canDelete}
                             className="text-destructive hover:text-destructive"
                             onClick={() => setDeleteTarget(a)}
                             aria-label="삭제"

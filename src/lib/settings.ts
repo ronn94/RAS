@@ -13,8 +13,10 @@ export type AppSettings = {
     facility: string; // 기본 대상시설
     approver: { charge: string; review: string; approve: string }; // 결재자 기본값
   };
-  /** 로컬 프로필 — Cloudflare Access가 없는 환경에서 표시할 사용자 */
+  /** 로컬 프로필 — 사이드바 표시·인쇄물 기본값에만 쓰인다 */
   profile: { name: string; role: string };
+  /** 게스트 계정이 쓸 수 있는 기능. 관리 기능(설정 변경·백업·초기화)은 항상 막혀 있어 여기 없다 */
+  permissions: { edit: boolean; delete: boolean; photo: boolean };
   /** 목록 */
   processes: string[]; // 공정명
   hazardClasses: string[];
@@ -36,6 +38,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     approver: { charge: "", review: "", approve: "" },
   },
   profile: { name: "관리자", role: "안전관리자" },
+  permissions: { edit: false, delete: false, photo: false },
   processes: [],
   hazardClasses: [...HAZARD_CLASSES],
   statuses: [...STATUSES],
@@ -65,6 +68,7 @@ export function withDefaults(saved: Partial<AppSettings> | undefined | null): Ap
   return {
     org: { ...DEFAULT_SETTINGS.org, ...saved.org, approver: { ...DEFAULT_SETTINGS.org.approver, ...saved.org?.approver } },
     profile: { ...DEFAULT_SETTINGS.profile, ...saved.profile },
+    permissions: { ...DEFAULT_SETTINGS.permissions, ...saved.permissions },
     processes: saved.processes ?? [],
     hazardClasses: saved.hazardClasses?.length ? saved.hazardClasses : DEFAULT_SETTINGS.hazardClasses,
     statuses: saved.statuses?.length ? saved.statuses : DEFAULT_SETTINGS.statuses,
