@@ -35,6 +35,8 @@ export function AssessmentsPage({
   const [deleteTarget, setDeleteTarget] = React.useState<Assessment | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
+  const sorted = [...assessments].sort((a, b) => a.processNo - b.processNo);
+
   const current = assessments.find((a) => a.id === openId) ?? null;
   if (openId && current) return <AssessmentDetail assessment={current} onBack={() => onOpen(null)} />;
 
@@ -106,6 +108,7 @@ export function AssessmentsPage({
               <Table className="[&_:is(th,td)]:px-4">
                 <THead>
                   <TR>
+                    <TH className="w-20 text-center">공정순번</TH>
                     <TH>대상시설</TH>
                     <TH>공정명</TH>
                     <TH className="w-32">평가일시</TH>
@@ -116,11 +119,14 @@ export function AssessmentsPage({
                   </TR>
                 </THead>
                 <TBody>
-                  {assessments.map((a) => {
+                  {sorted.map((a) => {
                     const high = a.rows.filter(isHighRisk);
-                    const done = high.filter((r) => r.status === "개선완료").length;
+                    // 분모: 공정 전체 등록건수 · 분자: 개선예정일이 등록된 건수
+                    const planned = a.rows.filter((r) => !!r.dueDate).length;
+                    const plannedPct = a.rows.length ? Math.round((planned / a.rows.length) * 100) : 0;
                     return (
                       <TR key={a.id} className="cursor-pointer" onClick={() => onOpen(a.id)}>
+                        <TD className="text-center tabular-nums text-muted-foreground">{a.processNo}</TD>
                         <TD className="font-medium">{a.facility || "-"}</TD>
                         <TD className="text-muted-foreground">{a.process || "-"}</TD>
                         <TD className="tabular-nums">{a.date || "-"}</TD>
@@ -133,7 +139,7 @@ export function AssessmentsPage({
                           )}
                         </TD>
                         <TD className="text-center tabular-nums text-muted-foreground">
-                          {high.length ? `${done}/${high.length}` : "-"}
+                          {a.rows.length ? `${plannedPct}%` : "-"}
                         </TD>
                         <TD onClick={(e) => e.stopPropagation()}>
                           <Button

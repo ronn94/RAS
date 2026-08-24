@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowLeft, ChevronDown, ChevronUp, Copy, FileDown, FileUp, Plus, Printer, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, ChevronDown, ChevronUp, Copy, FileDown, FileUp, Plus, Printer, Trash2 } from "lucide-react";
 import {
   Badge,
   Button,
@@ -47,6 +47,7 @@ const COLS: { key: string; label: string; sub?: string; className?: string }[] =
   { key: "code", label: "평가코드", sub: "8점 이상", className: "w-28 text-center" },
   { key: "measure", label: "개선대책", className: "w-56" },
   { key: "dueDate", label: "개선예정일", className: "w-36" },
+  { key: "improveDate", label: "개선일자", className: "w-36" },
   { key: "p2", label: "가능성", sub: "개선 후", className: "w-16 text-center" },
   { key: "s2", label: "중대성", sub: "개선 후", className: "w-16 text-center" },
   { key: "risk2", label: "위험성", sub: "개선 후", className: "w-20 text-center" },
@@ -57,7 +58,7 @@ const COLS: { key: string; label: string; sub?: string; className?: string }[] =
 ];
 
 export function AssessmentDetail({ assessment, onBack }: { assessment: Assessment; onBack: () => void }) {
-  const { saveAssessment, settings, canEdit, canDelete } = useStore();
+  const { assessments, saveAssessment, settings, canEdit, canDelete } = useStore();
   const [draft, setDraft] = React.useState<Assessment>(assessment);
   const [q, setQ] = React.useState("");
   const [fClass, setFClass] = React.useState("");
@@ -65,6 +66,8 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
   const [fHigh, setFHigh] = React.useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
   const [pending, setPending] = React.useState<RiskItem[] | null>(null);
+  const [moveRowId, setMoveRowId] = React.useState<string | null>(null);
+  const [moveTargetId, setMoveTargetId] = React.useState("");
 
   // 입력 중에는 로컬 상태로 두고, 멈추면 저장한다
   const first = React.useRef(true);
@@ -106,6 +109,19 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
       return { ...d, rows };
     });
   const removeRow = (id: string) => setDraft((d) => ({ ...d, rows: d.rows.filter((r) => r.id !== id) }));
+
+  const moveTargets = assessments.filter((a) => a.id !== draft.id);
+  const moveRowToAssessment = async () => {
+    const row = draft.rows.find((r) => r.id === moveRowId);
+    const target = assessments.find((a) => a.id === moveTargetId);
+    if (!row || !target) return;
+    // 평가코드는 평가표마다 다시 매겨지므로 옮긴 뒤 저장 시 자동으로 재계산되게 비워 둔다
+    const moved: RiskItem = { ...row, code: "" };
+    setDraft((d) => ({ ...d, rows: d.rows.filter((r) => r.id !== moveRowId) }));
+    await saveAssessment({ ...target, rows: [...target.rows, moved] });
+    setMoveRowId(null);
+    setMoveTargetId("");
+  };
   const moveRow = (id: string, dir: -1 | 1) =>
     setDraft((d) => {
       const i = d.rows.findIndex((r) => r.id === id);
@@ -338,6 +354,14 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
                           />
                         </TD>
                         <TD>
+                          <CellInput
+                            disabled={!canEdit}
+                            type="date"
+                            value={r.improveDate}
+                            onChange={(e) => patchRow(r.id, { improveDate: e.target.value })}
+                          />
+                        </TD>
+                        <TD>
                           <ScoreSelect disabled={!canEdit} kind="p" value={r.p2} onChange={(v) => patchRow(r.id, { p2: v })} />
                         </TD>
                         <TD>
@@ -393,6 +417,16 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
                             <Button
                               variant="ghost"
                               size="icon-sm"
+                              disabled={!canEdit || moveTargets.length === 0}
+                              onClick={() => setMoveRowId(r.id)}
+                              aria-label="다른 공정으로 이동"
+                              title={moveTargets.length === 0 ? "이동할 다른 평가표가 없습니다" : undefined}
+                            >
+                              <ArrowRightLeft className="size-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
                               disabled={!canDelete}
                               className="text-destructive hover:text-destructive"
                               onClick={() => removeRow(r.id)}
@@ -444,6 +478,33 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
             기존 행 교체
           </Button>
           <Button onClick={() => applyRows("append")}>아래에 추가</Button>
+        </DialogFooter>
+      </Dialog>
+
+      <Dialog open={!!moveRowId} onClose={() => setMoveRowId(null)}>
+        <DialogHeader>
+          <DialogTitle>다른 공정으로 이동</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            이 행을 아래에서 고른 평가표로 옮깁니다. 평가코드는 옮긴 평가표 기준으로 다시 매겨집니다.
+          </p>
+          <Select className="w-full" value={moveTargetId} onChange={(e) => setMoveTargetId(e.target.value)}>
+            <option value="">이동할 평가표 선택</option>
+            {moveTargets.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.facility || "시설 미입력"} · {a.process || "공정 미입력"} ({a.date || "날짜 미입력"})
+              </option>
+            ))}
+          </Select>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setMoveRowId(null)}>
+            취소
+          </Button>
+          <Button disabled={!moveTargetId} onClick={() => void moveRowToAssessment()}>
+            이동
+          </Button>
         </DialogFooter>
       </Dialog>
 

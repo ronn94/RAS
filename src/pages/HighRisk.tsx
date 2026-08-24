@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Printer, ShieldAlert, SlidersHorizontal } from "lucide-react";
+import { ImageOff, Printer, ShieldAlert, SlidersHorizontal } from "lucide-react";
 import {
   Badge,
   Button,
@@ -41,7 +41,8 @@ export function HighRiskPage() {
   const [editId, setEditId] = React.useState<string | null>(null);
   const [fClass, setFClass] = React.useState("");
   const [fStatus, setFStatus] = React.useState("");
-  const [fFacility, setFFacility] = React.useState("");
+  const [fSubProcess, setFSubProcess] = React.useState("");
+  const [fNoPhoto, setFNoPhoto] = React.useState(false);
   const [q, setQ] = React.useState("");
 
   const all: SheetEntry[] = React.useMemo(
@@ -52,15 +53,16 @@ export function HighRiskPage() {
     [assessments],
   );
 
-  const facilities = React.useMemo(
-    () => [...new Set(all.map((e) => e.assessment.facility).filter(Boolean))],
+  const subProcesses = React.useMemo(
+    () => [...new Set(all.map((e) => e.row.subProcess).filter(Boolean))],
     [all],
   );
 
   const entries = all.filter(({ assessment, row }) => {
     if (fClass && row.hazardClass !== fClass) return false;
     if (fStatus && row.status !== fStatus) return false;
-    if (fFacility && assessment.facility !== fFacility) return false;
+    if (fSubProcess && row.subProcess !== fSubProcess) return false;
+    if (fNoPhoto && row.beforePhoto && row.afterPhoto) return false;
     if (q) {
       const hay = [row.code, row.hazard, row.measure, row.improveContent, assessment.process].join(" ").toLowerCase();
       if (!hay.includes(q.toLowerCase())) return false;
@@ -117,11 +119,11 @@ export function HighRiskPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <Select className="h-9" value={fFacility} onChange={(e) => setFFacility(e.target.value)}>
-          <option value="">대상시설 전체</option>
-          {facilities.map((f) => (
-            <option key={f} value={f}>
-              {f}
+        <Select className="h-9" value={fSubProcess} onChange={(e) => setFSubProcess(e.target.value)}>
+          <option value="">세부공정 전체</option>
+          {subProcesses.map((sp) => (
+            <option key={sp} value={sp}>
+              {sp}
             </option>
           ))}
         </Select>
@@ -141,6 +143,13 @@ export function HighRiskPage() {
             </option>
           ))}
         </Select>
+        <Button
+          variant={fNoPhoto ? "default" : "outline"}
+          className="h-9 py-2"
+          onClick={() => setFNoPhoto((v) => !v)}
+        >
+          <ImageOff className="size-3.5" /> 사진 미첨부만
+        </Button>
         <span className="text-sm text-muted-foreground">총 {sorted.length}건</span>
       </div>
 
@@ -167,6 +176,7 @@ export function HighRiskPage() {
                     </TH>
                     <TH className="w-28">평가코드</TH>
                     <TH className="w-40">대상시설 · 공정</TH>
+                    <TH className="w-28">세부공정</TH>
                     <TH className="w-24">위험분류</TH>
                     <TH>위험내용</TH>
                     <TH className="w-20 text-center">개선 전</TH>
@@ -201,6 +211,7 @@ export function HighRiskPage() {
                           <span className="block truncate">{e.assessment.facility || "-"}</span>
                           <span className="block truncate text-xs">{e.assessment.process || "-"}</span>
                         </TD>
+                        <TD className="text-muted-foreground">{e.row.subProcess || "-"}</TD>
                         <TD>
                           <Badge variant="outline" className="font-normal">
                             {e.row.hazardClass || "-"}

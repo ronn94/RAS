@@ -32,8 +32,10 @@ function toDate(v: unknown): string {
 
 type Field =
   | "subProcess" | "hazardClass" | "hazard" | "currentControl"
-  | "code" | "measure" | "dueDate" | "note" | "owner" | "status";
+  | "code" | "measure" | "dueDate" | "improveDate" | "note" | "owner" | "status";
 
+// 개선예정일(계획)과 개선일자(실제 완료일)는 서로 다른 필드다 — 먼저 나온 별칭이
+// 우선 매칭되므로 "개선예정일"을 dueDate 목록 맨 앞에 둬서 "개선일자" 컬럼과 헷갈리지 않게 한다.
 const HEADER_ALIASES: [Field, string[]][] = [
   ["subProcess", ["세부공정"]],
   ["hazardClass", ["위험분류"]],
@@ -41,7 +43,8 @@ const HEADER_ALIASES: [Field, string[]][] = [
   ["currentControl", ["현재의안전보건조치", "안전보건조치", "현재안전보건조치"]],
   ["code", ["평가코드"]],
   ["measure", ["개선대책", "감소대책"]],
-  ["dueDate", ["개선예정일", "개선일자"]],
+  ["dueDate", ["개선예정일"]],
+  ["improveDate", ["개선일자"]],
   ["note", ["비고"]],
   ["owner", ["담당자"]],
   ["status", ["조치상태", "상태"]],
@@ -109,6 +112,7 @@ function readRows(grid: unknown[][], layout: Layout): RiskItem[] {
       code: toStr(at(raw, layout.map.code)),
       measure: toStr(at(raw, layout.map.measure)),
       dueDate: toDate(at(raw, layout.map.dueDate)),
+      improveDate: toDate(at(raw, layout.map.improveDate)),
       p2: toNum(at(raw, layout.p2)),
       s2: toNum(at(raw, layout.s2)),
       note: toStr(at(raw, layout.map.note)),
@@ -175,7 +179,10 @@ export async function importAssessment(file: File): Promise<Assessment> {
  */
 export async function exportAssessment(a: Assessment) {
   const XLSX = await import("xlsx");
-  const width = 15;
+  // 화면 표(AssessmentDetail)에 보이는 컬럼을 전부 담는다.
+  // No·세부공정·위험분류·유해위험요인·안전보건조치·현재위험성(3)·평가코드·개선대책·
+  // 개선예정일·개선일자·개선후위험성(3)·조치상태·담당자·비고 = 18열
+  const width = 18;
   const blank = () => Array<string | number | null>(width).fill(null);
   const grid: (string | number | null)[][] = [];
 
@@ -189,16 +196,19 @@ export async function exportAssessment(a: Assessment) {
   h1[8] = "평가코드(8등급이상) 연도.No-0";
   h1[9] = "개선대책";
   h1[10] = "개선예정일";
-  h1[11] = "개선 후 위험성";
-  h1[14] = "비고(종사자 의견 등)";
+  h1[11] = "개선일자";
+  h1[12] = "개선 후 위험성";
+  h1[15] = "조치상태";
+  h1[16] = "담당자";
+  h1[17] = "비고(종사자 의견 등)";
 
   const h2 = blank();
   h2[5] = "가능성";
   h2[6] = "중대성";
   h2[7] = "위험성";
-  h2[11] = "가능성";
-  h2[12] = "중대성";
-  h2[13] = "위험성";
+  h2[12] = "가능성";
+  h2[13] = "중대성";
+  h2[14] = "위험성";
 
   grid.push(h1, h2);
 
@@ -215,9 +225,12 @@ export async function exportAssessment(a: Assessment) {
       r.code,
       r.measure,
       r.dueDate,
+      r.improveDate,
       r.p2,
       r.s2,
       riskAfter(r),
+      r.status,
+      r.owner,
       r.note,
     ]);
   });
@@ -228,14 +241,15 @@ export async function exportAssessment(a: Assessment) {
   ws["!merges"] = [
     stack(0), stack(1), stack(2), stack(3), stack(4),
     span(5, 7),
-    stack(8), stack(9), stack(10),
-    span(11, 13),
-    stack(14),
+    stack(8), stack(9), stack(10), stack(11),
+    span(12, 14),
+    stack(15), stack(16), stack(17),
   ];
   ws["!cols"] = [
     { wch: 4 }, { wch: 14 }, { wch: 8 }, { wch: 34 }, { wch: 26 },
     { wch: 7 }, { wch: 7 }, { wch: 7 }, { wch: 16 }, { wch: 32 },
-    { wch: 12 }, { wch: 7 }, { wch: 7 }, { wch: 7 }, { wch: 18 },
+    { wch: 12 }, { wch: 12 }, { wch: 7 }, { wch: 7 }, { wch: 7 },
+    { wch: 10 }, { wch: 10 }, { wch: 18 },
   ];
 
   const wb = XLSX.utils.book_new();
