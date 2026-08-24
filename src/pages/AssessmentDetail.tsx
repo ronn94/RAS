@@ -35,26 +35,31 @@ import { isHighRisk, riskAfter, riskBadgeClass, riskBefore } from "@/lib/risk";
 import { emptyRow, type Assessment, type RiskItem } from "@/lib/types";
 import { useStore } from "@/store";
 
+/**
+ * 컬럼 너비 — 표는 table-fixed라 여기 값이 그대로 비율이 된다.
+ * 점수·날짜처럼 내용 길이가 고정된 칸은 최소로 조이고, 긴 문장이 들어가는
+ * 유해위험요인·안전보건조치·개선대책에 남는 폭을 몰아준다.
+ */
 const COLS: { key: string; label: string; sub?: string; className?: string }[] = [
-  { key: "no", label: "No.", className: "w-12 text-center" },
-  { key: "subProcess", label: "세부공정", className: "w-36" },
-  { key: "hazardClass", label: "위험분류", className: "w-28" },
+  { key: "no", label: "No.", className: "w-10 text-center" },
+  { key: "subProcess", label: "세부공정", className: "w-28" },
+  { key: "hazardClass", label: "위험분류", className: "w-24" },
   { key: "hazard", label: "유해위험요인", className: "w-64" },
-  { key: "currentControl", label: "현재의 안전보건조치", className: "w-56" },
-  { key: "p", label: "가능성", sub: "현재", className: "w-16 text-center" },
-  { key: "s", label: "중대성", sub: "현재", className: "w-16 text-center" },
-  { key: "risk", label: "위험성", sub: "현재", className: "w-20 text-center" },
-  { key: "code", label: "평가코드", sub: "8점 이상", className: "w-28 text-center" },
-  { key: "measure", label: "개선대책", className: "w-56" },
-  { key: "dueDate", label: "개선예정일", className: "w-36" },
-  { key: "improveDate", label: "개선일자", className: "w-36" },
-  { key: "p2", label: "가능성", sub: "개선 후", className: "w-16 text-center" },
-  { key: "s2", label: "중대성", sub: "개선 후", className: "w-16 text-center" },
-  { key: "risk2", label: "위험성", sub: "개선 후", className: "w-20 text-center" },
-  { key: "status", label: "조치상태", className: "w-28" },
-  { key: "owner", label: "담당자", className: "w-24" },
-  { key: "note", label: "비고", className: "w-48" },
-  { key: "actions", label: "", className: "w-24" },
+  { key: "currentControl", label: "현재의 안전보건조치", className: "w-52" },
+  { key: "p", label: "가능성", sub: "현재", className: "w-14 text-center" },
+  { key: "s", label: "중대성", sub: "현재", className: "w-14 text-center" },
+  { key: "risk", label: "위험성", sub: "현재", className: "w-14 text-center" },
+  { key: "code", label: "평가코드", sub: "8점 이상", className: "w-24 text-center" },
+  { key: "measure", label: "개선대책", className: "w-52" },
+  { key: "dueDate", label: "개선예정일", className: "w-32" },
+  { key: "improveDate", label: "개선일자", className: "w-32" },
+  { key: "p2", label: "가능성", sub: "개선 후", className: "w-14 text-center" },
+  { key: "s2", label: "중대성", sub: "개선 후", className: "w-14 text-center" },
+  { key: "risk2", label: "위험성", sub: "개선 후", className: "w-14 text-center" },
+  { key: "status", label: "조치상태", className: "w-24" },
+  { key: "owner", label: "담당자", className: "w-20" },
+  { key: "note", label: "비고", className: "w-40" },
+  { key: "actions", label: "", className: "w-36" },
 ];
 
 export function AssessmentDetail({ assessment, onBack }: { assessment: Assessment; onBack: () => void }) {
@@ -271,7 +276,7 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
             <EmptyState>조건에 맞는 항목이 없습니다. 우측 상단 &lsquo;행 추가&rsquo;로 시작하세요.</EmptyState>
           ) : (
             <div className="scroll-slim max-h-[calc(100svh-24rem)] min-h-64 overflow-auto">
-              <Table className="min-w-[1800px] [&_:is(th,td)]:px-2">
+              <Table className="min-w-[1680px] table-fixed [&_:is(th,td)]:px-1.5">
                 <THead className="sticky top-0 z-10 bg-card shadow-[0_1px_0_0_var(--border)]">
                   <TR className="hover:bg-transparent">
                     {COLS.map((c) => (
@@ -288,7 +293,14 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
                     const after = riskAfter(r);
                     const idx = draft.rows.findIndex((x) => x.id === r.id);
                     return (
-                      <TR key={r.id} className="align-top">
+                      <TR
+                        key={r.id}
+                        className={
+                          r.status === "미조치"
+                            ? "align-top bg-destructive/5 hover:bg-destructive/10"
+                            : "align-top"
+                        }
+                      >
                         <TD className="text-center text-muted-foreground tabular-nums">{idx + 1}</TD>
                         <TD className="whitespace-normal">
                           <CellTextarea

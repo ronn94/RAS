@@ -195,6 +195,18 @@ app.get("/api/storage", adminOnly, async (c) => {
   return c.json({ photoCount: row?.n ?? 0, photoBytes: row?.bytes ?? 0 });
 });
 
+/** 큰 바이너리를 base64로 — String.fromCharCode(...전체배열)은 인자 개수 한도를 넘겨
+    사진 한 장(수십~수백 KB)만 돼도 터진다. 그래서 조각내서 이어 붙인다. */
+function toBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  const CHUNK = 0x8000; // 32KB씩
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
 /* ── 전체 백업 · 복원 ───────────────────────────────────────── */
 app.get("/api/backup", adminOnly, async (c) => {
   const [assessments, hazardInfos, settingsRow] = await Promise.all([
@@ -216,10 +228,8 @@ app.get("/api/backup", adminOnly, async (c) => {
   for (const id of usedPhotoIds) {
     const obj = await c.env.ras_photos.get(id);
     if (!obj) continue;
-    const buf = await obj.arrayBuffer();
-    const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
     const ct = obj.httpMetadata?.contentType ?? "image/jpeg";
-    photos[id] = `data:${ct};base64,${b64}`;
+    photos[id] = `data:${ct};base64,${toBase64(await obj.arrayBuffer())}`;
   }
 
   return c.json({

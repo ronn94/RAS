@@ -473,7 +473,13 @@
 .sheet-report .big {
   font-size: 13pt;
   font-weight: 700;
-  height: 10mm;
+  height: 12mm;
+}
+/* 큰 숫자 아래에 붙는 부연 — 화면 지표 카드의 작은 설명과 같은 역할 */
+.sheet-report .sub-note {
+  display: block;
+  font-size: 7pt;
+  font-weight: 400;
 }
 .sheet-report .wrap {
   white-space: pre-wrap;

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, Circle, Printer, ShieldAlert } from "lucide-react";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui";
-import { BarList, BeforeAfterBars, RiskHeatmap } from "@/components/charts";
+import { BarList, RiskHeatmap } from "@/components/charts";
 import { DashboardSheet } from "@/print/DashboardSheet";
 import { buildMetrics, daysLeft, type Entry } from "@/lib/metrics";
 import { riskBadgeClass, riskBefore } from "@/lib/risk";
@@ -27,21 +27,26 @@ export function DashboardPage({ onNavigate }: { onNavigate: (v: ViewKey) => void
   const { assessments, hazardInfos, settings } = useStore();
   const m = React.useMemo(() => buildMetrics(assessments, hazardInfos), [assessments, hazardInfos]);
   const [cell, setCell] = React.useState<string | null>(null);
+  const [cellAfter, setCellAfter] = React.useState<string | null>(null);
 
-  const cellEntries = cell
-    ? m.entries.filter((e) => `${e.row.p}-${e.row.s}` === cell)
-    : [];
+  const cellEntries = cell ? m.entries.filter((e) => `${e.row.p}-${e.row.s}` === cell) : [];
+  const cellAfterEntries = cellAfter ? m.entries.filter((e) => `${e.row.p2}-${e.row.s2}` === cellAfter) : [];
 
   const stats = [
-    { label: "평가표", value: assessments.length, unit: "건", hint: `평가 항목 ${m.entries.length}건` },
+    { label: "평가지표", value: assessments.length, unit: "개", hint: `평가 항목 ${m.entries.length}건` },
     {
-      label: `고위험군 (${settings.risk.threshold}점 이상)`,
-      value: m.high.length,
+      label: "전체 집계건수",
+      value: m.entries.length,
       unit: "건",
-      hint: `미완료 ${m.open.length}건`,
+      hint: `고위험군(${settings.risk.threshold}점 이상) ${m.high.length}건 · 미완료 ${m.open.length}건`,
       alert: m.open.length > 0,
     },
-    { label: "개선 완료율", value: m.completionRate, unit: "%", hint: `${m.done}/${m.high.length}건 완료` },
+    {
+      label: "개선 완료율",
+      value: m.completionRateAll,
+      unit: "%",
+      hint: `전체 ${m.doneAll}/${m.entries.length}건 · 고위험군 ${m.completionRate}%(${m.done}/${m.high.length}건)`,
+    },
     {
       label: "기한 초과",
       value: m.overdue.length,
@@ -144,11 +149,11 @@ export function DashboardPage({ onNavigate }: { onNavigate: (v: ViewKey) => void
         </Card>
       </div>
 
-      {/* 위험 집중 지점 */}
+      {/* 위험성 분포 — 개선 전/후 나란히 */}
       <div className="no-print grid grid-cols-1 gap-4 @3xl/main:grid-cols-2">
         <Card className="shadow-xs">
           <CardHeader>
-            <CardTitle>위험성 분포 (가능성 × 중대성)</CardTitle>
+            <CardTitle>개선 전 위험성 분포 (가능성 × 중대성)</CardTitle>
             <CardDescription>칸을 누르면 해당 항목이 아래에 나옵니다</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -171,6 +176,32 @@ export function DashboardPage({ onNavigate }: { onNavigate: (v: ViewKey) => void
 
         <Card className="shadow-xs">
           <CardHeader>
+            <CardTitle>개선 후 위험성 분포 (가능성 × 중대성)</CardTitle>
+            <CardDescription>개선 후 점수가 입력된 항목만 집계합니다</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <RiskHeatmap
+              counts={m.heatAfter}
+              likelihoodMax={settings.risk.likelihood.length}
+              severityMax={settings.risk.severity.length}
+              selected={cellAfter}
+              onSelect={setCellAfter}
+            />
+            {cellAfter && (
+              <div className="divide-y rounded-xl bg-muted/40 px-3">
+                {cellAfterEntries.map((e) => (
+                  <EntryRow key={e.row.id} e={e} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 위험 집중 지점 */}
+      <div className="no-print grid grid-cols-1 gap-4 @3xl/main:grid-cols-2">
+        <Card className="shadow-xs">
+          <CardHeader>
             <CardTitle>위험분류별 고위험군</CardTitle>
             <CardDescription>교육·예산 우선순위를 정하는 기준</CardDescription>
           </CardHeader>
@@ -181,23 +212,11 @@ export function DashboardPage({ onNavigate }: { onNavigate: (v: ViewKey) => void
 
         <Card className="shadow-xs">
           <CardHeader>
-            <CardTitle>공정별 위험성 총점</CardTitle>
+            <CardTitle>공정별 위험성 건수</CardTitle>
             <CardDescription>점검 순서를 정할 때 위에서부터</CardDescription>
           </CardHeader>
           <CardContent>
             <BarList data={m.byProcess} />
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-xs">
-          <CardHeader>
-            <CardTitle>개선 전후 위험성 비교</CardTitle>
-            <CardDescription>
-              전체 {m.riskTotalBefore}점 → {m.riskTotalAfter}점 · {m.reduction}% 감소
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <BeforeAfterBars data={m.beforeAfter} />
           </CardContent>
         </Card>
       </div>

@@ -145,10 +145,11 @@ export function HighRiskPage() {
         </Select>
         <Button
           variant={fNoPhoto ? "default" : "outline"}
-          className="h-9 py-2"
+          size="icon-lg"
           onClick={() => setFNoPhoto((v) => !v)}
+          aria-label="사진 미첨부만 보기"
         >
-          <ImageOff className="size-3.5" /> 사진 미첨부만
+          <ImageOff />
         </Button>
         <span className="text-sm text-muted-foreground">총 {sorted.length}건</span>
       </div>
@@ -351,7 +352,7 @@ export function HighRiskPage() {
               </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="space-y-1.5">
-                  <Label>개선 일자</Label>
+                  <Label>개선일자</Label>
                   <Input
                     type="date"
                     value={editing.row.improveDate}

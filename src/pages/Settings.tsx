@@ -131,7 +131,7 @@ export function SettingsPage() {
       <Card className="shadow-xs">
         <CardHeader>
           <CardTitle>기본값 · 조직정보</CardTitle>
-          <CardDescription>새 평가표·유해위험정보를 만들 때 자동으로 채워지고, 인쇄물 결재란에 쓰입니다.</CardDescription>
+          <CardDescription>새 평가표·유해위험정보를 만들 때 자동으로 채워집니다.</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-1.5">
@@ -148,33 +148,6 @@ export function SettingsPage() {
               value={settings.org.facility}
               onChange={(e) => void patch({ org: { ...settings.org, facility: e.target.value } })}
               placeholder="○○공공하수처리시설"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>담당</Label>
-            <Input
-              value={settings.org.approver.charge}
-              onChange={(e) =>
-                void patch({ org: { ...settings.org, approver: { ...settings.org.approver, charge: e.target.value } } })
-              }
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>검토</Label>
-            <Input
-              value={settings.org.approver.review}
-              onChange={(e) =>
-                void patch({ org: { ...settings.org, approver: { ...settings.org.approver, review: e.target.value } } })
-              }
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>승인</Label>
-            <Input
-              value={settings.org.approver.approve}
-              onChange={(e) =>
-                void patch({ org: { ...settings.org, approver: { ...settings.org.approver, approve: e.target.value } } })
-              }
             />
           </div>
         </CardContent>

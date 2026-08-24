@@ -121,9 +121,9 @@ export function AssessmentsPage({
                 <TBody>
                   {sorted.map((a) => {
                     const high = a.rows.filter(isHighRisk);
-                    // 분모: 공정 전체 등록건수 · 분자: 개선예정일이 등록된 건수
-                    const planned = a.rows.filter((r) => !!r.dueDate).length;
-                    const plannedPct = a.rows.length ? Math.round((planned / a.rows.length) * 100) : 0;
+                    // 분모: 공정 전체 등록건수 · 분자: 개선일자가 등록된 건수(실제 개선 완료)
+                    const completed = a.rows.filter((r) => !!r.improveDate).length;
+                    const completedPct = a.rows.length ? Math.round((completed / a.rows.length) * 100) : 0;
                     return (
                       <TR key={a.id} className="cursor-pointer" onClick={() => onOpen(a.id)}>
                         <TD className="text-center tabular-nums text-muted-foreground">{a.processNo}</TD>
@@ -139,7 +139,7 @@ export function AssessmentsPage({
                           )}
                         </TD>
                         <TD className="text-center tabular-nums text-muted-foreground">
-                          {a.rows.length ? `${plannedPct}%` : "-"}
+                          {a.rows.length ? `${completedPct}%` : "-"}
                         </TD>
                         <TD onClick={(e) => e.stopPropagation()}>
                           <Button

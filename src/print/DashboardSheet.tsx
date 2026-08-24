@@ -21,18 +21,30 @@ export function DashboardSheet({ metrics: m, assessmentCount }: { metrics: Metri
         <table className="stats">
           <tbody>
             <tr>
-              <th>평가표</th>
-              <th>평가 항목</th>
-              <th>고위험군</th>
+              <th>평가지표</th>
+              <th>전체 집계건수</th>
               <th>개선 완료율</th>
               <th>기한 초과</th>
             </tr>
             <tr>
-              <td className="num big">{assessmentCount}</td>
-              <td className="num big">{m.entries.length}</td>
-              <td className="num big">{m.high.length}</td>
-              <td className="num big">{m.completionRate}%</td>
-              <td className="num big">{m.overdue.length}</td>
+              <td className="num big">
+                {assessmentCount}
+                <span className="sub-note">개</span>
+              </td>
+              <td className="num big">
+                {m.entries.length}
+                <span className="sub-note">건 · 고위험군 {m.high.length}건</span>
+              </td>
+              <td className="num big">
+                {m.completionRateAll}%
+                <span className="sub-note">
+                  전체 {m.doneAll}/{m.entries.length}건 · 고위험군 {m.completionRate}%
+                </span>
+              </td>
+              <td className="num big">
+                {m.overdue.length}
+                <span className="sub-note">건 · 7일 내 임박 {m.soon.length}건</span>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -76,7 +88,7 @@ export function DashboardSheet({ metrics: m, assessmentCount }: { metrics: Metri
           </tbody>
         </table>
 
-        <div className="sec">위험분류별 고위험군 / 공정별 위험성 총점</div>
+        <div className="sec">위험분류별 고위험군 / 공정별 위험성 건수</div>
         <div className="two">
           <table>
             <thead>
@@ -98,7 +110,7 @@ export function DashboardSheet({ metrics: m, assessmentCount }: { metrics: Metri
             <thead>
               <tr>
                 <th>공정</th>
-                <th style={{ width: "18mm" }}>총점</th>
+                <th style={{ width: "18mm" }}>건수</th>
               </tr>
             </thead>
             <tbody>
@@ -112,19 +124,13 @@ export function DashboardSheet({ metrics: m, assessmentCount }: { metrics: Metri
           </table>
         </div>
 
-        <div className="sec">개선 효과 · 빈칸 점검</div>
+        <div className="sec">빈칸 점검</div>
         <table>
           <tbody>
             <tr>
               <td className="lbl" style={{ width: "45mm" }}>
-                위험성 총점 (개선 전 → 후)
+                사진 미첨부 고위험군
               </td>
-              <td className="num">
-                {m.riskTotalBefore} → {m.riskTotalAfter} ({m.reduction}% 감소)
-              </td>
-            </tr>
-            <tr>
-              <td className="lbl">사진 미첨부 고위험군</td>
               <td className="num">{m.gaps.noPhoto.length}건</td>
             </tr>
             <tr>

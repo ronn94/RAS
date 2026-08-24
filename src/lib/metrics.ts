@@ -18,6 +18,8 @@ export function buildMetrics(assessments: Assessment[], hazardInfos: HazardInfo[
   const high = entries.filter((e) => isHighRisk(e.row));
   const open = high.filter((e) => e.row.status !== "개선완료");
   const done = high.length - open.length;
+  /** 전체 항목 기준 개선완료 (고위험군만이 아니라 등록된 모든 항목) */
+  const doneAll = entries.filter((e) => e.row.status === "개선완료").length;
 
   /** 기한 — 개선 완료가 아닌 고위험군만 본다 */
   const withDue = open
@@ -26,12 +28,18 @@ export function buildMetrics(assessments: Assessment[], hazardInfos: HazardInfo[
   const overdue = withDue.filter((e) => e.left < 0).sort((a, b) => a.left - b.left);
   const soon = withDue.filter((e) => e.left >= 0 && e.left <= 7).sort((a, b) => a.left - b.left);
 
-  /** 5×4 히트맵 — 개선 전 가능성×중대성 분포 */
+  /** 5×4 히트맵 — 개선 전(p×s)과 개선 후(p2×s2) 두 벌 */
   const heat = new Map<string, number>();
+  const heatAfter = new Map<string, number>();
   for (const e of entries) {
-    if (!e.row.p || !e.row.s) continue;
-    const key = `${e.row.p}-${e.row.s}`;
-    heat.set(key, (heat.get(key) ?? 0) + 1);
+    if (e.row.p && e.row.s) {
+      const key = `${e.row.p}-${e.row.s}`;
+      heat.set(key, (heat.get(key) ?? 0) + 1);
+    }
+    if (e.row.p2 && e.row.s2) {
+      const key = `${e.row.p2}-${e.row.s2}`;
+      heatAfter.set(key, (heatAfter.get(key) ?? 0) + 1);
+    }
   }
 
   /** 위험분류별 고위험군 건수 */
@@ -41,24 +49,13 @@ export function buildMetrics(assessments: Assessment[], hazardInfos: HazardInfo[
     byClass.set(k, (byClass.get(k) ?? 0) + 1);
   }
 
-  /** 공정별 위험성 총점 (개선 전 기준) */
-  const byProcess = new Map<string, { total: number; count: number }>();
+  /** 공정별 위험성 건수 (위험성 점수가 매겨진 항목 수) */
+  const byProcess = new Map<string, number>();
   for (const e of entries) {
-    const v = riskBefore(e.row);
-    if (v === null) continue;
+    if (riskBefore(e.row) === null) continue;
     const k = e.assessment.process || "공정 미입력";
-    const cur = byProcess.get(k) ?? { total: 0, count: 0 };
-    byProcess.set(k, { total: cur.total + v, count: cur.count + 1 });
+    byProcess.set(k, (byProcess.get(k) ?? 0) + 1);
   }
-
-  /** 평가표별 개선 전후 위험성 총점 */
-  const beforeAfter = assessments
-    .map((a) => {
-      const before = a.rows.reduce((sum, r) => sum + (riskBefore(r) ?? 0), 0);
-      const after = a.rows.reduce((sum, r) => sum + (riskAfter(r) ?? riskBefore(r) ?? 0), 0);
-      return { key: a.id, label: a.process || "공정 미입력", before, after };
-    })
-    .filter((d) => d.before > 0);
 
   /** 빈칸 점검 — 감사·점검 때 지적되는 미완성 항목 */
   const linkedProcesses = new Set(hazardInfos.map((h) => `${h.facility}|${h.process}`));
@@ -78,16 +75,20 @@ export function buildMetrics(assessments: Assessment[], hazardInfos: HazardInfo[
     high,
     open,
     done,
+    doneAll,
+    /** 전체 항목 기준 개선 완료율 */
+    completionRateAll: entries.length ? Math.round((doneAll / entries.length) * 100) : 0,
+    /** 고위험군만 놓고 본 개선 완료율 */
     completionRate: high.length ? Math.round((done / high.length) * 100) : 0,
     overdue,
     soon,
     heat,
+    heatAfter,
     byClass: [...byClass.entries()].map(([k, v]) => ({ key: k, label: k, value: v })).sort((a, b) => b.value - a.value),
     byProcess: [...byProcess.entries()]
-      .map(([k, v]) => ({ key: k, label: k, value: v.total, note: `${v.count}건` }))
+      .map(([k, v]) => ({ key: k, label: k, value: v }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 6),
-    beforeAfter,
     gaps,
     riskTotalBefore,
     riskTotalAfter,
