@@ -1,9 +1,10 @@
 import * as React from "react";
-import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, Circle, Printer, ShieldAlert } from "lucide-react";
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui";
+import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, Circle, Printer, ShieldAlert, StickyNote } from "lucide-react";
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Select } from "@/components/ui";
 import { BarList, RiskHeatmap } from "@/components/charts";
 import { DashboardSheet } from "@/print/DashboardSheet";
-import { buildMetrics, daysLeft, type Entry } from "@/lib/metrics";
+import { MonthlyReportSheet } from "@/print/MonthlyReportSheet";
+import { availableMonths, buildMetrics, daysLeft, monthKey, monthLabel, type Entry } from "@/lib/metrics";
 import { riskBadgeClass, riskBefore } from "@/lib/risk";
 import { useStore } from "@/store";
 import type { ViewKey } from "@/components/shell";
@@ -28,6 +29,20 @@ export function DashboardPage({ onNavigate }: { onNavigate: (v: ViewKey) => void
   const m = React.useMemo(() => buildMetrics(assessments, hazardInfos), [assessments, hazardInfos]);
   const [cell, setCell] = React.useState<string | null>(null);
   const [cellAfter, setCellAfter] = React.useState<string | null>(null);
+
+  /* 인쇄 — 회의자료용 상세 보고서와 게시용 월간 보고서 둘 중 고른 것만 DOM에 둔다.
+     둘 다 렌더해 두고 CSS로 감추면 .print-root의 display:block !important와 부딪힌다. */
+  const [sheet, setSheet] = React.useState<"detail" | "monthly">("detail");
+  const [printTick, setPrintTick] = React.useState(0);
+  const [month, setMonth] = React.useState(monthKey());
+  const months = React.useMemo(() => availableMonths(m.entries), [m.entries]);
+  React.useEffect(() => {
+    if (printTick > 0) window.print();
+  }, [printTick]);
+  const print = (kind: "detail" | "monthly") => {
+    setSheet(kind);
+    setPrintTick((t) => t + 1);
+  };
 
   const cellEntries = cell ? m.entries.filter((e) => `${e.row.p}-${e.row.s}` === cell) : [];
   const cellAfterEntries = cellAfter ? m.entries.filter((e) => `${e.row.p2}-${e.row.s2}` === cellAfter) : [];
@@ -70,9 +85,33 @@ export function DashboardPage({ onNavigate }: { onNavigate: (v: ViewKey) => void
         <p className="mt-1 text-sm text-muted-foreground">
           기한이 지난 고위험군과 미완성 항목을 먼저 확인하세요. 숫자를 누르면 해당 목록으로 이동합니다.
         </p>
-        <Button variant="outline" size="icon-lg" onClick={() => window.print()} aria-label="대시보드 인쇄">
-          <Printer />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Select value={month} onChange={(e) => setMonth(e.target.value)} aria-label="게시용 보고서 대상 월">
+            {months.map((ym) => (
+              <option key={ym} value={ym}>
+                {monthLabel(ym)}
+              </option>
+            ))}
+          </Select>
+          <Button
+            variant="outline"
+            size="icon-lg"
+            onClick={() => print("monthly")}
+            aria-label="월간 게시용 보고서 인쇄"
+            title="월간 게시용 보고서 (A4 1장 · 열람 명단 포함)"
+          >
+            <StickyNote />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-lg"
+            onClick={() => print("detail")}
+            aria-label="대시보드 인쇄"
+            title="회의자료용 상세 보고서"
+          >
+            <Printer />
+          </Button>
+        </div>
       </div>
 
       {/* 지표 카드 */}
@@ -252,8 +291,12 @@ export function DashboardPage({ onNavigate }: { onNavigate: (v: ViewKey) => void
         </CardContent>
       </Card>
 
-      {/* 인쇄용 보고서 */}
-      <DashboardSheet metrics={m} assessmentCount={assessments.length} />
+      {/* 인쇄용 보고서 — 고른 한 종류만 렌더한다 */}
+      {sheet === "monthly" ? (
+        <MonthlyReportSheet metrics={m} month={month} assessmentCount={assessments.length} />
+      ) : (
+        <DashboardSheet metrics={m} assessmentCount={assessments.length} />
+      )}
     </div>
   );
 }

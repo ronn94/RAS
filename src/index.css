@@ -491,3 +491,95 @@
   gap: 4mm;
   align-items: start;
 }
+
+/* ── 월간 게시용 보고서 (A4 세로 1장 고정 · 위 70% 현황 / 아래 30% 열람 명단) ──
+   서명표 자리가 매달 같아야 게시물로 읽히므로 두 구역의 높이를 mm로 못박는다.
+   위 구역은 overflow:hidden — 내역이 많으면 글자를 줄여 넣고(listFontPt), 그래도
+   넘치면 잘린다. 페이지가 2장으로 갈라지는 것보다 낫다. */
+.sheet-monthly .print-page {
+  display: flex;
+  flex-direction: column;
+}
+.sheet-monthly .top {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* 목록이 남는 높이를 전부 받는다 — 넘치면 컴포넌트가 글자를 줄여 다시 잰다 */
+.sheet-monthly .list {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.sheet-monthly .list table {
+  table-layout: fixed;
+}
+.sheet-monthly .list td {
+  height: auto;
+  vertical-align: top;
+}
+.sheet-monthly .list .num {
+  white-space: nowrap;
+}
+.sheet-monthly .list :is(th, td) {
+  padding: 0.5mm 0.9mm;
+}
+.sheet-monthly .sec {
+  margin: 3mm 0 1.2mm;
+}
+.sheet-monthly .two {
+  gap: 6mm;
+}
+/* 히트맵 — 화면 히트맵과 같은 집계를 회색 농도로 */
+.sheet-monthly .heat {
+  table-layout: fixed;
+}
+.sheet-monthly .heat caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: 700;
+  font-size: 8pt;
+  padding-bottom: 0.8mm;
+}
+.sheet-monthly .heat th,
+.sheet-monthly .heat td {
+  height: 4.6mm;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.sheet-monthly .heat th {
+  width: 9mm;
+  font-size: 7.5pt;
+}
+.sheet-monthly .heat .corner {
+  width: 12mm;
+  background: #fff;
+}
+.sheet-monthly .heat-axis {
+  margin-top: 1mm;
+  font-size: 7pt;
+  text-align: right;
+}
+/* 열람 명단 — 손으로 서명하는 칸이라 비워 둔다 */
+/* 위 현황 구역과 열람 명단을 가르는 실선 */
+.sheet-monthly .divider {
+  border-top: 1pt solid #000;
+  margin-bottom: 2mm;
+}
+.sheet-monthly .sign {
+  flex: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.sheet-monthly .signs {
+  table-layout: fixed;
+}
+.sheet-monthly .signs th {
+  height: 5mm;
+  font-size: 7.5pt;
+}
+.sheet-monthly .signs td {
+  height: auto;
+  font-size: 8pt;
+}

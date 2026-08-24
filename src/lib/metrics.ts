@@ -20,6 +20,8 @@ export function buildMetrics(assessments: Assessment[], hazardInfos: HazardInfo[
   const done = high.length - open.length;
   /** 전체 항목 기준 개선완료 (고위험군만이 아니라 등록된 모든 항목) */
   const doneAll = entries.filter((e) => e.row.status === "개선완료").length;
+  /** 개선일자가 실제로 찍힌 항목 — 위험성평가 목록·월간 게시용 보고서가 쓰는 기준 */
+  const doneByDate = entries.filter((e) => !!e.row.improveDate).length;
 
   /** 기한 — 개선 완료가 아닌 고위험군만 본다 */
   const withDue = open
@@ -76,8 +78,11 @@ export function buildMetrics(assessments: Assessment[], hazardInfos: HazardInfo[
     open,
     done,
     doneAll,
+    doneByDate,
     /** 전체 항목 기준 개선 완료율 */
     completionRateAll: entries.length ? Math.round((doneAll / entries.length) * 100) : 0,
+    /** 개선일자 기준 완료율 — 위험성평가 목록의 "개선완료" 비율과 같은 계산 */
+    completionRateByDate: entries.length ? Math.round((doneByDate / entries.length) * 100) : 0,
     /** 고위험군만 놓고 본 개선 완료율 */
     completionRate: high.length ? Math.round((done / high.length) * 100) : 0,
     overdue,
@@ -97,3 +102,28 @@ export function buildMetrics(assessments: Assessment[], hazardInfos: HazardInfo[
 }
 
 export type Metrics = ReturnType<typeof buildMetrics>;
+
+/** YYYY-MM 문자열 (로컬 기준) */
+export function monthKey(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** 개선일자가 해당 월인 항목 — 월간 게시용 보고서의 "이번 달 업데이트 내역" */
+export function entriesImprovedIn(entries: Entry[], ym: string): Entry[] {
+  return entries
+    .filter((e) => e.row.improveDate.slice(0, 7) === ym)
+    .sort((a, b) => b.row.improveDate.localeCompare(a.row.improveDate));
+}
+
+/** 개선일자가 있는 달을 최신순으로 — 보고서 월 선택 드롭다운용(당월은 항상 포함) */
+export function availableMonths(entries: Entry[]): string[] {
+  const set = new Set(entries.map((e) => e.row.improveDate.slice(0, 7)).filter((m) => /^\d{4}-\d{2}$/.test(m)));
+  set.add(monthKey());
+  return [...set].sort((a, b) => b.localeCompare(a));
+}
+
+/** "2026-08" → "2026년 8월" */
+export function monthLabel(ym: string): string {
+  const [y, m] = ym.split("-");
+  return `${y}년 ${Number(m)}월`;
+}

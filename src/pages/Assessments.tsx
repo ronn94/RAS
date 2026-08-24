@@ -24,6 +24,9 @@ import { isHighRisk } from "@/lib/risk";
 import type { Assessment } from "@/lib/types";
 import { useStore } from "@/store";
 
+/** 대상시설·공정명·평가일시·항목·고위험군·개선완료 — 폭을 균등하게 나눠 쓰는 6칸 */
+const EVEN_COL = "w-[calc((100%-9rem)/6)]";
+
 export function AssessmentsPage({
   openId,
   onOpen,
@@ -105,16 +108,17 @@ export function AssessmentsPage({
             </EmptyState>
           ) : (
             <TableWrap>
-              <Table className="[&_:is(th,td)]:px-4">
+              {/* 대상시설~개선완료 6칸은 같은 너비로 나눈다(양끝 공정순번 5rem·삭제 4rem을 뺀 나머지를 6등분) */}
+              <Table className="table-fixed min-w-[56rem] [&_:is(th,td)]:px-4">
                 <THead>
                   <TR>
                     <TH className="w-20 text-center">공정순번</TH>
-                    <TH>대상시설</TH>
-                    <TH>공정명</TH>
-                    <TH className="w-32">평가일시</TH>
-                    <TH className="w-20 text-right">항목</TH>
-                    <TH className="w-24 text-right">고위험군</TH>
-                    <TH className="w-28 text-center">개선완료</TH>
+                    <TH className={EVEN_COL}>대상시설</TH>
+                    <TH className={EVEN_COL}>공정명</TH>
+                    <TH className={EVEN_COL}>평가일시</TH>
+                    <TH className={`${EVEN_COL} text-right`}>항목</TH>
+                    <TH className={`${EVEN_COL} text-right`}>고위험군</TH>
+                    <TH className={`${EVEN_COL} text-center`}>개선완료</TH>
                     <TH className="w-16" />
                   </TR>
                 </THead>
@@ -127,8 +131,8 @@ export function AssessmentsPage({
                     return (
                       <TR key={a.id} className="cursor-pointer" onClick={() => onOpen(a.id)}>
                         <TD className="text-center tabular-nums text-muted-foreground">{a.processNo}</TD>
-                        <TD className="font-medium">{a.facility || "-"}</TD>
-                        <TD className="text-muted-foreground">{a.process || "-"}</TD>
+                        <TD className="truncate font-medium">{a.facility || "-"}</TD>
+                        <TD className="truncate text-muted-foreground">{a.process || "-"}</TD>
                         <TD className="tabular-nums">{a.date || "-"}</TD>
                         <TD className="text-right tabular-nums">{a.rows.length}</TD>
                         <TD className="text-right">

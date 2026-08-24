@@ -4,6 +4,9 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Chec
 import { DEFAULT_SETTINGS, type AppSettings, type ScaleLabel } from "@/lib/settings";
 import { useStore } from "@/store";
 
+/** 게시용 보고서 서명표의 기본 칸 수 — MonthlyReportSheet의 SIGN_MIN_SLOTS와 같은 값 */
+const SIGN_SLOTS = 24;
+
 /** 문자열 목록 편집기 (위험분류·조치상태·담당자) */
 function ListEditor({
   value,
@@ -217,6 +220,21 @@ export function SettingsPage() {
             <Label>담당자</Label>
             <ListEditor value={settings.owners} onChange={(v) => void patch({ owners: v })} placeholder="예: 김안전" />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* 직원 명단 — 월간 게시용 보고서의 열람 서명표 */}
+      <Card className="shadow-xs">
+        <CardHeader>
+          <CardTitle>직원 명단 (열람 명단)</CardTitle>
+          <CardDescription>
+            대시보드의 월간 게시용 보고서 아래쪽 &lsquo;열람 명단&rsquo; 서명표에 들어갑니다. 인쇄할 때 이름
+            가나다순으로 정렬되며, {SIGN_SLOTS}명까지는 빈 칸을 채워 표 크기를 고정합니다. 담당자 목록과는 별개입니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <ListEditor value={settings.staff} onChange={(v) => void patch({ staff: v })} placeholder="예: 김하수" />
+          <p className="text-xs text-muted-foreground">현재 {settings.staff.length}명</p>
         </CardContent>
       </Card>
 

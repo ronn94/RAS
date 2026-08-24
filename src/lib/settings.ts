@@ -22,6 +22,8 @@ export type AppSettings = {
   hazardClasses: string[];
   statuses: string[];
   owners: string[]; // 담당자 후보
+  /** 직원 명단 — 월간 게시용 보고서의 '열람 명단' 서명표에 쓴다(담당자 목록과 별개) */
+  staff: string[];
   /** 위험성 기준 */
   risk: {
     threshold: number; // 고위험군 기준점 (기본 8)
@@ -43,6 +45,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   hazardClasses: [...HAZARD_CLASSES],
   statuses: [...STATUSES],
   owners: [],
+  staff: [],
   risk: {
     threshold: 8,
     likelihood: [
@@ -73,6 +76,7 @@ export function withDefaults(saved: Partial<AppSettings> | undefined | null): Ap
     hazardClasses: saved.hazardClasses?.length ? saved.hazardClasses : DEFAULT_SETTINGS.hazardClasses,
     statuses: saved.statuses?.length ? saved.statuses : DEFAULT_SETTINGS.statuses,
     owners: saved.owners ?? [],
+    staff: saved.staff ?? [],
     risk: {
       threshold: saved.risk?.threshold ?? DEFAULT_SETTINGS.risk.threshold,
       likelihood: saved.risk?.likelihood?.length ? saved.risk.likelihood : DEFAULT_SETTINGS.risk.likelihood,
