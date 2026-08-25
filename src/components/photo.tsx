@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Camera, ImageOff, Trash2 } from "lucide-react";
+import { Camera, ImageOff, ImagePlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { photoUrl, uploadPhoto, deletePhoto } from "@/lib/db";
 import { processPhoto } from "@/lib/photo";
@@ -18,8 +18,11 @@ export function PhotoThumb({ id, className }: { id?: string; className?: string 
 
 /**
  * 개선 전/후 사진 1장 슬롯.
- * - 모바일: 카메라 바로 촬영
- * - 데스크톱: 슬롯을 클릭해 선택한 뒤 Ctrl/Cmd+V 로 붙여넣기, 드래그&드롭도 지원
+ * - 사진첩·파일에서 고르기와 바로 촬영을 **각각 다른 버튼**으로 둔다.
+ *   file input 하나에 capture를 걸면 iOS가 선택 메뉴를 건너뛰고 카메라만 열어
+ *   사진첩·파일 경로가 통째로 막힌다(실제로 겪은 문제) — 그래서 input을 둘로 나눴다.
+ * - 터치 기기: 슬롯을 한 번 탭하면 사진첩이 열린다(더블탭은 확대 제스처와 부딪힌다)
+ * - 데스크톱: 슬롯을 클릭해 선택한 뒤 Ctrl/Cmd+V 로 붙여넣기, 드래그&드롭·더블클릭도 지원
  */
 export function PhotoSlot({
   label,
@@ -33,7 +36,9 @@ export function PhotoSlot({
   disabled?: boolean;
 }) {
   const url = usePhotoUrl(photoId);
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  /** 사진첩·파일용(capture 없음)과 촬영용(capture)을 따로 둔다 */
+  const pickRef = React.useRef<HTMLInputElement>(null);
+  const cameraRef = React.useRef<HTMLInputElement>(null);
   const [busy, setBusy] = React.useState(false);
   const [focused, setFocused] = React.useState(false);
   const [dragOver, setDragOver] = React.useState(false);
@@ -55,6 +60,9 @@ export function PhotoSlot({
     },
     [onChange, photoId, disabled],
   );
+
+  /** 마우스가 없는 기기(휴대폰·태블릿)에서는 한 번 탭으로 바로 사진첩을 연다 */
+  const touchOnly = typeof window !== "undefined" && window.matchMedia("(hover: none)").matches;
 
   const fromClipboard = (items: DataTransferItemList | null) => {
     if (!items) return false;
@@ -79,8 +87,19 @@ export function PhotoSlot({
             variant="ghost"
             size="icon-xs"
             disabled={disabled}
-            onClick={() => inputRef.current?.click()}
-            aria-label={`${label} 파일 선택`}
+            onClick={() => pickRef.current?.click()}
+            aria-label={`${label} 사진첩·파일에서 선택`}
+            title="사진첩·파일에서 선택"
+          >
+            <ImagePlus />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            disabled={disabled}
+            onClick={() => cameraRef.current?.click()}
+            aria-label={`${label} 촬영`}
+            title="카메라로 촬영"
           >
             <Camera />
           </Button>
@@ -101,8 +120,21 @@ export function PhotoSlot({
           )}
         </div>
       </div>
+      {/* capture 없음 — iOS에서 사진첩·파일 선택 메뉴가 뜬다 */}
       <input
-        ref={inputRef}
+        ref={pickRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void upload(f);
+          e.target.value = "";
+        }}
+      />
+      {/* capture 있음 — 누르면 곧바로 카메라가 열린다 */}
+      <input
+        ref={cameraRef}
         type="file"
         accept="image/*"
         capture="environment"
@@ -117,14 +149,17 @@ export function PhotoSlot({
         role="button"
         tabIndex={disabled ? -1 : 0}
         aria-disabled={disabled}
-        aria-label={`${label} — 클릭 후 붙여넣기 또는 더블클릭으로 파일 선택`}
+        aria-label={`${label} — 눌러서 사진첩에서 선택하거나 클릭 후 붙여넣기`}
         onFocus={() => !disabled && setFocused(true)}
         onBlur={() => setFocused(false)}
-        onDoubleClick={() => !disabled && inputRef.current?.click()}
+        onClick={() => {
+          if (!disabled && touchOnly) pickRef.current?.click();
+        }}
+        onDoubleClick={() => !disabled && !touchOnly && pickRef.current?.click()}
         onKeyDown={(e) => {
           if (!disabled && (e.key === "Enter" || e.key === " ")) {
             e.preventDefault();
-            inputRef.current?.click();
+            pickRef.current?.click();
           }
         }}
         onPaste={(e) => {
@@ -155,7 +190,15 @@ export function PhotoSlot({
         ) : (
           <span className="flex flex-col items-center gap-1.5 px-2 text-center text-xs text-muted-foreground">
             <Camera className="size-5" />
-            {disabled ? "보기 전용 계정입니다" : busy ? "저장 중…" : focused ? "Ctrl/⌘+V 로 붙여넣기" : "클릭 후 붙여넣기 · 두 번 클릭 시 파일 선택"}
+            {disabled
+              ? "보기 전용 계정입니다"
+              : busy
+                ? "저장 중…"
+                : touchOnly
+                  ? "눌러서 사진첩에서 선택"
+                  : focused
+                    ? "Ctrl/⌘+V 로 붙여넣기"
+                    : "클릭 후 붙여넣기 · 두 번 클릭 시 파일 선택"}
           </span>
         )}
       </div>
