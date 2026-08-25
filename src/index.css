@@ -111,6 +111,45 @@
       font-size: 16px;
     }
   }
+  /* 날짜·시간 입력칸을 다른 입력칸과 같은 높이로 —
+     iOS Safari는 이 타입들에 자체 appearance를 씌우고 내부 값 요소
+     (::-webkit-date-and-time-value)에 기본 여백을 넣어 지정한 height를
+     무시하고 칸을 부풀린다. 그래서 appearance를 걷어내고 내부 여백을 0으로
+     되돌린 뒤 높이를 부모(h-8 등)가 정하도록 넘긴다. */
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"],
+  input[type="month"],
+  input[type="week"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-height: 0;
+  }
+  input[type="date"]::-webkit-date-and-time-value,
+  input[type="datetime-local"]::-webkit-date-and-time-value,
+  input[type="time"]::-webkit-date-and-time-value,
+  input[type="month"]::-webkit-date-and-time-value,
+  input[type="week"]::-webkit-date-and-time-value {
+    margin: 0;
+    padding: 0;
+    text-align: left;
+    line-height: normal;
+  }
+  input[type="date"]::-webkit-datetime-edit,
+  input[type="datetime-local"]::-webkit-datetime-edit,
+  input[type="time"]::-webkit-datetime-edit,
+  input[type="month"]::-webkit-datetime-edit,
+  input[type="week"]::-webkit-datetime-edit {
+    padding: 0;
+    line-height: normal;
+  }
+  input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+  input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+  input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+  input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+  input[type="week"]::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+  }
 }
 
 /* 슬림 스크롤바 */
