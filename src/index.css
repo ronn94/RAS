@@ -531,10 +531,10 @@
   align-items: start;
 }
 
-/* ── 월간 게시용 보고서 (A4 세로 1장 고정 · 위 70% 현황 / 아래 30% 열람 명단) ──
+/* ── 월간 게시용 보고서 (A4 세로 · 위 60% 현황 / 아래 40% 열람 명단) ──
    서명표 자리가 매달 같아야 게시물로 읽히므로 두 구역의 높이를 mm로 못박는다.
-   위 구역은 overflow:hidden — 내역이 많으면 글자를 줄여 넣고(listFontPt), 그래도
-   넘치면 잘린다. 페이지가 2장으로 갈라지는 것보다 낫다. */
+   개선 완료 내역은 페이지당 6건 고정(MonthlyReportSheet.tsx의 LIST_PAGE_SIZE)이라
+   더 이상 글자를 줄여서 밀어넣지 않는다 — 대신 넘치면 페이지를 나눈다. */
 .sheet-monthly .print-page {
   display: flex;
   flex-direction: column;
@@ -542,12 +542,6 @@
 .sheet-monthly .top {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-}
-/* 목록이 남는 높이를 전부 받는다 — 넘치면 컴포넌트가 글자를 줄여 다시 잰다 */
-.sheet-monthly .list {
-  flex: 1;
-  min-height: 0;
   overflow: hidden;
 }
 .sheet-monthly .list table {
@@ -561,7 +555,19 @@
   white-space: nowrap;
 }
 .sheet-monthly .list :is(th, td) {
-  padding: 0.5mm 0.9mm;
+  padding: 0.8mm 0.9mm;
+}
+/* 유해위험요인·개선내용처럼 긴 텍스트가 들어가는 칸은 최대 2줄로 잘라 행 높이를
+   고정한다 — 6건 고정이 전제이므로 한 행이 걷잡을 수 없이 늘어나면 페이지 높이가
+   깨진다(서명표가 다음 페이지로 밀려나는 등). */
+.sheet-monthly .list .wrap {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.25;
 }
 .sheet-monthly .sec {
   margin: 3mm 0 1.2mm;
