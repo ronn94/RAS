@@ -1,31 +1,41 @@
 /**
  * 월간 게시용 보고서 — A4 세로. 매월 말일에 뽑아 사무실에 게시한다.
  *
- * 위 60%: 지표표 · 개선 전/후 히트맵 · 그달 개선 완료 내역(페이지당 6건 고정)
- * 아래 40%: 열람 명단(직원이 손으로 서명하는 칸)
+ * 위 65%: 지표표 · 개선 전/후 히트맵 · 그달 개선 완료 내역
+ * 아래 35%: 열람 명단(직원이 손으로 서명하는 칸)
  *
- * 개선 완료 내역이 6건을 넘으면 **페이지를 나눈다** — 지표표·히트맵·열람 명단은
- * 모든 페이지에 그대로 반복되고, 바뀌는 건 내역 목록뿐이다(다음 6건씩). 그래서
- * 몇 장이 나오든 서명표 자리가 매 장 같은 위치에 있어 게시물로 자연스럽다.
+ * 개선 완료 내역은 **줄바꿈을 잘라내지 않는다** — 유해위험요인·개선내용이 길면
+ * 그만큼 행이 커진다. 그래서 "페이지당 몇 건"을 고정할 수 없고, 실제 렌더링한
+ * 행 높이를 재서 한 페이지(위 65% 구역)에 들어가는 만큼만 담고 넘치면 다음
+ * 페이지로 넘긴다(AssessmentSheet.tsx와 같은 2단계 측정 방식 — 화면 밖에 한 번
+ * 전체를 그려 각 행의 실제 높이를 잰 다음, 그 값으로 나눠 다시 그린다).
+ * 지표표·히트맵·열람 명단은 페이지마다 그대로 반복되고, 내역 목록만 바뀐다.
  * 페이지가 2장 이상이면 머리글 오른쪽에 작게 "2 / 3페이지"를 붙인다.
- */
+ *
+ * 폰트 크기는 어떤 경우에도 줄이지 않는다(사용자 요청) — 그래서 유난히 긴
+ * 항목 하나가 그 페이지의 남은 공간을 넘기면, 그 페이지만 예정보다 적은
+ * 건수로 끝나거나(정상 케이스) 그 항목 혼자 267mm를 넘길 수도 있다(극단적
+ * 케이스 — 그래도 잘리는 것보다 낫다는 합의). */
 import * as React from "react";
 import { entriesImprovedIn, monthLabel, type Entry, type Metrics } from "@/lib/metrics";
 import { riskAfter, riskBefore } from "@/lib/risk";
 import { useStore } from "@/store";
 import type { AppSettings } from "@/lib/settings";
 
-/** 아래 열람 명단 구역 높이 — A4 세로 본문 267mm의 40% */
-const SIGN_BLOCK_MM = 107;
+/** 아래 열람 명단 구역 높이 — A4 세로 본문 267mm의 35% */
+const SIGN_BLOCK_MM = 267 * 0.35;
+/** 위 현황 구역 높이 — 나머지 65% */
+const TOP_MM = 267 - SIGN_BLOCK_MM;
 /** 서명표 가로 세트 수 (번호|이름|서명 한 벌) */
 const SIGN_COLS = 3;
 /** 명단이 적어도 이 칸 수만큼은 빈 칸으로 그려 표 크기를 고정한다 */
 const SIGN_MIN_SLOTS = 24;
 
-/** 개선 완료 내역 — 페이지당 고정 건수(이보다 많으면 다음 페이지로) */
-const LIST_PAGE_SIZE = 6;
-/** 내역 목록 글자 크기 — 행 수가 고정이라 더는 줄일 필요가 없다 */
+/** 내역 목록 글자 크기 — 고정. 넘치면 페이지를 나누지, 글자를 줄이지 않는다 */
 const LIST_PT = 8.5;
+const PX_PER_MM = 96 / 25.4;
+/** 반올림 오차로 마지막 행이 살짝 넘치는 것을 막는 여유 */
+const SAFETY_MM = 3;
 
 /** 흑백 인쇄용 히트맵 — 화면 히트맵과 같은 집계를 회색 농도로 그린다 */
 function PrintHeatmap({
@@ -121,7 +131,7 @@ function TopSection({
 }) {
   const monthCount = entriesImprovedIn(m.entries, month).length;
   return (
-    <div className="top" style={{ height: `${267 - SIGN_BLOCK_MM}mm` }}>
+    <div className="top" style={{ height: `${TOP_MM}mm` }}>
       <div className="report-head">
         <div>
           <div className="report-title">{monthLabel(month)} 위험성평가 관리 현황</div>
@@ -181,15 +191,17 @@ function TopSection({
       <div className="sec">{monthLabel(month)} 개선 완료 내역</div>
       <div className="list" style={{ fontSize: `${LIST_PT}pt` }}>
         <table>
+          {/* 유해위험요인·개선내용·비고 셋이 남는 폭을 나눠 갖는다 — 비고 몫을 40% 줄이고
+              그만큼을 유해위험요인·개선내용에 절반씩 더 준다(균등 27.7mm → 33.2/33.2/16.6mm) */}
           <colgroup>
             <col style={{ width: "20mm" }} />
             <col style={{ width: "24mm" }} />
-            <col />
-            <col />
+            <col style={{ width: "33.2mm" }} />
+            <col style={{ width: "33.2mm" }} />
             <col style={{ width: "16mm" }} />
             <col style={{ width: "20mm" }} />
             <col style={{ width: "15mm" }} />
-            <col />
+            <col style={{ width: "16.6mm" }} />
           </colgroup>
           <thead>
             <tr>
@@ -287,17 +299,73 @@ export function MonthlyReportSheet({
 }) {
   const { settings } = useStore();
   const rows = entriesImprovedIn(m.entries, month);
-
-  /** 6건씩 나눈 페이지 목록 — 내역이 하나도 없어도 "없습니다" 안내를 보여줄 페이지 1장은 만든다 */
-  const pages = React.useMemo(() => {
-    if (rows.length === 0) return [[] as Entry[]];
-    const chunks: Entry[][] = [];
-    for (let i = 0; i < rows.length; i += LIST_PAGE_SIZE) chunks.push(rows.slice(i, i + LIST_PAGE_SIZE));
-    return chunks;
-  }, [rows]);
-
   const today = new Date().toLocaleDateString("ko-KR", { dateStyle: "long" });
+  const orgLine = settings.org.orgName || settings.org.facility || "";
 
+  const measureRef = React.useRef<HTMLDivElement>(null);
+  const [pages, setPages] = React.useState<Entry[][] | null>(null);
+
+  // 내용이 바뀌면 다시 재야 한다(줄바꿈이 달라지면 행 높이도 달라진다)
+  const signature = JSON.stringify(rows.map((e) => e.row));
+  React.useLayoutEffect(() => {
+    setPages(null);
+  }, [signature, settings.risk.likelihood.length, settings.risk.severity.length]);
+
+  React.useLayoutEffect(() => {
+    if (pages !== null) return;
+    if (rows.length === 0) {
+      setPages([[]]);
+      return;
+    }
+    const el = measureRef.current;
+    const top = el?.querySelector<HTMLElement>(".top");
+    const trs = el ? [...el.querySelectorAll<HTMLTableRowElement>(".list tbody tr")] : [];
+    if (!top || trs.length === 0) return;
+
+    // 첫 행이 시작되는 위치까지가 "머리글+지표표+히트맵+목록 머리행"이 차지하는 실제 높이다.
+    // 그 사이에 있는 요소를 일일이 나열해 더하지 않아도 되니 마진·패딩까지 자동으로 맞는다.
+    const prefixPx = trs[0].getBoundingClientRect().top - top.getBoundingClientRect().top;
+    const availablePx = (TOP_MM - SAFETY_MM) * PX_PER_MM - prefixPx;
+
+    const chunks: Entry[][] = [];
+    let current: Entry[] = [];
+    let used = 0;
+    trs.forEach((tr, i) => {
+      const h = tr.getBoundingClientRect().height;
+      // 이 행 하나만으로도 남은 공간을 넘기면 어차피 페이지가 넘어가므로 혼자 페이지를 쓰게 둔다
+      if (current.length > 0 && used + h > availablePx) {
+        chunks.push(current);
+        current = [];
+        used = 0;
+      }
+      current.push(rows[i]);
+      used += h;
+    });
+    if (current.length > 0) chunks.push(current);
+    setPages(chunks.length > 0 ? chunks : [[]]);
+  }, [pages, signature, rows]);
+
+  // 1단계: 전체 내역을 한 페이지에 몰아 화면 밖에 그려 각 행의 실제 높이를 잰다
+  if (pages === null) {
+    return (
+      <div className="print-root sheet sheet-report sheet-monthly" ref={measureRef} aria-hidden>
+        <div className="print-page">
+          <TopSection
+            m={m}
+            month={month}
+            assessmentCount={assessmentCount}
+            chunk={rows}
+            settings={settings}
+            pageLabel=""
+            orgLine={orgLine}
+            today={today}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // 2단계: 잰 높이대로 나눈 페이지를 그린다
   return (
     <div className="print-root sheet sheet-report sheet-monthly">
       <style>{"@page{size:A4 portrait;margin:15mm}"}</style>
@@ -310,7 +378,7 @@ export function MonthlyReportSheet({
             chunk={chunk}
             settings={settings}
             pageLabel={pages.length > 1 ? `${i + 1} / ${pages.length}페이지` : ""}
-            orgLine={settings.org.orgName || settings.org.facility || ""}
+            orgLine={orgLine}
             today={today}
           />
           <SignSection settings={settings} />
