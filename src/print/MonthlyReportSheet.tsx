@@ -7,7 +7,7 @@
  * 개선 완료 내역이 6건을 넘으면 **페이지를 나눈다** — 지표표·히트맵·열람 명단은
  * 모든 페이지에 그대로 반복되고, 바뀌는 건 내역 목록뿐이다(다음 6건씩). 그래서
  * 몇 장이 나오든 서명표 자리가 매 장 같은 위치에 있어 게시물로 자연스럽다.
- * 페이지가 2장 이상이면 제목에 "(2/3페이지)"를 붙인다.
+ * 페이지가 2장 이상이면 머리글 오른쪽에 작게 "2 / 3페이지"를 붙인다.
  */
 import * as React from "react";
 import { entriesImprovedIn, monthLabel, type Entry, type Metrics } from "@/lib/metrics";
@@ -78,9 +78,6 @@ function ListRow({ e }: { e: Entry }) {
     <tr>
       <td className="num">{e.row.code || "-"}</td>
       <td>
-        <span className="wrap">{e.assessment.process || e.assessment.facility || "-"}</span>
-      </td>
-      <td>
         <span className="wrap">{e.row.subProcess || "-"}</span>
       </td>
       <td>
@@ -95,6 +92,9 @@ function ListRow({ e }: { e: Entry }) {
       </td>
       <td className="num">{e.row.improveDate || "-"}</td>
       <td className="num">{e.row.owner || "-"}</td>
+      <td>
+        <span className="wrap">{e.row.note || "-"}</span>
+      </td>
     </tr>
   );
 }
@@ -123,13 +123,13 @@ function TopSection({
   return (
     <div className="top" style={{ height: `${267 - SIGN_BLOCK_MM}mm` }}>
       <div className="report-head">
-        <div className="report-title">
-          {monthLabel(month)} 위험성평가 관리 현황
-          {pageLabel}
+        <div>
+          <div className="report-title">{monthLabel(month)} 위험성평가 관리 현황</div>
+          <div className="report-meta">
+            {orgLine} · 출력일 {today}
+          </div>
         </div>
-        <div className="report-meta">
-          {orgLine} · 출력일 {today}
-        </div>
+        {pageLabel && <div className="page-num">{pageLabel}</div>}
       </div>
       <table className="stats">
         <tbody>
@@ -184,23 +184,23 @@ function TopSection({
           <colgroup>
             <col style={{ width: "20mm" }} />
             <col style={{ width: "24mm" }} />
-            <col style={{ width: "22mm" }} />
             <col />
             <col />
             <col style={{ width: "16mm" }} />
             <col style={{ width: "20mm" }} />
             <col style={{ width: "15mm" }} />
+            <col />
           </colgroup>
           <thead>
             <tr>
               <th>평가코드</th>
-              <th>공정</th>
               <th>세부공정</th>
               <th>유해위험요인</th>
               <th>개선내용</th>
               <th>위험성</th>
               <th>개선일자</th>
               <th>담당자</th>
+              <th>비고</th>
             </tr>
           </thead>
           <tbody>
@@ -309,7 +309,7 @@ export function MonthlyReportSheet({
             assessmentCount={assessmentCount}
             chunk={chunk}
             settings={settings}
-            pageLabel={pages.length > 1 ? ` (${i + 1}/${pages.length}페이지)` : ""}
+            pageLabel={pages.length > 1 ? `${i + 1} / ${pages.length}페이지` : ""}
             orgLine={settings.org.orgName || settings.org.facility || ""}
             today={today}
           />

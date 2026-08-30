@@ -544,6 +544,20 @@
   flex-direction: column;
   overflow: hidden;
 }
+/* 머리글 — 제목·출력일은 그대로 가운데 정렬, 쪽수만 오른쪽 끝에 작게·회색으로 뺀다 */
+.sheet-monthly .report-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  position: relative;
+}
+.sheet-monthly .page-num {
+  position: absolute;
+  right: 0;
+  top: 0.5mm;
+  font-size: 6.5pt;
+  color: #888;
+}
 .sheet-monthly .list table {
   table-layout: fixed;
 }
