@@ -26,6 +26,7 @@ import { ScoreSelect } from "@/components/fields";
 import { PhotoSheet, type SheetEntry } from "@/print/PhotoSheet";
 import { isHighRisk, riskAfter, riskBadgeClass, riskBefore } from "@/lib/risk";
 import type { RiskItem } from "@/lib/types";
+import { classNames, codeLabel } from "@/lib/settings";
 import { useStore } from "@/store";
 
 const statusBadge = (s: RiskItem["status"]) =>
@@ -129,7 +130,7 @@ export function HighRiskPage() {
         </Select>
         <Select className="h-9" value={fClass} onChange={(e) => setFClass(e.target.value)}>
           <option value="">위험분류 전체</option>
-          {settings.hazardClasses.map((c) => (
+          {classNames(settings).map((c) => (
             <option key={c} value={c}>
               {c}
             </option>
@@ -217,6 +218,15 @@ export function HighRiskPage() {
                           <Badge variant="outline" className="font-normal">
                             {e.row.hazardClass || "-"}
                           </Badge>
+                          {/* 위험코드는 열을 늘리지 않고 분류 배지 아래에 붙인다 */}
+                          {e.row.hazardCode && (
+                            <span
+                              className="mt-0.5 block text-xs text-muted-foreground tabular-nums"
+                              title={codeLabel(settings, e.row.hazardCode)}
+                            >
+                              {e.row.hazardCode}
+                            </span>
+                          )}
                         </TD>
                         <TD className="max-w-md truncate whitespace-normal">{e.row.hazard || "-"}</TD>
                         <TD className="text-center">
@@ -281,6 +291,7 @@ export function HighRiskPage() {
                       <span className="font-medium tabular-nums">{e.row.code || "-"}</span>
                       <Badge variant="outline" className="font-normal">
                         {e.row.hazardClass || "-"}
+                        {e.row.hazardCode ? ` · ${codeLabel(settings, e.row.hazardCode)}` : ""}
                       </Badge>
                       <Badge className={statusBadge(e.row.status)}>{e.row.status}</Badge>
                     </div>

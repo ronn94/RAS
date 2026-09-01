@@ -86,7 +86,7 @@ function ListRow({ e }: { e: Entry }) {
   const after = riskAfter(e.row);
   return (
     <tr>
-      <td className="num">{e.row.code || "-"}</td>
+      <td className="num">{e.row.hazardCode || "-"}</td>
       <td>
         <span className="wrap">{e.row.subProcess || "-"}</span>
       </td>
@@ -109,7 +109,7 @@ function ListRow({ e }: { e: Entry }) {
   );
 }
 
-/** 지표표·히트맵·내역 목록 한 칸(위 60%) — 페이지마다 chunk만 다르고 나머지는 동일하다 */
+/** 지표표·히트맵·내역 목록 한 칸(위 65%) — 페이지마다 chunk만 다르고 나머지는 동일하다 */
 function TopSection({
   m,
   month,
@@ -192,12 +192,13 @@ function TopSection({
       <div className="list" style={{ fontSize: `${LIST_PT}pt` }}>
         <table>
           {/* 유해위험요인·개선내용·비고 셋이 남는 폭을 나눠 갖는다 — 비고 몫을 40% 줄이고
-              그만큼을 유해위험요인·개선내용에 절반씩 더 준다(균등 27.7mm → 33.2/33.2/16.6mm) */}
+              그만큼을 유해위험요인·개선내용에 절반씩 더 준다. 위험코드는 "5.10"이 최대라
+              예전 평가코드 열(20mm)보다 훨씬 좁아도 되고, 아낀 폭도 같은 두 칸에 얹는다 */}
           <colgroup>
-            <col style={{ width: "20mm" }} />
+            <col style={{ width: "14mm" }} />
             <col style={{ width: "24mm" }} />
-            <col style={{ width: "33.2mm" }} />
-            <col style={{ width: "33.2mm" }} />
+            <col style={{ width: "36.2mm" }} />
+            <col style={{ width: "36.2mm" }} />
             <col style={{ width: "16mm" }} />
             <col style={{ width: "20mm" }} />
             <col style={{ width: "15mm" }} />
@@ -205,7 +206,7 @@ function TopSection({
           </colgroup>
           <thead>
             <tr>
-              <th>평가코드</th>
+              <th>위험코드</th>
               <th>세부공정</th>
               <th>유해위험요인</th>
               <th>개선내용</th>
@@ -232,7 +233,7 @@ function TopSection({
   );
 }
 
-/** 열람 명단(아래 40%) — 모든 페이지에 동일하게 반복된다 */
+/** 열람 명단(아래 35%) — 모든 페이지에 동일하게 반복된다 */
 function SignSection({ settings }: { settings: AppSettings }) {
   const staff = [...settings.staff].sort((a, b) => a.localeCompare(b, "ko"));
   const slots = Math.max(SIGN_MIN_SLOTS, staff.length);

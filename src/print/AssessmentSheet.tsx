@@ -100,9 +100,9 @@ function BodyTable({ rows, startNo }: { rows: RiskItem[]; startNo: number }) {
           <th rowSpan={2}>No.</th>
           <th rowSpan={2}>세부공정</th>
           <th rowSpan={2}>
-            위험
+            위험분류
             <br />
-            분류
+            <span className="sub">위험코드</span>
           </th>
           <th rowSpan={2}>유해위험요인</th>
           <th rowSpan={2}>현재의 안전보건조치</th>
@@ -141,7 +141,16 @@ function BodyTable({ rows, startNo }: { rows: RiskItem[]; startNo: number }) {
           <tr key={r.id}>
             <td className="num">{startNo + i}</td>
             <td className="wrap">{r.subProcess}</td>
-            <td className="num">{r.hazardClass}</td>
+            {/* 위험분류 칸은 12mm뿐이라 분류명 아래 줄에 위험코드를 넣는다 */}
+            <td className="num">
+              {r.hazardClass}
+              {r.hazardCode && (
+                <>
+                  <br />
+                  {r.hazardCode}
+                </>
+              )}
+            </td>
             <td className="wrap">{r.hazard}</td>
             <td className="wrap">{r.currentControl}</td>
             <td className="num">{r.p ?? ""}</td>

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
+import { classNames, typesOf } from "@/lib/settings";
 
 /** 표 안에서 쓰는 인라인 입력 — 평소엔 선이 없고, 포커스 시에만 채워진 필드가 된다 */
 export const cellBase =
@@ -25,14 +26,40 @@ export function CellSelect({ className, children, ...props }: React.SelectHTMLAt
 export function HazardClassSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   const { settings } = useStore();
   const value = String(props.value ?? "");
+  const classes = classNames(settings);
   // 목록에서 뺀 값이라도 이미 입력돼 있으면 유지한다
-  const options = value && !settings.hazardClasses.includes(value) ? [...settings.hazardClasses, value] : settings.hazardClasses;
+  const options = value && !classes.includes(value) ? [...classes, value] : classes;
   return (
     <CellSelect {...props}>
       <option value="">-</option>
       {options.map((c) => (
         <option key={c} value={c}>
           {c}
+        </option>
+      ))}
+    </CellSelect>
+  );
+}
+
+/**
+ * 위험코드 — 고른 위험분류에 속한 유해위험유형만 보여준다.
+ * 드롭다운에는 "1.4 부딪힘"처럼 번호+이름을 띄우고, 저장되는 값은 번호("1.4")뿐이다.
+ */
+export function HazardCodeSelect({
+  hazardClass,
+  ...props
+}: React.SelectHTMLAttributes<HTMLSelectElement> & { hazardClass: string }) {
+  const { settings } = useStore();
+  const value = String(props.value ?? "");
+  const types = typesOf(settings, hazardClass);
+  // 분류를 바꾸면 코드는 비워지지만, 목록에서 사라진 코드가 남아 있을 수도 있다
+  const options = value && !types.some((t) => t.code === value) ? [...types, { code: value, label: "" }] : types;
+  return (
+    <CellSelect {...props} disabled={props.disabled || !hazardClass}>
+      <option value="">-</option>
+      {options.map((t) => (
+        <option key={t.code} value={t.code}>
+          {t.label ? `${t.code} ${t.label}` : t.code}
         </option>
       ))}
     </CellSelect>

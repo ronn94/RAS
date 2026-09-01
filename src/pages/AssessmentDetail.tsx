@@ -24,6 +24,7 @@ import {
   CellInput,
   CellTextarea,
   HazardClassSelect,
+  HazardCodeSelect,
   OwnerInput,
   ProcessSelect,
   ScoreSelect,
@@ -33,6 +34,7 @@ import { exportAssessment, importRows } from "@/lib/excel";
 import { AssessmentSheet } from "@/print/AssessmentSheet";
 import { isHighRisk, riskAfter, riskBadgeClass, riskBefore } from "@/lib/risk";
 import { emptyRow, type Assessment, type RiskItem } from "@/lib/types";
+import { classNames } from "@/lib/settings";
 import { useStore } from "@/store";
 
 /**
@@ -44,6 +46,7 @@ const COLS: { key: string; label: string; sub?: string; className?: string }[] =
   { key: "no", label: "No.", className: "w-10 text-center" },
   { key: "subProcess", label: "세부공정", className: "w-28" },
   { key: "hazardClass", label: "위험분류", className: "w-24" },
+  { key: "hazardCode", label: "위험코드", sub: "분류별 유형", className: "w-24" },
   { key: "hazard", label: "유해위험요인", className: "w-64" },
   { key: "currentControl", label: "현재의 안전보건조치", className: "w-52" },
   { key: "p", label: "가능성", sub: "현재", className: "w-14 text-center" },
@@ -250,7 +253,7 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
         />
         <Select className="h-9" value={fClass} onChange={(e) => setFClass(e.target.value)}>
           <option value="">위험분류 전체</option>
-          {settings.hazardClasses.map((c) => (
+          {classNames(settings).map((c) => (
             <option key={c} value={c}>
               {c}
             </option>
@@ -313,7 +316,18 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
                           <HazardClassSelect
                             disabled={!canEdit}
                             value={r.hazardClass}
-                            onChange={(e) => patchRow(r.id, { hazardClass: e.target.value as RiskItem["hazardClass"] })}
+                            // 분류가 바뀌면 그 분류에 속하지 않는 위험코드는 남겨둘 수 없다
+                            onChange={(e) =>
+                              patchRow(r.id, { hazardClass: e.target.value as RiskItem["hazardClass"], hazardCode: "" })
+                            }
+                          />
+                        </TD>
+                        <TD>
+                          <HazardCodeSelect
+                            disabled={!canEdit}
+                            hazardClass={r.hazardClass}
+                            value={r.hazardCode ?? ""}
+                            onChange={(e) => patchRow(r.id, { hazardCode: e.target.value })}
                           />
                         </TD>
                         <TD className="whitespace-normal">

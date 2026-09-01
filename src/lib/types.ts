@@ -1,16 +1,100 @@
-/** 위험분류 — 공공하수처리장 확장안 (사용자 확정) */
-export const HAZARD_CLASSES = [
-  "기계적",
-  "전기적",
-  "화학적",
-  "생물학적",
-  "화재·폭발",
-  "밀폐공간",
-  "작업특성",
-  "작업환경",
-  "기타",
-] as const;
-export type HazardClass = (typeof HAZARD_CLASSES)[number];
+/**
+ * 유해위험요인 분류 — 원본 서식 `SSI-602-06` 양식4-1(유해·위험요인 파악 분류표) 기준.
+ * 요인구분(위험분류)과 그 아래 유해위험유형 코드를 한 벌로 들고 있다.
+ *
+ * 이 표가 위험분류 목록의 정본이다 — 예전에는 위험분류가 문자열 배열이었고
+ * 화재·폭발/밀폐공간이 따로 있었는데, 원본 서식에서는 그 둘이 코드로 흡수돼 있다
+ * (화재=3.8, 폭발/파열=3.9는 화학적 아래, 질식위험·산소결핍=5.1은 작업특성 아래).
+ * 이름은 원본의 "기계적 요인"이 아니라 기존 데이터와 같은 "기계적"을 쓴다.
+ */
+export type HazardType = {
+  code: string; // 유해위험유형 번호 (예: "1.4")
+  label: string; // 유형 이름 (예: "부딪힘")
+};
+export type HazardFactor = {
+  no: string; // 요인구분 번호 (예: "1")
+  name: string; // 요인구분 이름 = 위험분류 (예: "기계적")
+  types: HazardType[];
+};
+
+export const HAZARD_FACTORS: HazardFactor[] = [
+  {
+    no: "1",
+    name: "기계적",
+    types: [
+      { code: "1.1", label: "끼임·감김" },
+      { code: "1.2", label: "베임·긁힘·찔림" },
+      { code: "1.3", label: "기계의 맞음, 뒤집힘, 무너짐, 깔림" },
+      { code: "1.4", label: "부딪힘" },
+      { code: "1.5", label: "넘어짐, 헛디딤, 걸림, 미끄러짐" },
+      { code: "1.6", label: "떨어짐" },
+    ],
+  },
+  { no: "2", name: "전기적", types: [{ code: "2.1", label: "감전" }] },
+  {
+    no: "3",
+    name: "화학적",
+    types: [
+      { code: "3.1", label: "유해가스" },
+      { code: "3.2", label: "고온증기" },
+      { code: "3.3", label: "흄" },
+      { code: "3.4", label: "화학물질 접촉·누출" },
+      { code: "3.5", label: "분진" },
+      { code: "3.6", label: "반응성물질" },
+      { code: "3.7", label: "방사선" },
+      { code: "3.8", label: "화재" },
+      { code: "3.9", label: "폭발/파열" },
+    ],
+  },
+  {
+    no: "4",
+    name: "생물학적",
+    types: [
+      { code: "4.1", label: "병원성 미생물, 바이러스 감염" },
+      { code: "4.2", label: "알러지" },
+    ],
+  },
+  {
+    no: "5",
+    name: "작업특성",
+    types: [
+      { code: "5.1", label: "질식위험·산소결핍" },
+      { code: "5.2", label: "근로자 실수" },
+      { code: "5.3", label: "압력상태" },
+      { code: "5.4", label: "소음" },
+      { code: "5.5", label: "진동" },
+      { code: "5.6", label: "중량물취급" },
+      { code: "5.7", label: "반복작업" },
+      { code: "5.8", label: "이상온도·물체 접촉(화상)" },
+      { code: "5.9", label: "불안정한 작업자세" },
+      { code: "5.10", label: "부적절 작업도구" },
+    ],
+  },
+  {
+    no: "6",
+    name: "작업환경",
+    types: [
+      { code: "6.1", label: "기후(고온 또는 한랭)" },
+      { code: "6.2", label: "조도(조명)" },
+      { code: "6.3", label: "공간 및 통로 미확보" },
+      { code: "6.4", label: "주변 근로자" },
+      { code: "6.5", label: "작업시간" },
+    ],
+  },
+  {
+    no: "7",
+    name: "기타",
+    types: [
+      { code: "7.1", label: "정리정돈" },
+      { code: "7.2", label: "기타사항" },
+    ],
+  },
+];
+
+/** 위험분류 이름 목록 — 요인구분에서 뽑는다 */
+export const HAZARD_CLASSES = HAZARD_FACTORS.map((f) => f.name);
+/** 이미 저장된 값은 목록에 없어도 그대로 남으므로 문자열로 둔다 */
+export type HazardClass = string;
 
 /** 조치 상태 */
 export const STATUSES = ["미조치", "조치중", "개선완료"] as const;
@@ -38,6 +122,7 @@ export type RiskItem = {
   id: string;
   subProcess: string; // 세부공정
   hazardClass: HazardClass | "";
+  hazardCode: string; // 위험코드 — 유해위험유형 번호만 저장한다 (예: "1.4")
   hazard: string; // 유해위험요인
   currentControl: string; // 현재의 안전보건조치
   p: number | null; // 가능성
@@ -73,6 +158,7 @@ export function emptyRow(): RiskItem {
     id: crypto.randomUUID(),
     subProcess: "",
     hazardClass: "",
+    hazardCode: "",
     hazard: "",
     currentControl: "",
     p: null,

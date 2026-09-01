@@ -2,7 +2,7 @@
  * 앱 설정 — 유지보수를 코드 수정 없이 하기 위한 값들.
  * IndexedDB의 settings 스토어에 단일 레코드로 저장한다.
  */
-import { HAZARD_CLASSES, STATUSES } from "./types";
+import { HAZARD_FACTORS, STATUSES, type HazardFactor } from "./types";
 
 export type ScaleLabel = { value: number; label: string };
 
@@ -19,7 +19,11 @@ export type AppSettings = {
   permissions: { edit: boolean; delete: boolean; photo: boolean };
   /** 목록 */
   processes: string[]; // 공정명
-  hazardClasses: string[];
+  /**
+   * 유해위험요인 분류표 — 요인구분(=위험분류)과 그 아래 유해위험유형 코드.
+   * 위험분류 목록의 정본이다(예전의 `hazardClasses: string[]`를 대체).
+   */
+  hazardFactors: HazardFactor[];
   statuses: string[];
   owners: string[]; // 담당자 후보
   /** 직원 명단 — 월간 게시용 보고서의 '열람 명단' 서명표에 쓴다(담당자 목록과 별개) */
@@ -42,7 +46,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   profile: { name: "관리자", role: "안전관리자" },
   permissions: { edit: false, delete: false, photo: false },
   processes: [],
-  hazardClasses: [...HAZARD_CLASSES],
+  hazardFactors: HAZARD_FACTORS.map((f) => ({ ...f, types: f.types.map((t) => ({ ...t })) })),
   statuses: [...STATUSES],
   owners: [],
   staff: [],
@@ -65,6 +69,21 @@ export const DEFAULT_SETTINGS: AppSettings = {
   updatedAt: 0,
 };
 
+/**
+ * 예전 설정에는 위험분류가 이름만 담긴 배열(`hazardClasses`)이었다.
+ * 그때 쓰던 이름 중 원본 분류표에 없는 것(화재·폭발, 밀폐공간 등)은
+ * 코드가 없는 요인구분으로 살려 둔다 — 이미 그 값을 쓰는 행이 있을 수 있어서다.
+ */
+function migrateFactors(saved: Partial<AppSettings> & { hazardClasses?: string[] }): HazardFactor[] {
+  if (saved.hazardFactors?.length) {
+    return saved.hazardFactors.map((f) => ({ ...f, types: (f.types ?? []).map((t) => ({ ...t })) }));
+  }
+  const base = DEFAULT_SETTINGS.hazardFactors.map((f) => ({ ...f, types: f.types.map((t) => ({ ...t })) }));
+  const known = new Set(base.map((f) => f.name));
+  const extras = (saved.hazardClasses ?? []).filter((name) => name && !known.has(name));
+  return [...base, ...extras.map((name, i) => ({ no: String(base.length + i + 1), name, types: [] }))];
+}
+
 /** 저장된 설정에 기본값을 채워 넣는다(항목이 추가돼도 안전하게 열리도록) */
 export function withDefaults(saved: Partial<AppSettings> | undefined | null): AppSettings {
   if (!saved) return { ...DEFAULT_SETTINGS };
@@ -73,7 +92,7 @@ export function withDefaults(saved: Partial<AppSettings> | undefined | null): Ap
     profile: { ...DEFAULT_SETTINGS.profile, ...saved.profile },
     permissions: { ...DEFAULT_SETTINGS.permissions, ...saved.permissions },
     processes: saved.processes ?? [],
-    hazardClasses: saved.hazardClasses?.length ? saved.hazardClasses : DEFAULT_SETTINGS.hazardClasses,
+    hazardFactors: migrateFactors(saved),
     statuses: saved.statuses?.length ? saved.statuses : DEFAULT_SETTINGS.statuses,
     owners: saved.owners ?? [],
     staff: saved.staff ?? [],
@@ -84,4 +103,24 @@ export function withDefaults(saved: Partial<AppSettings> | undefined | null): Ap
     },
     updatedAt: saved.updatedAt ?? 0,
   };
+}
+
+/** 위험분류 이름 목록 — 요인구분에서 뽑는다(화면 드롭다운·필터가 쓴다) */
+export function classNames(settings: AppSettings): string[] {
+  return settings.hazardFactors.map((f) => f.name);
+}
+
+/** 그 위험분류에 속한 유해위험유형 목록. 없는 분류면 빈 배열 */
+export function typesOf(settings: AppSettings, className: string) {
+  return settings.hazardFactors.find((f) => f.name === className)?.types ?? [];
+}
+
+/** 위험코드 번호 → "1.4 부딪힘". 못 찾으면 번호만 돌려준다 */
+export function codeLabel(settings: AppSettings, code: string): string {
+  if (!code) return "";
+  for (const f of settings.hazardFactors) {
+    const t = f.types.find((x) => x.code === code);
+    if (t) return `${t.code} ${t.label}`;
+  }
+  return code;
 }

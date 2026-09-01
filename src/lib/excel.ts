@@ -31,7 +31,7 @@ function toDate(v: unknown): string {
    원본 서식(머리말 4~5행)과 이 앱이 내보낸 파일(머리말 1~2행) 모두 지원한다. */
 
 type Field =
-  | "subProcess" | "hazardClass" | "hazard" | "currentControl"
+  | "subProcess" | "hazardClass" | "hazardCode" | "hazard" | "currentControl"
   | "code" | "measure" | "dueDate" | "improveDate" | "note" | "owner" | "status";
 
 // 개선예정일(계획)과 개선일자(실제 완료일)는 서로 다른 필드다 — 먼저 나온 별칭이
@@ -39,6 +39,7 @@ type Field =
 const HEADER_ALIASES: [Field, string[]][] = [
   ["subProcess", ["세부공정"]],
   ["hazardClass", ["위험분류"]],
+  ["hazardCode", ["위험코드"]],
   ["hazard", ["유해위험요인", "위험요인", "위험내용"]],
   ["currentControl", ["현재의안전보건조치", "안전보건조치", "현재안전보건조치"]],
   ["code", ["평가코드"]],
@@ -105,6 +106,7 @@ function readRows(grid: unknown[][], layout: Layout): RiskItem[] {
       ...emptyRow(),
       subProcess: toStr(at(raw, layout.map.subProcess)),
       hazardClass: cls as RiskItem["hazardClass"],
+      hazardCode: toStr(at(raw, layout.map.hazardCode)),
       hazard: toStr(at(raw, layout.map.hazard)),
       currentControl: toStr(at(raw, layout.map.currentControl)),
       p: toNum(at(raw, layout.p)),
@@ -180,9 +182,9 @@ export async function importAssessment(file: File): Promise<Assessment> {
 export async function exportAssessment(a: Assessment) {
   const XLSX = await import("xlsx");
   // 화면 표(AssessmentDetail)에 보이는 컬럼을 전부 담는다.
-  // No·세부공정·위험분류·유해위험요인·안전보건조치·현재위험성(3)·평가코드·개선대책·
-  // 개선예정일·개선일자·개선후위험성(3)·조치상태·담당자·비고 = 18열
-  const width = 18;
+  // No·세부공정·위험분류·위험코드·유해위험요인·안전보건조치·현재위험성(3)·평가코드·
+  // 개선대책·개선예정일·개선일자·개선후위험성(3)·조치상태·담당자·비고 = 19열
+  const width = 19;
   const blank = () => Array<string | number | null>(width).fill(null);
   const grid: (string | number | null)[][] = [];
 
@@ -190,25 +192,26 @@ export async function exportAssessment(a: Assessment) {
   h1[0] = "No.";
   h1[1] = "세부공정";
   h1[2] = "위험분류";
-  h1[3] = "유해위험요인";
-  h1[4] = "현재의 안전보건조치";
-  h1[5] = "현재 위험성(5x4)";
-  h1[8] = "평가코드(8등급이상) 연도.No-0";
-  h1[9] = "개선대책";
-  h1[10] = "개선예정일";
-  h1[11] = "개선일자";
-  h1[12] = "개선 후 위험성";
-  h1[15] = "조치상태";
-  h1[16] = "담당자";
-  h1[17] = "비고(종사자 의견 등)";
+  h1[3] = "위험코드";
+  h1[4] = "유해위험요인";
+  h1[5] = "현재의 안전보건조치";
+  h1[6] = "현재 위험성(5x4)";
+  h1[9] = "평가코드(8등급이상) 연도.No-0";
+  h1[10] = "개선대책";
+  h1[11] = "개선예정일";
+  h1[12] = "개선일자";
+  h1[13] = "개선 후 위험성";
+  h1[16] = "조치상태";
+  h1[17] = "담당자";
+  h1[18] = "비고(종사자 의견 등)";
 
   const h2 = blank();
-  h2[5] = "가능성";
-  h2[6] = "중대성";
-  h2[7] = "위험성";
-  h2[12] = "가능성";
-  h2[13] = "중대성";
-  h2[14] = "위험성";
+  h2[6] = "가능성";
+  h2[7] = "중대성";
+  h2[8] = "위험성";
+  h2[13] = "가능성";
+  h2[14] = "중대성";
+  h2[15] = "위험성";
 
   grid.push(h1, h2);
 
@@ -217,6 +220,7 @@ export async function exportAssessment(a: Assessment) {
       i + 1,
       r.subProcess,
       r.hazardClass,
+      r.hazardCode,
       r.hazard,
       r.currentControl,
       r.p,
@@ -239,14 +243,14 @@ export async function exportAssessment(a: Assessment) {
   const span = (c1: number, c2: number) => ({ s: { r: 0, c: c1 }, e: { r: 0, c: c2 } });
   const stack = (c: number) => ({ s: { r: 0, c }, e: { r: 1, c } });
   ws["!merges"] = [
-    stack(0), stack(1), stack(2), stack(3), stack(4),
-    span(5, 7),
-    stack(8), stack(9), stack(10), stack(11),
-    span(12, 14),
-    stack(15), stack(16), stack(17),
+    stack(0), stack(1), stack(2), stack(3), stack(4), stack(5),
+    span(6, 8),
+    stack(9), stack(10), stack(11), stack(12),
+    span(13, 15),
+    stack(16), stack(17), stack(18),
   ];
   ws["!cols"] = [
-    { wch: 4 }, { wch: 14 }, { wch: 8 }, { wch: 34 }, { wch: 26 },
+    { wch: 4 }, { wch: 14 }, { wch: 8 }, { wch: 8 }, { wch: 34 }, { wch: 26 },
     { wch: 7 }, { wch: 7 }, { wch: 7 }, { wch: 16 }, { wch: 32 },
     { wch: 12 }, { wch: 12 }, { wch: 7 }, { wch: 7 }, { wch: 7 },
     { wch: 10 }, { wch: 10 }, { wch: 18 },

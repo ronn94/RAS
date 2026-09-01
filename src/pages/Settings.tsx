@@ -1,13 +1,14 @@
 import * as React from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, RotateCcw, X } from "lucide-react";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Input, Label } from "@/components/ui";
 import { DEFAULT_SETTINGS, type AppSettings, type ScaleLabel } from "@/lib/settings";
+import type { HazardFactor } from "@/lib/types";
 import { useStore } from "@/store";
 
 /** 게시용 보고서 서명표의 기본 칸 수 — MonthlyReportSheet의 SIGN_MIN_SLOTS와 같은 값 */
 const SIGN_SLOTS = 24;
 
-/** 문자열 목록 편집기 (위험분류·조치상태·담당자) */
+/** 문자열 목록 편집기 (공정명·조치상태·담당자) */
 function ListEditor({
   value,
   onChange,
@@ -81,6 +82,101 @@ function ScaleEditor({ value, onChange }: { value: ScaleLabel[]; onChange: (v: S
           />
         </div>
       ))}
+    </div>
+  );
+}
+
+
+/**
+ * 유해위험요인 분류표 편집기 — 요인구분(번호+이름)과 그 아래 유해위험유형(번호+이름).
+ * 원본 서식(SSI-602-06 양식4-1)이 기본값이고, 번호·이름 모두 직접 고칠 수 있다.
+ * 요인구분 이름이 곧 위험분류이므로, 이름을 바꾸면 입력 화면 드롭다운도 함께 바뀐다.
+ */
+function FactorEditor({ value, onChange }: { value: HazardFactor[]; onChange: (v: HazardFactor[]) => void }) {
+  const patchFactor = (i: number, p: Partial<HazardFactor>) =>
+    onChange(value.map((f, idx) => (idx === i ? { ...f, ...p } : f)));
+
+  return (
+    <div className="space-y-3">
+      {value.map((f, i) => (
+        <div key={i} className="rounded-xl bg-muted/40 p-3">
+          <div className="flex items-center gap-2">
+            <Input
+              className="w-14 text-center"
+              value={f.no}
+              onChange={(e) => patchFactor(i, { no: e.target.value })}
+              aria-label="요인구분 번호"
+            />
+            <Input
+              className="max-w-48"
+              value={f.name}
+              onChange={(e) => patchFactor(i, { name: e.target.value })}
+              aria-label="요인구분 이름 (위험분류)"
+              placeholder="예: 기계적"
+            />
+            <span className="text-xs text-muted-foreground">유형 {f.types.length}개</span>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="ml-auto text-destructive hover:text-destructive"
+              onClick={() => onChange(value.filter((_, idx) => idx !== i))}
+              aria-label={`${f.name} 요인구분 삭제`}
+            >
+              <X className="size-3.5" />
+            </Button>
+          </div>
+
+          <div className="mt-2 space-y-1.5 pl-4">
+            {f.types.map((t, j) => (
+              <div key={j} className="flex items-center gap-2">
+                <Input
+                  className="w-20 text-center"
+                  value={t.code}
+                  onChange={(e) =>
+                    patchFactor(i, { types: f.types.map((x, k) => (k === j ? { ...x, code: e.target.value } : x)) })
+                  }
+                  aria-label="유해위험유형 번호"
+                />
+                <Input
+                  className="max-w-md"
+                  value={t.label}
+                  onChange={(e) =>
+                    patchFactor(i, { types: f.types.map((x, k) => (k === j ? { ...x, label: e.target.value } : x)) })
+                  }
+                  aria-label="유해위험유형 이름"
+                  placeholder="예: 부딪힘"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => patchFactor(i, { types: f.types.filter((_, k) => k !== j) })}
+                  aria-label={`${t.code} 유형 삭제`}
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                // 새 번호는 "요인번호.다음순번"으로 미리 채워 준다
+                patchFactor(i, { types: [...f.types, { code: `${f.no}.${f.types.length + 1}`, label: "" }] })
+              }
+            >
+              <Plus /> 유형 추가
+            </Button>
+          </div>
+        </div>
+      ))}
+
+      <Button
+        variant="outline"
+        onClick={() => onChange([...value, { no: String(value.length + 1), name: "", types: [] }])}
+      >
+        <Plus /> 요인구분 추가
+      </Button>
     </div>
   );
 }
@@ -192,7 +288,8 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle>목록 편집</CardTitle>
           <CardDescription>
-            공정명·위험분류·조치상태는 입력 화면의 드롭다운에 나옵니다. 이미 입력된 값은 목록에서 빼도 남아 있습니다.
+            공정명·조치상태·담당자는 입력 화면의 드롭다운에 나옵니다. 이미 입력된 값은 목록에서 빼도 남아 있습니다.
+            위험분류는 아래 &lsquo;유해위험요인 분류표&rsquo;에서 관리합니다.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -205,14 +302,6 @@ export function SettingsPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label>위험분류</Label>
-            <ListEditor
-              value={settings.hazardClasses}
-              onChange={(v) => void patch({ hazardClasses: v })}
-              placeholder="예: 방사선"
-            />
-          </div>
-          <div className="space-y-2">
             <Label>조치상태</Label>
             <ListEditor value={settings.statuses} onChange={(v) => void patch({ statuses: v })} placeholder="예: 보류" />
           </div>
@@ -220,6 +309,33 @@ export function SettingsPage() {
             <Label>담당자</Label>
             <ListEditor value={settings.owners} onChange={(v) => void patch({ owners: v })} placeholder="예: 김안전" />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* 유해위험요인 분류표 — 위험분류와 위험코드의 정본 */}
+      <Card className="shadow-xs">
+        <CardHeader>
+          <CardTitle>유해위험요인 분류표</CardTitle>
+          <CardDescription>
+            원본 서식(SSI-602-06 양식4-1) 기준입니다. <strong>요인구분 이름이 곧 위험분류</strong>이고, 그 아래 유형
+            번호가 평가표의 <strong>위험코드</strong> 드롭다운에 나옵니다(예: 위험분류 &lsquo;기계적&rsquo; → 1.1~1.6).
+            번호·이름 모두 고칠 수 있습니다. 목록에서 빼도 이미 입력된 값은 남아 있습니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <FactorEditor value={settings.hazardFactors} onChange={(v) => void patch({ hazardFactors: v })} />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            onClick={() => {
+              if (confirm("분류표를 원본 서식 기준으로 되돌릴까요? 직접 고친 번호·이름은 사라집니다.")) {
+                void patch({ hazardFactors: DEFAULT_SETTINGS.hazardFactors });
+              }
+            }}
+          >
+            <RotateCcw /> 원본 서식으로 되돌리기
+          </Button>
         </CardContent>
       </Card>
 
