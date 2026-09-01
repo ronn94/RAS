@@ -317,8 +317,9 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle>유해위험요인 분류표</CardTitle>
           <CardDescription>
-            원본 서식(SSI-602-06 양식4-1) 기준입니다. <strong>요인구분 이름이 곧 위험분류</strong>이고, 그 아래 유형
-            번호가 평가표의 <strong>위험코드</strong> 드롭다운에 나옵니다(예: 위험분류 &lsquo;기계적&rsquo; → 1.1~1.6).
+            원본 서식(SSI-602-06 양식4-1)에 현장 항목(7.3 교통안전)을 더한 것이 기본값입니다.
+            <strong>요인구분 이름이 곧 위험분류</strong>이고, 그 아래 유형 번호가 평가표의{" "}
+            <strong>위험코드</strong> 드롭다운에 나옵니다(예: 위험분류 &lsquo;기계적&rsquo; → 1.1~1.6).
             번호·이름 모두 고칠 수 있습니다. 목록에서 빼도 이미 입력된 값은 남아 있습니다.
           </CardDescription>
         </CardHeader>
@@ -329,12 +330,12 @@ export function SettingsPage() {
             size="sm"
             className="text-muted-foreground"
             onClick={() => {
-              if (confirm("분류표를 원본 서식 기준으로 되돌릴까요? 직접 고친 번호·이름은 사라집니다.")) {
+              if (confirm("분류표를 기본값으로 되돌릴까요? 직접 고친 번호·이름은 사라집니다.")) {
                 void patch({ hazardFactors: DEFAULT_SETTINGS.hazardFactors });
               }
             }}
           >
-            <RotateCcw /> 원본 서식으로 되돌리기
+            <RotateCcw /> 기본 분류표로 되돌리기
           </Button>
         </CardContent>
       </Card>
