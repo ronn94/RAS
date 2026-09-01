@@ -47,6 +47,7 @@ export function HazardClassSelect(props: React.SelectHTMLAttributes<HTMLSelectEl
  */
 export function HazardCodeSelect({
   hazardClass,
+  className,
   ...props
 }: React.SelectHTMLAttributes<HTMLSelectElement> & { hazardClass: string }) {
   const { settings } = useStore();
@@ -54,15 +55,39 @@ export function HazardCodeSelect({
   const types = typesOf(settings, hazardClass);
   // 분류를 바꾸면 코드는 비워지지만, 목록에서 사라진 코드가 남아 있을 수도 있다
   const options = value && !types.some((t) => t.code === value) ? [...types, { code: value, label: "" }] : types;
+  const disabled = props.disabled || !hazardClass;
+
+  /* 드롭다운 목록에는 "1.4 부딪힘"을 띄우고, 칸에는 번호만 보여야 한다.
+     네이티브 select는 닫혀 있을 때 선택된 option의 글자를 그대로 그리므로
+     ① 선택된 글자를 칸 밖으로 밀어내고(text-indent, option은 0으로 되돌린다)
+     ② 그 위에 번호만 적은 칸을 덮어씌운다.
+     색을 투명하게 하는 방법은 쓰지 않는다 — 네이티브 드롭다운 화살표가 글자색을
+     따라가서 같이 사라진다(실제로 겪은 문제).
+     select를 직접 만들지 않고 네이티브를 유지해야 iOS·iPad에서 기본 피커가 뜬다. */
   return (
-    <CellSelect {...props} disabled={props.disabled || !hazardClass}>
-      <option value="">-</option>
-      {options.map((t) => (
-        <option key={t.code} value={t.code}>
-          {t.label ? `${t.code} ${t.label}` : t.code}
-        </option>
-      ))}
-    </CellSelect>
+    <div className="relative">
+      <CellSelect
+        {...props}
+        disabled={disabled}
+        className={cn("indent-[-999px] [&>option]:indent-0", className)}
+      >
+        <option value="">-</option>
+        {options.map((t) => (
+          <option key={t.code} value={t.code}>
+            {t.label ? `${t.code} ${t.label}` : t.code}
+          </option>
+        ))}
+      </CellSelect>
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-y-0 left-0 flex items-center px-2 text-sm tabular-nums",
+          disabled && "opacity-50",
+        )}
+      >
+        {value || "-"}
+      </span>
+    </div>
   );
 }
 
