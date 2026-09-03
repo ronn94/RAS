@@ -11,6 +11,7 @@ export type AppSettings = {
   org: {
     orgName: string; // 기관명
     facility: string; // 기본 대상시설
+    dept: string; // 기본 소속 — 순회점검 참석자 명단에 미리 채운다
     approver: { charge: string; review: string; approve: string }; // 결재자 기본값
   };
   /** 로컬 프로필 — 사이드바 표시·인쇄물 기본값에만 쓰인다 */
@@ -41,6 +42,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   org: {
     orgName: "",
     facility: "",
+    dept: "용인사업소",
     approver: { charge: "", review: "", approve: "" },
   },
   profile: { name: "관리자", role: "안전관리자" },
@@ -134,4 +136,21 @@ export function classOfCode(settings: AppSettings, code: string): string {
 /** 분류표의 모든 유해위험유형을 한 줄로 편다(순회점검처럼 분류 칸이 없는 서식용) */
 export function allTypes(settings: AppSettings) {
   return settings.hazardFactors.flatMap((f) => f.types.map((t) => ({ ...t, className: f.name })));
+}
+
+/**
+ * 순회점검 항목이 아직 "이관됨"인지 — 그때 만든 평가표 행이 살아 있는지로 판단한다.
+ * 상태를 따로 동기화하지 않으므로 평가표에서 행을 지우면 배지가 저절로 풀린다.
+ *
+ * 어느 평가표에 있는지는 보지 않고 **행 id만** 찾는다 — 평가표 상세에서 행을
+ * 다른 평가표로 옮겨도 id는 그대로라, 옮겼다고 배지가 잘못 풀리면 안 되기 때문이다.
+ */
+export function inspectionMoved(
+  assessments: { id: string; rows: { id: string }[] }[],
+  movedTo?: { assessmentId: string; rowId?: string; at: number },
+): boolean {
+  if (!movedTo) return false;
+  // rowId가 없는 옛 기록은 확인할 방법이 없으니 이관된 것으로 본다
+  if (!movedTo.rowId) return assessments.some((a) => a.id === movedTo.assessmentId);
+  return assessments.some((a) => a.rows.some((r) => r.id === movedTo.rowId));
 }

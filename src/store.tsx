@@ -157,7 +157,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   }, []);
 
   const createInspection = React.useCallback(async () => {
-    const v: Inspection = { ...emptyInspection(), facility: settings.org.facility };
+    const v: Inspection = { ...emptyInspection(settings.org.dept), facility: settings.org.facility };
     await saveInspection(v);
     return v;
   }, [saveInspection, settings.org]);

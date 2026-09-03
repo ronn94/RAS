@@ -230,7 +230,9 @@ export function SettingsPage() {
       <Card className="shadow-xs">
         <CardHeader>
           <CardTitle>기본값 · 조직정보</CardTitle>
-          <CardDescription>새 평가표·유해위험정보를 만들 때 자동으로 채워집니다.</CardDescription>
+          <CardDescription>
+            새 평가표·유해위험정보를 만들 때 자동으로 채워집니다. 기본 소속은 순회점검 참석자 명단에 들어갑니다.
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-1.5">
@@ -247,6 +249,14 @@ export function SettingsPage() {
               value={settings.org.facility}
               onChange={(e) => void patch({ org: { ...settings.org, facility: e.target.value } })}
               placeholder="○○공공하수처리시설"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>기본 소속</Label>
+            <Input
+              value={settings.org.dept}
+              onChange={(e) => void patch({ org: { ...settings.org, dept: e.target.value } })}
+              placeholder="○○사업소"
             />
           </div>
         </CardContent>

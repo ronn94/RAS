@@ -19,6 +19,7 @@ import {
   TableWrap,
 } from "@/components/ui";
 import { InspectionDetail } from "@/pages/InspectionDetail";
+import { inspectionMoved } from "@/lib/settings";
 import type { Inspection } from "@/lib/types";
 import { useStore } from "@/store";
 
@@ -29,7 +30,7 @@ export function InspectionsPage({
   openId: string | null;
   onOpen: (id: string | null) => void;
 }) {
-  const { inspections, loading, createInspection, removeInspection, canEdit, canDelete } = useStore();
+  const { assessments, inspections, loading, createInspection, removeInspection, canEdit, canDelete } = useStore();
   const [deleteTarget, setDeleteTarget] = React.useState<Inspection | null>(null);
 
   const current = inspections.find((v) => v.id === openId) ?? null;
@@ -84,7 +85,8 @@ export function InspectionsPage({
                 <TBody>
                   {sorted.map((v) => {
                     const filled = v.items.filter((it) => it.content.trim());
-                    const moved = v.items.filter((it) => it.movedTo).length;
+                    // 평가표에서 행이 지워지면 이관 건수에서도 빠진다
+                    const moved = v.items.filter((it) => inspectionMoved(assessments, it.movedTo)).length;
                     return (
                       <TR key={v.id} className="cursor-pointer" onClick={() => onOpen(v.id)}>
                         <TD className="font-medium">{v.facility || "-"}</TD>

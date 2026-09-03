@@ -277,8 +277,12 @@ export type InspectionItem = {
   content: string; // 발굴 유해·위험 작업 및 요인
   hazardCode: string; // 유해위험 유형 — 분류표의 번호만 저장한다 (예: "1.4")
   photo?: string; // 사진 id (R2)
-  /** 위험성평가표로 옮긴 흔적 — 중복 전송을 막고 화면에 배지로 표시한다 */
-  movedTo?: { assessmentId: string; at: number };
+  /**
+   * 위험성평가표로 옮긴 흔적. rowId는 그때 만든 평가표 행의 id다 —
+   * 그 행이 아직 남아 있는지로 '이관됨' 배지를 판단하므로(inspectionMoved),
+   * 평가표에서 행을 지우면 배지도 자동으로 풀린다.
+   */
+  movedTo?: { assessmentId: string; rowId: string; at: number };
 };
 
 export type InspectionAttendee = {
@@ -302,19 +306,19 @@ export function emptyInspectionItem(): InspectionItem {
   return { id: crypto.randomUUID(), content: "", hazardCode: "" };
 }
 
-export function emptyAttendee(): InspectionAttendee {
-  return { id: crypto.randomUUID(), dept: "", name: "" };
+export function emptyAttendee(dept = ""): InspectionAttendee {
+  return { id: crypto.randomUUID(), dept, name: "" };
 }
 
-export function emptyInspection(): Inspection {
+export function emptyInspection(dept = ""): Inspection {
   return {
     id: crypto.randomUUID(),
     facility: "",
     process: "",
     date: new Date().toISOString().slice(0, 10),
     inspector: "",
-    items: [emptyInspectionItem(), emptyInspectionItem(), emptyInspectionItem()],
-    attendees: [emptyAttendee(), emptyAttendee()],
+    items: [emptyInspectionItem()],
+    attendees: [emptyAttendee(dept)],
     updatedAt: Date.now(),
   };
 }

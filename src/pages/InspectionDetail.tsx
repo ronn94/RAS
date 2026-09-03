@@ -25,7 +25,7 @@ import { CellTextarea, HazardTypeSelect, ProcessSelect } from "@/components/fiel
 import { PhotoSlot } from "@/components/photo";
 import { InspectionSheet } from "@/print/InspectionSheet";
 import { InspectionPhotoSheet, type PhotoLayout } from "@/print/InspectionPhotoSheet";
-import { classOfCode } from "@/lib/settings";
+import { classOfCode, inspectionMoved } from "@/lib/settings";
 import { emptyAttendee, emptyInspectionItem, emptyRow, type Inspection, type RiskItem } from "@/lib/types";
 import { useStore } from "@/store";
 
@@ -64,8 +64,13 @@ export function InspectionDetail({ inspection, onBack }: { inspection: Inspectio
   const patchAttendee = (id: string, p: Partial<Inspection["attendees"][number]>) =>
     setDraft((d) => ({ ...d, attendees: d.attendees.map((x) => (x.id === id ? { ...x, ...p } : x)) }));
 
+  /** 이관 여부는 저장된 표시가 아니라 '만든 평가표 행이 아직 있는지'로 본다 */
+  const isMoved = React.useCallback(
+    (it: Inspection["items"][number]) => inspectionMoved(assessments, it.movedTo),
+    [assessments],
+  );
   /** 아직 안 옮겼고 내용이 있는 항목만 이관 대상이다 */
-  const movable = draft.items.filter((it) => it.content.trim() && !it.movedTo);
+  const movable = draft.items.filter((it) => it.content.trim() && !isMoved(it));
   const toggle = (id: string) =>
     setSelected((prev) => {
       const next = new Set(prev);
@@ -78,18 +83,28 @@ export function InspectionDetail({ inspection, onBack }: { inspection: Inspectio
     const target = assessments.find((a) => a.id === moveTargetId);
     if (!target) return;
     const picked = draft.items.filter((it) => selected.has(it.id));
-    const rows: RiskItem[] = picked.map((it) => ({
-      ...emptyRow(),
-      hazard: it.content,
-      hazardCode: it.hazardCode,
-      // 코드에서 분류를 역산한다 — 순회점검에는 분류 칸이 없다
-      hazardClass: classOfCode(settings, it.hazardCode),
-    }));
-    await saveAssessment({ ...target, rows: [...target.rows, ...rows] });
+    // 어느 순회점검 항목이 어느 평가표 행이 됐는지 짝을 남긴다 —
+    // 그 행이 지워지면 '이관됨' 배지가 풀려야 하기 때문이다
+    const pairs = picked.map((it) => {
+      const row: RiskItem = {
+        ...emptyRow(),
+        hazard: it.content,
+        hazardCode: it.hazardCode,
+        // 코드에서 분류를 역산한다 — 순회점검에는 분류 칸이 없다
+        hazardClass: classOfCode(settings, it.hazardCode),
+        note: "순회점검",
+      };
+      return { itemId: it.id, row };
+    });
+    await saveAssessment({ ...target, rows: [...target.rows, ...pairs.map((p) => p.row)] });
     const at = Date.now();
+    const rowIdOf = new Map(pairs.map((p) => [p.itemId, p.row.id]));
     setDraft((d) => ({
       ...d,
-      items: d.items.map((x) => (selected.has(x.id) ? { ...x, movedTo: { assessmentId: target.id, at } } : x)),
+      items: d.items.map((x) => {
+        const rowId = rowIdOf.get(x.id);
+        return rowId ? { ...x, movedTo: { assessmentId: target.id, rowId, at } } : x;
+      }),
     }));
     setSelected(new Set());
     setMoveOpen(false);
@@ -190,7 +205,7 @@ export function InspectionDetail({ inspection, onBack }: { inspection: Inspectio
                     <TD className="text-center">
                       <Checkbox
                         aria-label={`${i + 1}번 선택`}
-                        disabled={!canEdit || !it.content.trim() || !!it.movedTo}
+                        disabled={!canEdit || !it.content.trim() || isMoved(it)}
                         checked={selected.has(it.id)}
                         onChange={() => toggle(it.id)}
                       />
@@ -219,7 +234,7 @@ export function InspectionDetail({ inspection, onBack }: { inspection: Inspectio
                       />
                     </TD>
                     <TD className="text-center">
-                      {it.movedTo ? (
+                      {isMoved(it) ? (
                         <Badge variant="outline" className="font-normal">
                           이관됨
                         </Badge>
@@ -327,7 +342,9 @@ export function InspectionDetail({ inspection, onBack }: { inspection: Inspectio
               variant="ghost"
               size="icon"
               disabled={!canEdit}
-              onClick={() => setDraft((d) => ({ ...d, attendees: [...d.attendees, emptyAttendee()] }))}
+              onClick={() =>
+                setDraft((d) => ({ ...d, attendees: [...d.attendees, emptyAttendee(settings.org.dept)] }))
+              }
               aria-label="참석자 추가"
             >
               <Plus />
