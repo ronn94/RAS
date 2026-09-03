@@ -327,6 +327,14 @@ export function emptyInspection(dept = ""): Inspection {
    근로자가 현장에서 발굴한 위험요인을 직접 제출하는 서식.
    필드는 위험성평가표 행(RiskItem)과 거의 1:1이라 그대로 이관할 수 있다. */
 
+/**
+ * 설문지 검토 상태 — 낸 의견이 어떻게 처리됐는지 알려준다.
+ * 의견청취는 피드백이 돌아가야 참여가 유지되므로 상태를 남긴다.
+ * '반영'은 평가표로 이관할 때 자동으로 붙고, '반려'는 사유를 함께 적는다.
+ */
+export const REVIEW_STATUSES = ["접수", "검토중", "반영", "반려"] as const;
+export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
+
 export type Survey = {
   id: string;
   author: string; // 작성자 (직원 명단에서 고름)
@@ -343,8 +351,23 @@ export type Survey = {
   photos: string[]; // 사진 id (최대 SURVEY_MAX_PHOTOS장)
   /** 위험성평가표로 옮긴 흔적 — 순회점검과 같은 방식으로 rowId까지 남긴다 */
   movedTo?: { assessmentId: string; rowId: string; at: number };
+  /**
+   * 잠금 — 게스트가 고치거나 지우지 못하게 한다(관리자는 계속 가능).
+   * 평가표로 이관하면 자동으로 잠긴다: 이미 반영된 건의 원본이 바뀌면 근거가 어긋난다.
+   * 화면에서 버튼을 감추는 것만으로는 못 막으므로 워커가 매 요청마다 다시 검사한다.
+   */
+  locked?: boolean;
+  /** 검토 상태 — 옛 기록에는 없을 수 있어 없으면 '접수'로 본다(reviewOf) */
+  review?: ReviewStatus;
+  /** 반려 사유 — '반려'일 때만 쓴다 */
+  reviewNote?: string;
   updatedAt: number;
 };
+
+/** 저장된 값이 없으면 '접수'로 본다 */
+export function reviewOf(v: { review?: ReviewStatus }): ReviewStatus {
+  return v.review ?? "접수";
+}
 
 /** 설문지에 붙일 수 있는 사진 장수 */
 export const SURVEY_MAX_PHOTOS = 2;
@@ -364,6 +387,7 @@ export function emptySurvey(): Survey {
     measure: "",
     dueDate: "",
     photos: [],
+    review: "접수",
     updatedAt: Date.now(),
   };
 }

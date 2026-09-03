@@ -10,7 +10,7 @@
  * 세션(sub: "guest") 둘 중 하나다. 게스트는 설정(settings.permissions)에서
  * 켠 항목만 쓸 수 있고, 관리 기능(설정 변경·백업·초기화)은 항상 막힌다.
  */
-import { Hono, type MiddlewareHandler } from "hono";
+import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
 import { login, loginGuest, logout, readSession } from "./auth";
 import { DEFAULT_SETTINGS } from "../src/lib/settings";
@@ -103,8 +103,21 @@ function collection(
     return c.json(results.map((row) => JSON.parse(row.data)));
   });
 
+  /**
+   * 잠긴 문서는 게스트가 손대지 못한다. 화면에서 버튼을 감추는 건 편의일 뿐이고
+   * 여기가 진짜 방어선이다 — 저장된 문서를 직접 읽어 판단하므로 본문에 무엇을
+   * 보내든(예: locked를 false로 위조) 통하지 않는다.
+   */
+  const lockedForGuest = async (c: Context<{ Bindings: Bindings; Variables: Variables }>, id: string) => {
+    if (c.get("role") !== "guest") return false;
+    const row = await c.env.ras_db.prepare(`SELECT data FROM ${table} WHERE id = ?1`).bind(id).first<{ data: string }>();
+    if (!row) return false; // 아직 없는 문서 = 새로 만드는 중
+    return (JSON.parse(row.data) as { locked?: boolean }).locked === true;
+  };
+
   r.put("/:id", requirePermission(...perms.write), async (c) => {
     const id = c.req.param("id");
+    if (await lockedForGuest(c, id)) return c.json({ error: "잠긴 문서는 수정할 수 없습니다." }, 403);
     const body = await c.req.json<Record<string, unknown>>();
     const updatedAt = Date.now();
     const doc = { ...body, id, updatedAt };
@@ -120,6 +133,7 @@ function collection(
 
   r.delete("/:id", requirePermission(...perms.remove), async (c) => {
     const id = c.req.param("id");
+    if (await lockedForGuest(c, id)) return c.json({ error: "잠긴 문서는 삭제할 수 없습니다." }, 403);
     await c.env.ras_db.prepare(`DELETE FROM ${table} WHERE id = ?1`).bind(id).run();
     return c.json({ ok: true });
   });
