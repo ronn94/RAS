@@ -79,7 +79,7 @@ app.get("/api/identity", async (c) => {
 });
 
 /* ── 공용: JSON 문서 컬렉션(assessments / hazard_infos) ──────── */
-function collection(table: "assessments" | "hazard_infos") {
+function collection(table: "assessments" | "hazard_infos" | "inspections") {
   const r = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
   r.get("/", async (c) => {
@@ -115,6 +115,7 @@ function collection(table: "assessments" | "hazard_infos") {
 
 app.route("/api/assessments", collection("assessments"));
 app.route("/api/hazardinfos", collection("hazard_infos"));
+app.route("/api/inspections", collection("inspections"));
 
 /* ── 설정 (단일 레코드) ────────────────────────────────────── */
 app.get("/api/settings", async (c) => {
@@ -209,9 +210,10 @@ function toBase64(buf: ArrayBuffer): string {
 
 /* ── 전체 백업 · 복원 ───────────────────────────────────────── */
 app.get("/api/backup", adminOnly, async (c) => {
-  const [assessments, hazardInfos, settingsRow] = await Promise.all([
+  const [assessments, hazardInfos, inspections, settingsRow] = await Promise.all([
     c.env.ras_db.prepare("SELECT data FROM assessments").all<{ data: string }>(),
     c.env.ras_db.prepare("SELECT data FROM hazard_infos").all<{ data: string }>(),
+    c.env.ras_db.prepare("SELECT data FROM inspections").all<{ data: string }>(),
     c.env.ras_db.prepare("SELECT data FROM settings WHERE id = 'app'").first<{ data: string }>(),
   ]);
 
@@ -222,6 +224,10 @@ app.get("/api/backup", adminOnly, async (c) => {
       if (r.beforePhoto) usedPhotoIds.add(r.beforePhoto);
       if (r.afterPhoto) usedPhotoIds.add(r.afterPhoto);
     }
+  }
+  for (const row of inspections.results) {
+    const i = JSON.parse(row.data) as { items?: { photo?: string }[] };
+    for (const it of i.items ?? []) if (it.photo) usedPhotoIds.add(it.photo);
   }
 
   const photos: Record<string, string> = {};
@@ -236,6 +242,7 @@ app.get("/api/backup", adminOnly, async (c) => {
     version: 3,
     assessments: assessments.results.map((r) => JSON.parse(r.data)),
     hazardInfos: hazardInfos.results.map((r) => JSON.parse(r.data)),
+    inspections: inspections.results.map((r) => JSON.parse(r.data)),
     settings: settingsRow ? JSON.parse(settingsRow.data) : undefined,
     photos,
   });
@@ -245,6 +252,7 @@ app.post("/api/backup/restore", adminOnly, async (c) => {
   const data = await c.req.json<{
     assessments?: { id: string; facility?: string; process?: string }[];
     hazardInfos?: { id: string; facility?: string; process?: string }[];
+    inspections?: { id: string; facility?: string; process?: string }[];
     settings?: Record<string, unknown>;
     photos?: Record<string, string>;
   }>();
@@ -268,6 +276,16 @@ app.post("/api/backup/restore", adminOnly, async (c) => {
          ON CONFLICT(id) DO UPDATE SET data = ?2, facility = ?3, process = ?4, updated_at = ?5`,
       )
       .bind(h.id, JSON.stringify(h), h.facility ?? "", h.process ?? "", now)
+      .run();
+  }
+
+  for (const i of data.inspections ?? []) {
+    await c.env.ras_db
+      .prepare(
+        `INSERT INTO inspections (id, data, facility, process, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(id) DO UPDATE SET data = ?2, facility = ?3, process = ?4, updated_at = ?5`,
+      )
+      .bind(i.id, JSON.stringify(i), i.facility ?? "", i.process ?? "", now)
       .run();
   }
 
@@ -307,6 +325,7 @@ app.post("/api/wipe", adminOnly, async (c) => {
   await c.env.ras_db.batch([
     c.env.ras_db.prepare("DELETE FROM assessments"),
     c.env.ras_db.prepare("DELETE FROM hazard_infos"),
+    c.env.ras_db.prepare("DELETE FROM inspections"),
     c.env.ras_db.prepare("DELETE FROM photo_meta"),
   ]);
   return c.json({ ok: true });

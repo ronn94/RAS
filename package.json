@@ -10,8 +10,8 @@
     "preview": "vite preview",
     "dev:api": "wrangler dev --port 8788",
     "deploy": "npm run build && wrangler deploy",
-    "db:migrate": "wrangler d1 execute ras-db --remote --file=migrations/0001_init.sql",
-    "db:migrate:local": "wrangler d1 execute ras-db --local --file=migrations/0001_init.sql"
+    "db:migrate": "wrangler d1 execute ras-db --remote --file=migrations/0001_init.sql && wrangler d1 execute ras-db --remote --file=migrations/0002_inspections.sql",
+    "db:migrate:local": "wrangler d1 execute ras-db --local --file=migrations/0001_init.sql && wrangler d1 execute ras-db --local --file=migrations/0002_inspections.sql"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

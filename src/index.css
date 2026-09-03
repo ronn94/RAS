@@ -641,3 +641,98 @@
   height: auto;
   font-size: 8pt;
 }
+
+/* ── 순회점검 조사표 (A4 세로 · 원본 SSI-602-06 양식4) ────────── */
+.sheet-inspection .print-page {
+  box-sizing: border-box;
+  width: 180mm;
+}
+.sheet-inspection .sheet-title {
+  margin-bottom: 4mm;
+  text-align: center;
+  font-size: 15pt;
+  font-weight: 700;
+}
+.sheet-inspection table {
+  margin-bottom: 3mm;
+}
+.sheet-inspection :is(th, td) {
+  padding: 1mm 1.5mm;
+}
+.sheet-inspection .method td {
+  height: 9mm;
+}
+.sheet-inspection .meta td {
+  height: 8mm;
+}
+/* 발굴 요인 — 한 줄로 안 끝나는 내용이 있어 높이를 넉넉히 잡는다 */
+.sheet-inspection .items td {
+  height: 9mm;
+  vertical-align: top;
+}
+.sheet-inspection .items .wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+/* 참석자 — 서명은 손으로 하므로 칸을 비워 둔다 */
+.sheet-inspection .attendees {
+  table-layout: fixed;
+}
+.sheet-inspection .attendees td {
+  height: 9mm;
+}
+
+/* ── 순회점검 사진대지 (원본 양식4-2 1X2 / 양식4-3 2X2) ────────── */
+.sheet-inspection-photo .print-page {
+  box-sizing: border-box;
+  width: 180mm;
+}
+.sheet-inspection-photo .sheet-title {
+  margin-bottom: 4mm;
+  text-align: center;
+  font-size: 15pt;
+  font-weight: 700;
+}
+.sheet-inspection-photo .grid {
+  display: grid;
+  gap: 5mm;
+}
+.sheet-inspection-photo.layout-1x2 .grid {
+  grid-template-columns: 1fr;
+  --photo-h: 105mm;
+}
+.sheet-inspection-photo.layout-2x2 .grid {
+  grid-template-columns: 1fr 1fr;
+  --photo-h: 68mm;
+}
+.sheet-inspection-photo .cell {
+  border: 0.75pt solid #000;
+}
+.sheet-inspection-photo .cap {
+  border-bottom: 0.75pt solid #000;
+  padding: 1.2mm 1.5mm;
+  font-weight: 700;
+}
+/* 사진은 비율과 무관하게 같은 크기로 — 가장자리를 잘라 채운다(사진대지와 같은 규칙) */
+.sheet-inspection-photo .photo {
+  height: var(--photo-h);
+}
+.sheet-inspection-photo .photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.sheet-inspection-photo .photo .empty {
+  display: grid;
+  place-content: center;
+  height: 100%;
+  color: #666;
+}
+.sheet-inspection-photo .memo {
+  border-top: 0.75pt solid #000;
+  padding: 1.2mm 1.5mm;
+  min-height: 10mm;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

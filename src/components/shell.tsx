@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  ClipboardCheck,
   ClipboardList,
   DatabaseBackup,
   LayoutDashboard,
@@ -14,7 +15,14 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui";
 
-export type ViewKey = "dashboard" | "assessments" | "highrisk" | "hazardinfo" | "settings" | "backup";
+export type ViewKey =
+  | "dashboard"
+  | "assessments"
+  | "highrisk"
+  | "hazardinfo"
+  | "inspections"
+  | "settings"
+  | "backup";
 
 type NavItem = { key: ViewKey; title: string; icon: React.ReactNode };
 
@@ -30,7 +38,10 @@ const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
   },
   {
     label: "안전정보",
-    items: [{ key: "hazardinfo", title: "유해위험정보 목록", icon: <ClipboardList /> }],
+    items: [
+      { key: "hazardinfo", title: "유해위험정보 목록", icon: <ClipboardList /> },
+      { key: "inspections", title: "순회점검 목록", icon: <ClipboardCheck /> },
+    ],
   },
 ];
 

@@ -269,3 +269,52 @@ export function emptyHazardInfo(): HazardInfo {
     updatedAt: Date.now(),
   };
 }
+
+/* ── 순회점검 조사표 (원본 서식: SSI-602-06 양식4) ──────────── */
+
+export type InspectionItem = {
+  id: string;
+  content: string; // 발굴 유해·위험 작업 및 요인
+  hazardCode: string; // 유해위험 유형 — 분류표의 번호만 저장한다 (예: "1.4")
+  photo?: string; // 사진 id (R2)
+  /** 위험성평가표로 옮긴 흔적 — 중복 전송을 막고 화면에 배지로 표시한다 */
+  movedTo?: { assessmentId: string; at: number };
+};
+
+export type InspectionAttendee = {
+  id: string;
+  dept: string; // 소속
+  name: string; // 성명 (서명은 인쇄 후 수기)
+};
+
+export type Inspection = {
+  id: string;
+  facility: string; // 시설명
+  process: string; // 공정명
+  date: string; // 점검일자 (YYYY-MM-DD)
+  inspector: string; // 점검자
+  items: InspectionItem[];
+  attendees: InspectionAttendee[];
+  updatedAt: number;
+};
+
+export function emptyInspectionItem(): InspectionItem {
+  return { id: crypto.randomUUID(), content: "", hazardCode: "" };
+}
+
+export function emptyAttendee(): InspectionAttendee {
+  return { id: crypto.randomUUID(), dept: "", name: "" };
+}
+
+export function emptyInspection(): Inspection {
+  return {
+    id: crypto.randomUUID(),
+    facility: "",
+    process: "",
+    date: new Date().toISOString().slice(0, 10),
+    inspector: "",
+    items: [emptyInspectionItem(), emptyInspectionItem(), emptyInspectionItem()],
+    attendees: [emptyAttendee(), emptyAttendee()],
+    updatedAt: Date.now(),
+  };
+}

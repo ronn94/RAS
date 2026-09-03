@@ -1,7 +1,15 @@
 import * as React from "react";
 import * as db from "@/lib/db";
 import { reassignCodes, setRiskThreshold } from "@/lib/risk";
-import { emptyAssessment, emptyHazardInfo, type Assessment, type HazardInfo, type RiskItem } from "@/lib/types";
+import {
+  emptyAssessment,
+  emptyHazardInfo,
+  emptyInspection,
+  type Assessment,
+  type HazardInfo,
+  type Inspection,
+  type RiskItem,
+} from "@/lib/types";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
 import type { Identity } from "@/lib/auth";
 
@@ -29,6 +37,10 @@ type Ctx = {
   createHazardInfo: () => Promise<HazardInfo>;
   saveHazardInfo: (h: HazardInfo) => Promise<void>;
   removeHazardInfo: (id: string) => Promise<void>;
+  inspections: Inspection[];
+  createInspection: () => Promise<Inspection>;
+  saveInspection: (v: Inspection) => Promise<void>;
+  removeInspection: (id: string) => Promise<void>;
 };
 
 const StoreContext = React.createContext<Ctx | null>(null);
@@ -36,6 +48,7 @@ const StoreContext = React.createContext<Ctx | null>(null);
 export function StoreProvider({ identity, children }: { identity: Identity; children: React.ReactNode }) {
   const [assessments, setAssessments] = React.useState<Assessment[]>([]);
   const [hazardInfos, setHazardInfos] = React.useState<HazardInfo[]>([]);
+  const [inspections, setInspections] = React.useState<Inspection[]>([]);
   const [settings, setSettings] = React.useState<AppSettings>(DEFAULT_SETTINGS);
   const [lastBackup, setLastBackup] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -46,6 +59,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
     try {
       setAssessments(await db.listAssessments());
       setHazardInfos(await db.listHazardInfos());
+      setInspections(await db.listInspections());
       const s = await db.loadSettings();
       setSettings(s);
       setRiskThreshold(s.risk.threshold);
@@ -132,6 +146,27 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
     setHazardInfos((prev) => prev.filter((x) => x.id !== id));
   }, []);
 
+  const saveInspection = React.useCallback(async (v: Inspection) => {
+    await db.putInspection(v);
+    setInspections((prev) => {
+      const next = prev.some((x) => x.id === v.id)
+        ? prev.map((x) => (x.id === v.id ? { ...v, updatedAt: Date.now() } : x))
+        : [{ ...v, updatedAt: Date.now() }, ...prev];
+      return [...next].sort((x, y) => y.updatedAt - x.updatedAt);
+    });
+  }, []);
+
+  const createInspection = React.useCallback(async () => {
+    const v: Inspection = { ...emptyInspection(), facility: settings.org.facility };
+    await saveInspection(v);
+    return v;
+  }, [saveInspection, settings.org]);
+
+  const removeInspection = React.useCallback(async (id: string) => {
+    await db.deleteInspection(id);
+    setInspections((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
   const updateSettings = React.useCallback(
     async (patch: Partial<AppSettings>) => {
       const next = { ...settings, ...patch, updatedAt: Date.now() };
@@ -172,6 +207,10 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       createHazardInfo,
       saveHazardInfo,
       removeHazardInfo,
+      inspections,
+      createInspection,
+      saveInspection,
+      removeInspection,
       settings,
       updateSettings,
       lastBackup,
@@ -195,6 +234,10 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       createHazardInfo,
       saveHazardInfo,
       removeHazardInfo,
+      inspections,
+      createInspection,
+      saveInspection,
+      removeInspection,
       settings,
       updateSettings,
       lastBackup,

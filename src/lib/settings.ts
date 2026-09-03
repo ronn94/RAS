@@ -124,3 +124,14 @@ export function codeLabel(settings: AppSettings, code: string): string {
   }
   return code;
 }
+
+/** 위험코드가 속한 위험분류 이름. 못 찾으면 빈 문자열 */
+export function classOfCode(settings: AppSettings, code: string): string {
+  if (!code) return "";
+  return settings.hazardFactors.find((f) => f.types.some((t) => t.code === code))?.name ?? "";
+}
+
+/** 분류표의 모든 유해위험유형을 한 줄로 편다(순회점검처럼 분류 칸이 없는 서식용) */
+export function allTypes(settings: AppSettings) {
+  return settings.hazardFactors.flatMap((f) => f.types.map((t) => ({ ...t, className: f.name })));
+}

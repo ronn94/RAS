@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
-import { classNames, typesOf } from "@/lib/settings";
+import { allTypes, classNames, typesOf } from "@/lib/settings";
 
 /** 표 안에서 쓰는 인라인 입력 — 평소엔 선이 없고, 포커스 시에만 채워진 필드가 된다 */
 export const cellBase =
@@ -83,6 +83,42 @@ export function HazardCodeSelect({
         className={cn(
           "pointer-events-none absolute inset-y-0 left-0 flex items-center px-2 text-sm tabular-nums",
           disabled && "opacity-50",
+        )}
+      >
+        {value || "-"}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * 유해위험 유형 — 분류표 전체(1.1~7.3)를 한 드롭다운에 편다.
+ * 순회점검 조사표에는 위험분류 열이 없어서 코드만 바로 고른다.
+ * 표시 규칙은 HazardCodeSelect와 같다 — 목록은 "1.4 부딪힘", 칸에는 "1.4".
+ */
+export function HazardTypeSelect({
+  className,
+  ...props
+}: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  const { settings } = useStore();
+  const value = String(props.value ?? "");
+  const types = allTypes(settings);
+  const options = value && !types.some((t) => t.code === value) ? [...types, { code: value, label: "", className: "" }] : types;
+  return (
+    <div className="relative">
+      <CellSelect {...props} className={cn("indent-[-999px] [&>option]:indent-0", className)}>
+        <option value="">-</option>
+        {options.map((t) => (
+          <option key={t.code} value={t.code}>
+            {t.label ? `${t.code} ${t.label}` : t.code}
+          </option>
+        ))}
+      </CellSelect>
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-y-0 left-0 flex items-center px-2 text-sm tabular-nums",
+          props.disabled && "opacity-50",
         )}
       >
         {value || "-"}

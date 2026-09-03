@@ -7,7 +7,7 @@
  * store.tsx 쪽 변경을 최소화했다. 사진만 예외 — 서버가 id를 발급하므로
  * putPhoto(id, blob) 대신 uploadPhoto(blob) → id 형태다.
  */
-import type { Assessment, HazardInfo } from "./types";
+import type { Assessment, HazardInfo, Inspection } from "./types";
 import { withDefaults, type AppSettings } from "./settings";
 
 /** 세션이 끊겼을 때(401) store.tsx가 로그인 화면으로 되돌릴 수 있도록 알린다.
@@ -46,6 +46,12 @@ export const listHazardInfos = () => api<HazardInfo[]>("/hazardinfos");
 export const putHazardInfo = (h: HazardInfo) =>
   api<HazardInfo>(`/hazardinfos/${h.id}`, { method: "PUT", body: JSON.stringify(h) });
 export const deleteHazardInfo = (id: string) => api(`/hazardinfos/${id}`, { method: "DELETE" });
+
+/* ── 순회점검 조사표 ────────────────────────────────────── */
+export const listInspections = () => api<Inspection[]>("/inspections");
+export const putInspection = (v: Inspection) =>
+  api<Inspection>(`/inspections/${v.id}`, { method: "PUT", body: JSON.stringify(v) });
+export const deleteInspection = (id: string) => api(`/inspections/${id}`, { method: "DELETE" });
 
 /* ── 설정 ───────────────────────────────────────────────── */
 export const loadSettings = () =>
@@ -103,13 +109,17 @@ export async function storageUsage() {
 
 /* ── 고아 사진 정리 ─────────────────────────────────────── */
 export async function cleanupOrphanPhotos(): Promise<number> {
-  const assessments = await listAssessments();
+  const [assessments, inspections] = await Promise.all([listAssessments(), listInspections()]);
   const used: string[] = [];
   for (const a of assessments) {
     for (const r of a.rows) {
       if (r.beforePhoto) used.push(r.beforePhoto);
       if (r.afterPhoto) used.push(r.afterPhoto);
     }
+  }
+  // 순회점검 사진도 반드시 세야 한다 — 빠뜨리면 정리 때 통째로 지워진다
+  for (const i of inspections) {
+    for (const it of i.items) if (it.photo) used.push(it.photo);
   }
   const { removed } = await api<{ removed: number }>("/photos/cleanup", {
     method: "POST",
