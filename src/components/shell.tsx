@@ -34,15 +34,15 @@ const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
   {
     label: "위험성평가",
     items: [
-      { key: "assessments", title: "위험성평가 목록", icon: <ListChecks /> },
-      { key: "highrisk", title: "고위험군 목록", icon: <ShieldAlert /> },
+      { key: "assessments", title: "위험성평가", icon: <ListChecks /> },
+      { key: "highrisk", title: "고위험군", icon: <ShieldAlert /> },
     ],
   },
   {
     label: "안전정보",
     items: [
-      { key: "hazardinfo", title: "유해위험정보 목록", icon: <ClipboardList /> },
-      { key: "inspections", title: "순회점검 목록", icon: <ClipboardCheck /> },
+      { key: "hazardinfo", title: "유해위험정보", icon: <ClipboardList /> },
+      { key: "inspections", title: "순회점검", icon: <ClipboardCheck /> },
     ],
   },
   {

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Plus, RotateCcw, X } from "lucide-react";
+import { Plus, RotateCcw, Save, X } from "lucide-react";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Input, Label } from "@/components/ui";
 import { DEFAULT_SETTINGS, type AppSettings, type ScaleLabel } from "@/lib/settings";
 import type { HazardFactor } from "@/lib/types";
@@ -181,46 +181,107 @@ function FactorEditor({ value, onChange }: { value: HazardFactor[]; onChange: (v
   );
 }
 
+/** 저장 버튼이 붙는 섹션과 그 섹션이 들고 있는 설정 키 */
+type SectionKey = "profile" | "org" | "hazardFactors" | "risk";
+
 export function SettingsPage() {
   const { settings, updateSettings } = useStore();
-  const [saved, setSaved] = React.useState(false);
+  const [saved, setSaved] = React.useState<string | null>(null);
+  /**
+   * 글자를 치는 칸은 화면 안에서만 고치고(draft) '저장'을 눌러야 서버로 보낸다 —
+   * 한 자마다 저장하면 타이핑이 끊긴다(실제로 겪은 문제).
+   * 체크박스·목록 추가삭제처럼 한 번에 끝나는 조작은 지금처럼 바로 저장한다.
+   */
+  const [draft, setDraft] = React.useState<AppSettings>(settings);
 
-  const patch = async (p: Partial<AppSettings>) => {
-    await updateSettings(p);
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 1500);
+  // 다른 기기에서 바뀌었거나 즉시저장이 끝나면 아직 안 고친 부분만 따라간다
+  React.useEffect(() => {
+    setDraft((d) => {
+      const next = { ...settings };
+      for (const k of ["profile", "org", "hazardFactors", "risk"] as SectionKey[]) {
+        if (JSON.stringify(d[k]) !== JSON.stringify(settings[k])) (next as Record<string, unknown>)[k] = d[k];
+      }
+      return next;
+    });
+  }, [settings]);
+
+  const flash = (label: string) => {
+    setSaved(label);
+    window.setTimeout(() => setSaved(null), 1500);
   };
+
+  /** 체크박스·목록처럼 한 번에 끝나는 조작 — 바로 저장한다 */
+  const patch = async (p: Partial<AppSettings>) => {
+    setDraft((d) => ({ ...d, ...p }));
+    await updateSettings(p);
+    flash("저장됨");
+  };
+
+  /** 글자 입력 — 화면 안에서만 고친다 */
+  const edit = (p: Partial<AppSettings>) => setDraft((d) => ({ ...d, ...p }));
+
+  const dirty = (k: SectionKey) => JSON.stringify(draft[k]) !== JSON.stringify(settings[k]);
+  const anyDirty = (["profile", "org", "hazardFactors", "risk"] as SectionKey[]).some(dirty);
+
+  const save = async (k: SectionKey, label: string) => {
+    try {
+      await updateSettings({ [k]: draft[k] } as Partial<AppSettings>);
+      flash(`${label} 저장됨`);
+    } catch (e) {
+      // 실패해도 draft는 그대로 두어 입력한 내용이 날아가지 않는다
+      alert(`저장하지 못했습니다: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  /** 저장하지 않은 변경이 있으면 화면을 떠날 때 알려 준다 */
+  React.useEffect(() => {
+    if (!anyDirty) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [anyDirty]);
+
+  /** 카드 머리에 붙는 저장 버튼 — 고친 게 있을 때만 켜진다 */
+  const SaveButton = ({ section, label }: { section: SectionKey; label: string }) => (
+    <Button size="sm" variant={dirty(section) ? "default" : "outline"} disabled={!dirty(section)} onClick={() => void save(section, label)}>
+      <Save /> 저장
+    </Button>
+  );
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="mt-1 text-sm text-muted-foreground">
-          기관 기본값·목록·위험성 기준을 여기서 바꾸면 앱 전체에 바로 반영됩니다.
+          기관 기본값·목록·위험성 기준을 여기서 바꿉니다. 글자를 고친 항목은 각 카드의{" "}
+          <strong>저장</strong>을 눌러야 반영됩니다.
         </p>
-        {saved && <span className="text-sm text-muted-foreground">저장됨</span>}
+        {saved && <span className="text-sm text-muted-foreground">{saved}</span>}
       </div>
 
       {/* 계정 */}
       <Card className="shadow-xs">
-        <CardHeader>
+        <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+          <div className="space-y-1.5">
           <CardTitle>계정</CardTitle>
           <CardDescription>
             아이디·비밀번호로 로그인되어 있습니다. 아래 이름·직책은 사이드바 표시와 인쇄물 기본값에만 쓰입니다.
           </CardDescription>
+          </div>
+          <SaveButton section="profile" label="계정" />
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1.5">
             <Label>이름</Label>
             <Input
-              value={settings.profile.name}
-              onChange={(e) => void patch({ profile: { ...settings.profile, name: e.target.value } })}
+              value={draft.profile.name}
+              onChange={(e) => edit({ profile: { ...draft.profile, name: e.target.value } })}
             />
           </div>
           <div className="space-y-1.5">
             <Label>직책</Label>
             <Input
-              value={settings.profile.role}
-              onChange={(e) => void patch({ profile: { ...settings.profile, role: e.target.value } })}
+              value={draft.profile.role}
+              onChange={(e) => edit({ profile: { ...draft.profile, role: e.target.value } })}
             />
           </div>
         </CardContent>
@@ -228,34 +289,37 @@ export function SettingsPage() {
 
       {/* 기본값 · 조직정보 */}
       <Card className="shadow-xs">
-        <CardHeader>
+        <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+          <div className="space-y-1.5">
           <CardTitle>기본값 · 조직정보</CardTitle>
           <CardDescription>
             새 평가표·유해위험정보를 만들 때 자동으로 채워집니다. 기본 소속은 순회점검 참석자 명단에 들어갑니다.
           </CardDescription>
+          </div>
+          <SaveButton section="org" label="기본값" />
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-1.5">
             <Label>기관명</Label>
             <Input
-              value={settings.org.orgName}
-              onChange={(e) => void patch({ org: { ...settings.org, orgName: e.target.value } })}
+              value={draft.org.orgName}
+              onChange={(e) => edit({ org: { ...draft.org, orgName: e.target.value } })}
               placeholder="○○시 상하수도사업소"
             />
           </div>
           <div className="space-y-1.5">
             <Label>기본 대상시설</Label>
             <Input
-              value={settings.org.facility}
-              onChange={(e) => void patch({ org: { ...settings.org, facility: e.target.value } })}
+              value={draft.org.facility}
+              onChange={(e) => edit({ org: { ...draft.org, facility: e.target.value } })}
               placeholder="○○공공하수처리시설"
             />
           </div>
           <div className="space-y-1.5">
             <Label>기본 소속</Label>
             <Input
-              value={settings.org.dept}
-              onChange={(e) => void patch({ org: { ...settings.org, dept: e.target.value } })}
+              value={draft.org.dept}
+              onChange={(e) => edit({ org: { ...draft.org, dept: e.target.value } })}
               placeholder="○○사업소"
             />
           </div>
@@ -325,7 +389,8 @@ export function SettingsPage() {
 
       {/* 유해위험요인 분류표 — 위험분류와 위험코드의 정본 */}
       <Card className="shadow-xs">
-        <CardHeader>
+        <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+          <div className="space-y-1.5">
           <CardTitle>유해위험요인 분류표</CardTitle>
           <CardDescription>
             원본 서식(SSI-602-06 양식4-1)에 현장 항목(7.3 교통안전)을 더한 것이 기본값입니다.
@@ -333,16 +398,18 @@ export function SettingsPage() {
             <strong>위험코드</strong> 드롭다운에 나옵니다(예: 위험분류 &lsquo;기계적&rsquo; → 1.1~1.6).
             번호·이름 모두 고칠 수 있습니다. 목록에서 빼도 이미 입력된 값은 남아 있습니다.
           </CardDescription>
+          </div>
+          <SaveButton section="hazardFactors" label="분류표" />
         </CardHeader>
         <CardContent className="space-y-3">
-          <FactorEditor value={settings.hazardFactors} onChange={(v) => void patch({ hazardFactors: v })} />
+          <FactorEditor value={draft.hazardFactors} onChange={(v) => edit({ hazardFactors: v })} />
           <Button
             variant="ghost"
             size="sm"
             className="text-muted-foreground"
             onClick={() => {
               if (confirm("분류표를 기본값으로 되돌릴까요? 직접 고친 번호·이름은 사라집니다.")) {
-                void patch({ hazardFactors: DEFAULT_SETTINGS.hazardFactors });
+                edit({ hazardFactors: DEFAULT_SETTINGS.hazardFactors });
               }
             }}
           >
@@ -368,11 +435,14 @@ export function SettingsPage() {
 
       {/* 위험성 기준 */}
       <Card className="shadow-xs">
-        <CardHeader>
+        <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+          <div className="space-y-1.5">
           <CardTitle>위험성 기준</CardTitle>
           <CardDescription>
             고위험군 기준점을 바꾸면 고위험군 목록과 평가코드 자동 부여가 즉시 다시 계산됩니다.
           </CardDescription>
+          </div>
+          <SaveButton section="risk" label="위험성 기준" />
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-1.5">
@@ -382,10 +452,10 @@ export function SettingsPage() {
               min={1}
               max={25}
               className="max-w-28"
-              value={settings.risk.threshold}
+              value={draft.risk.threshold}
               onChange={(e) =>
-                void patch({
-                  risk: { ...settings.risk, threshold: Math.max(1, Number(e.target.value) || DEFAULT_SETTINGS.risk.threshold) },
+                edit({
+                  risk: { ...draft.risk, threshold: Math.max(1, Number(e.target.value) || DEFAULT_SETTINGS.risk.threshold) },
                 })
               }
             />
@@ -393,15 +463,15 @@ export function SettingsPage() {
           <div className="space-y-2">
             <Label>가능성(빈도) 척도</Label>
             <ScaleEditor
-              value={settings.risk.likelihood}
-              onChange={(v) => void patch({ risk: { ...settings.risk, likelihood: v } })}
+              value={draft.risk.likelihood}
+              onChange={(v) => edit({ risk: { ...draft.risk, likelihood: v } })}
             />
           </div>
           <div className="space-y-2">
             <Label>중대성(강도) 척도</Label>
             <ScaleEditor
-              value={settings.risk.severity}
-              onChange={(v) => void patch({ risk: { ...settings.risk, severity: v } })}
+              value={draft.risk.severity}
+              onChange={(v) => edit({ risk: { ...draft.risk, severity: v } })}
             />
           </div>
         </CardContent>

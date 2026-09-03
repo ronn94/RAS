@@ -139,20 +139,36 @@ export function ScoreSelect({
 } & Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "value" | "onChange">) {
   const { settings } = useStore();
   const options = kind === "p" ? settings.risk.likelihood : settings.risk.severity;
+  const shown = value ?? "";
+
+  /* 드롭다운에는 "1점 · 피해가 발생할 가능성이 없음"을 띄우고 칸에는 숫자만 남긴다.
+     위험코드(HazardCodeSelect)와 같은 방법 — 글자를 칸 밖으로 밀어내고 그 위에
+     숫자만 덮어씌운다. 색을 투명하게 하면 네이티브 화살표까지 사라진다. */
   return (
-    <CellSelect
-      value={value ?? ""}
-      onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
-      className="text-center"
-      {...props}
-    >
-      <option value="">-</option>
-      {options.map((o) => (
-        <option key={o.value} value={o.value} title={o.label}>
-          {o.value}
-        </option>
-      ))}
-    </CellSelect>
+    <div className="relative">
+      <CellSelect
+        value={shown}
+        onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+        className={cn("indent-[-999px] [&>option]:indent-0", props.className)}
+        {...props}
+      >
+        <option value="">-</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label ? `${o.value}점 · ${o.label}` : `${o.value}점`}
+          </option>
+        ))}
+      </CellSelect>
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-y-0 left-0 right-4 flex items-center justify-center text-sm tabular-nums",
+          props.disabled && "opacity-50",
+        )}
+      >
+        {shown === "" ? "-" : shown}
+      </span>
+    </div>
   );
 }
 

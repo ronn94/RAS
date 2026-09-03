@@ -16,10 +16,10 @@ import { StoreProvider, useStore } from "@/store";
 
 const TITLES: Record<ViewKey, string> = {
   dashboard: "대시보드",
-  assessments: "위험성평가 목록",
-  highrisk: "고위험군 목록",
-  hazardinfo: "유해위험정보 목록",
-  inspections: "순회점검 목록",
+  assessments: "위험성평가",
+  highrisk: "고위험군",
+  hazardinfo: "유해위험정보",
+  inspections: "순회점검",
   surveys: "설문지",
   settings: "설정",
   backup: "백업·복원",
