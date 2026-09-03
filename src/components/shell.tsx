@@ -32,7 +32,7 @@ type NavItem = { key: ViewKey; title: string; icon: React.ReactNode };
 const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
   { items: [{ key: "dashboard", title: "대시보드", icon: <LayoutDashboard /> }] },
   {
-    label: "위험성평가",
+    label: "리스크 관리",
     items: [
       { key: "assessments", title: "위험성평가", icon: <ListChecks /> },
       { key: "highrisk", title: "고위험군", icon: <ShieldAlert /> },
