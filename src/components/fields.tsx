@@ -131,6 +131,7 @@ export function ScoreSelect({
   kind,
   value,
   onChange,
+  className,
   ...props
 }: {
   kind: "p" | "s";
@@ -149,7 +150,10 @@ export function ScoreSelect({
       <CellSelect
         value={shown}
         onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
-        className={cn("indent-[-999px] [&>option]:indent-0", props.className)}
+        /* className을 props에서 따로 빼야 한다 — {...props}가 뒤에 펼쳐지면서
+           호출부의 className이 이 줄을 통째로 덮어써 글자가 안 밀려나고
+           덮어쓴 숫자와 겹쳐 보였다(실제로 겪은 문제) */
+        className={cn("indent-[-999px] [&>option]:indent-0", className)}
         {...props}
       >
         <option value="">-</option>

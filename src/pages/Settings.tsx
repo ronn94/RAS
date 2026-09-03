@@ -241,10 +241,17 @@ export function SettingsPage() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [anyDirty]);
 
-  /** 카드 머리에 붙는 저장 버튼 — 고친 게 있을 때만 켜진다 */
+  /** 카드 오른쪽 위에 붙는 저장 버튼 — 아이콘만, 고친 게 있을 때만 켜진다 */
   const SaveButton = ({ section, label }: { section: SectionKey; label: string }) => (
-    <Button size="sm" variant={dirty(section) ? "default" : "outline"} disabled={!dirty(section)} onClick={() => void save(section, label)}>
-      <Save /> 저장
+    <Button
+      size="icon-sm"
+      variant={dirty(section) ? "default" : "outline"}
+      disabled={!dirty(section)}
+      onClick={() => void save(section, label)}
+      aria-label={`${label} 저장`}
+      title={dirty(section) ? `${label} 저장` : "바뀐 내용이 없습니다"}
+    >
+      <Save />
     </Button>
   );
 
@@ -260,8 +267,8 @@ export function SettingsPage() {
 
       {/* 계정 */}
       <Card className="shadow-xs">
-        <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
-          <div className="space-y-1.5">
+        <CardHeader className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1.5">
           <CardTitle>계정</CardTitle>
           <CardDescription>
             아이디·비밀번호로 로그인되어 있습니다. 아래 이름·직책은 사이드바 표시와 인쇄물 기본값에만 쓰입니다.
@@ -289,8 +296,8 @@ export function SettingsPage() {
 
       {/* 기본값 · 조직정보 */}
       <Card className="shadow-xs">
-        <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
-          <div className="space-y-1.5">
+        <CardHeader className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1.5">
           <CardTitle>기본값 · 조직정보</CardTitle>
           <CardDescription>
             새 평가표·유해위험정보를 만들 때 자동으로 채워집니다. 기본 소속은 순회점검 참석자 명단에 들어갑니다.
@@ -389,8 +396,8 @@ export function SettingsPage() {
 
       {/* 유해위험요인 분류표 — 위험분류와 위험코드의 정본 */}
       <Card className="shadow-xs">
-        <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
-          <div className="space-y-1.5">
+        <CardHeader className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1.5">
           <CardTitle>유해위험요인 분류표</CardTitle>
           <CardDescription>
             원본 서식(SSI-602-06 양식4-1)에 현장 항목(7.3 교통안전)을 더한 것이 기본값입니다.
@@ -435,8 +442,8 @@ export function SettingsPage() {
 
       {/* 위험성 기준 */}
       <Card className="shadow-xs">
-        <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
-          <div className="space-y-1.5">
+        <CardHeader className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1.5">
           <CardTitle>위험성 기준</CardTitle>
           <CardDescription>
             고위험군 기준점을 바꾸면 고위험군 목록과 평가코드 자동 부여가 즉시 다시 계산됩니다.
