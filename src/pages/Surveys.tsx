@@ -27,9 +27,24 @@ import { useStore } from "@/store";
 export function SurveysPage({ openId, onOpen }: { openId: string | null; onOpen: (id: string | null) => void }) {
   const { assessments, surveys, loading, createSurvey, removeSurvey, canSurvey } = useStore();
   const [deleteTarget, setDeleteTarget] = React.useState<Survey | null>(null);
+  /** 아직 제출하지 않은 새 설문지 — 서버에 없고 화면에서만 들고 있다 */
+  const [draft, setDraft] = React.useState<Survey | null>(null);
+
+  if (draft) {
+    return (
+      <SurveyDetail
+        survey={draft}
+        isNew
+        onDone={(saved) => {
+          setDraft(null);
+          if (saved) onOpen(null); // 제출하면 목록으로 돌아가 등록된 것을 바로 본다
+        }}
+      />
+    );
+  }
 
   const current = surveys.find((v) => v.id === openId) ?? null;
-  if (openId && current) return <SurveyDetail survey={current} onBack={() => onOpen(null)} />;
+  if (openId && current) return <SurveyDetail survey={current} onDone={() => onOpen(null)} />;
 
   // 작성일자 내림차순 — 최근 의견이 위로
   const sorted = [...surveys].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
@@ -43,10 +58,7 @@ export function SurveysPage({ openId, onOpen }: { openId: string | null; onOpen:
         <Button
           size="icon-lg"
           disabled={!canSurvey}
-          onClick={async () => {
-            const v = await createSurvey();
-            onOpen(v.id);
-          }}
+          onClick={() => setDraft(createSurvey())}
           aria-label="새 설문지"
           title={canSurvey ? undefined : "설문지 제출 권한이 없습니다"}
         >

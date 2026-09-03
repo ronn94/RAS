@@ -29,22 +29,62 @@ import { riskBadgeClass, riskOf } from "@/lib/risk";
 import { emptyRow, SURVEY_MAX_PHOTOS, type RiskItem, type Survey } from "@/lib/types";
 import { useStore } from "@/store";
 
-export function SurveyDetail({ survey, onBack }: { survey: Survey; onBack: () => void }) {
+/** 사진을 뺀 나머지는 전부 채워야 제출할 수 있다 */
+const REQUIRED: { key: keyof Survey; label: string }[] = [
+  { key: "author", label: "작성자" },
+  { key: "date", label: "작성일자" },
+  { key: "process", label: "공정명" },
+  { key: "subProcess", label: "세부공정" },
+  { key: "hazardClass", label: "위험분류" },
+  { key: "hazardCode", label: "위험코드" },
+  { key: "hazard", label: "유해위험요인" },
+  { key: "p", label: "가능성" },
+  { key: "s", label: "중대성" },
+  { key: "measure", label: "개선대책" },
+  { key: "dueDate", label: "개선예정일" },
+];
+
+function missingFields(v: Survey): string[] {
+  return REQUIRED.filter(({ key }) => {
+    const val = v[key];
+    return val === null || val === undefined || String(val).trim() === "";
+  }).map((f) => f.label);
+}
+
+export function SurveyDetail({
+  survey,
+  isNew = false,
+  onDone,
+}: {
+  survey: Survey;
+  isNew?: boolean;
+  /** saved=true면 제출·저장이 끝난 것 */
+  onDone: (saved: boolean) => void;
+}) {
   const { assessments, saveAssessment, saveSurvey, settings, canEdit, canSurvey } = useStore();
   const [draft, setDraft] = React.useState<Survey>(survey);
   const [moveOpen, setMoveOpen] = React.useState(false);
   const [moveTargetId, setMoveTargetId] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  /* 자동 저장하지 않는다 — '제출'을 눌러야 서버에 등록된다 */
+  const missing = missingFields(draft);
 
-  // 입력 중에는 로컬 상태로 두고, 멈추면 저장한다 (다른 상세 화면과 같은 방식)
-  const first = React.useRef(true);
-  React.useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
+  const submit = async () => {
+    if (missing.length > 0) return;
+    setSaving(true);
+    try {
+      await saveSurvey(draft);
+      onDone(true);
+    } finally {
+      setSaving(false);
     }
-    const t = setTimeout(() => void saveSurvey(draft), 400);
-    return () => clearTimeout(t);
-  }, [draft, saveSurvey]);
+  };
+
+  const goBack = () => {
+    const touched = JSON.stringify(draft) !== JSON.stringify(survey);
+    if (touched && !confirm("작성 중인 내용이 저장되지 않습니다. 나갈까요?")) return;
+    onDone(false);
+  };
 
   const patch = (p: Partial<Survey>) => setDraft((d) => ({ ...d, ...p }));
   const setPhoto = (i: number, id: string | undefined) =>
@@ -75,7 +115,9 @@ export function SurveyDetail({ survey, onBack }: { survey: Survey; onBack: () =>
       note: `의견청취 · ${draft.author || "작성자 미상"}`,
     };
     await saveAssessment({ ...target, rows: [...target.rows, row] });
-    patch({ movedTo: { assessmentId: target.id, rowId: row.id, at: Date.now() } });
+    const next = { ...draft, movedTo: { assessmentId: target.id, rowId: row.id, at: Date.now() } };
+    setDraft(next);
+    await saveSurvey(next); // 자동 저장이 없으므로 이관 흔적은 여기서 직접 남긴다
     setMoveOpen(false);
     setMoveTargetId("");
   };
@@ -84,7 +126,7 @@ export function SurveyDetail({ survey, onBack }: { survey: Survey; onBack: () =>
     <div className="space-y-4">
       <div className="no-print flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={onBack} aria-label="목록으로">
+          <Button variant="ghost" size="icon" onClick={goBack} aria-label="목록으로">
             <ArrowLeft />
           </Button>
           <div>
@@ -101,11 +143,13 @@ export function SurveyDetail({ survey, onBack }: { survey: Survey; onBack: () =>
             size="icon-lg"
             /* 이관은 공식 평가표를 고치는 행위라 편집 권한이 있어야 한다 —
                게스트는 의견을 내고, 반영 여부는 관리자가 검토해서 정한다 */
-            disabled={!canEdit || moved || !draft.hazard.trim()}
+            disabled={isNew || !canEdit || moved || !draft.hazard.trim()}
             onClick={() => setMoveOpen(true)}
             aria-label="위험성평가표로 이관"
             title={
-              !canEdit
+              isNew
+                ? "제출한 뒤에 이관할 수 있습니다"
+                : !canEdit
                 ? "평가표 이관은 관리자가 합니다"
                 : moved
                   ? "이미 이관된 의견입니다"
@@ -114,7 +158,7 @@ export function SurveyDetail({ survey, onBack }: { survey: Survey; onBack: () =>
           >
             <ArrowRightLeft />
           </Button>
-          <Button variant="outline" size="icon-lg" onClick={() => window.print()} aria-label="설문지 인쇄">
+          <Button variant="outline" size="icon-lg" disabled={isNew} onClick={() => window.print()} aria-label="설문지 인쇄" title={isNew ? "제출한 뒤에 인쇄할 수 있습니다" : "설문지 인쇄"}>
             <Printer />
           </Button>
         </div>
@@ -270,6 +314,21 @@ export function SurveyDetail({ survey, onBack }: { survey: Survey; onBack: () =>
           </div>
         </CardContent>
       </Card>
+
+      {/* 제출 — 사진을 뺀 모든 항목이 채워져야 누를 수 있다 */}
+      <div className="no-print flex flex-wrap items-center justify-end gap-3">
+        {missing.length > 0 && (
+          <p className="text-sm text-muted-foreground">
+            남은 항목: <span className="text-destructive">{missing.join(", ")}</span>
+          </p>
+        )}
+        <Button variant="outline" onClick={goBack}>
+          취소
+        </Button>
+        <Button disabled={!canSurvey || missing.length > 0 || saving} onClick={() => void submit()}>
+          {saving ? "저장 중…" : isNew ? "제출" : "저장"}
+        </Button>
+      </div>
 
       {/* 위험성평가표로 이관 */}
       <Dialog open={moveOpen} onClose={() => setMoveOpen(false)}>

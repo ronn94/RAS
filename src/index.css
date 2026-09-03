@@ -758,9 +758,10 @@
 .sheet-survey td {
   height: 8mm;
 }
-/* 유해위험요인·개선대책은 손으로 길게 쓰는 칸이라 넉넉히 잡는다 */
+/* 유해위험요인·개선대책은 손으로 길게 쓰는 칸이라 넉넉히 잡는다.
+   아래 FEEDBACK 40%를 얹어야 해서 26mm에서 23mm로 줄였다 */
 .sheet-survey .tall {
-  height: 26mm;
+  height: 23mm;
   vertical-align: top;
 }
 .sheet-survey .wrap {
@@ -777,7 +778,7 @@
   gap: 4mm;
 }
 .sheet-survey .photo {
-  height: 62mm;
+  height: 46mm;
   border: 0.75pt solid #000;
 }
 .sheet-survey .photo img {
@@ -790,5 +791,54 @@
   display: grid;
   place-content: center;
   height: 100%;
+  color: #666;
+}
+
+/* ── 설문지 인쇄물의 근로자 FEEDBACK 구역 (아래 40% 고정) ────────
+   전부 손으로 적는 칸이라 값이 없다. 자리가 매번 같도록 높이를 못박고
+   넘치지 않게 overflow를 잠근다. */
+.sheet-survey .feedback {
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.sheet-survey .feedback .divider {
+  border-top: 1pt solid #000;
+  margin: 3mm 0 2mm;
+}
+.sheet-survey .fb-title {
+  margin-bottom: 2mm;
+  text-align: center;
+  font-size: 11pt;
+  font-weight: 700;
+}
+.sheet-survey .fb-scale {
+  table-layout: fixed;
+}
+.sheet-survey .fb-scale :is(th, td) {
+  height: 7mm;
+  text-align: center;
+}
+.sheet-survey .fb-scale .lbl {
+  text-align: center;
+}
+/* 자유 서술 두 칸 — 손글씨 두세 줄이 들어갈 만큼 */
+.sheet-survey .fb-memo {
+  margin-top: 2mm;
+}
+.sheet-survey .fb-memo td {
+  height: 17mm;
+}
+.sheet-survey .fb-memo .hint {
+  font-size: 7pt;
+  font-weight: 400;
+}
+.sheet-survey .fb-sign {
+  margin-top: 2mm;
+}
+.sheet-survey .fb-sign td {
+  height: 10mm;
+}
+.sheet-survey .fb-sign .sign-cell {
+  text-align: right;
   color: #666;
 }

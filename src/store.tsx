@@ -44,7 +44,7 @@ type Ctx = {
   saveInspection: (v: Inspection) => Promise<void>;
   removeInspection: (id: string) => Promise<void>;
   surveys: Survey[];
-  createSurvey: () => Promise<Survey>;
+  createSurvey: () => Survey;
   saveSurvey: (v: Survey) => Promise<void>;
   removeSurvey: (id: string) => Promise<void>;
   /** 게스트가 설문지를 쓸 수 있는가 (관리자는 항상 true) */
@@ -187,11 +187,8 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
     });
   }, []);
 
-  const createSurvey = React.useCallback(async () => {
-    const v = emptySurvey();
-    await saveSurvey(v);
-    return v;
-  }, [saveSurvey]);
+  /** 새 설문지는 화면에서만 만든다 — '제출'을 눌러야 saveSurvey로 서버에 등록된다 */
+  const createSurvey = React.useCallback(() => emptySurvey(), []);
 
   const removeSurvey = React.useCallback(async (id: string) => {
     await db.deleteSurvey(id);

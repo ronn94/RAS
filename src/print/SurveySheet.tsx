@@ -1,12 +1,22 @@
 /**
- * 의견청취 설문지 인쇄 서식 — A4 세로 1장. 결재·보관용.
- * 화면 입력 항목을 그대로 종이에 옮긴다(사진 최대 2장 포함).
+ * 의견청취 설문지 인쇄 서식 — A4 세로 1장.
+ *
+ * 위 60%: 화면 입력 항목(작성자~개선예정일 + 사진 2장)
+ * 아래 40%: **근로자 FEEDBACK**(원본 SSI-602-09(3)) — 인쇄한 뒤 손으로 적는 칸이라
+ *          화면에는 입력창을 두지 않는다. 자리가 매번 같도록 높이를 mm로 못박는다.
  */
 import { usePhotoUrl } from "@/components/photo";
 import { codeLabel } from "@/lib/settings";
 import { riskOf } from "@/lib/risk";
 import { SURVEY_MAX_PHOTOS, type Survey } from "@/lib/types";
 import { useStore } from "@/store";
+
+/** 아래 근로자 FEEDBACK 구역 높이 — A4 세로 본문 267mm의 40% */
+const FEEDBACK_MM = 267 * 0.4;
+
+/** 원본 서식의 평가항목 4구분 × 4단계 */
+const FEEDBACK_ROWS = ["안전 효과", "작업수행시 불편사항", "현장적용 적합성", "외관상"];
+const FEEDBACK_SCALE = ["① 매우 만족", "② 만족", "③ 불편", "④ 매우 불편"];
 
 function Photo({ id, no }: { id?: string; no: number }) {
   const url = usePhotoUrl(id);
@@ -88,6 +98,77 @@ export function SurveySheet({ survey: v }: { survey: Survey }) {
           {Array.from({ length: SURVEY_MAX_PHOTOS }, (_, i) => (
             <Photo key={i} id={v.photos[i]} no={i + 1} />
           ))}
+        </div>
+
+        {/* ── 근로자 FEEDBACK (수기 작성) ───────────────────────── */}
+        <div className="feedback" style={{ height: `${FEEDBACK_MM}mm` }}>
+          <div className="divider" />
+          <div className="fb-title">위험성 평가 근로자 FEEDBACK</div>
+
+          <table className="fb-scale">
+            <colgroup>
+              <col style={{ width: "46mm" }} />
+              {FEEDBACK_SCALE.map((_, i) => (
+                <col key={i} />
+              ))}
+            </colgroup>
+            <thead>
+              <tr>
+                <th>구 분</th>
+                {FEEDBACK_SCALE.map((label) => (
+                  <th key={label}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {FEEDBACK_ROWS.map((label) => (
+                <tr key={label}>
+                  <td className="lbl">{label}</td>
+                  {FEEDBACK_SCALE.map((sc) => (
+                    <td key={sc} />
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <table className="fb-memo">
+            <colgroup>
+              <col style={{ width: "46mm" }} />
+              <col />
+            </colgroup>
+            <tbody>
+              <tr>
+                <td className="lbl">
+                  차후 개선 의견
+                  <br />
+                  <span className="hint">(③불편·④매우 불편 시)</span>
+                </td>
+                <td />
+              </tr>
+              <tr>
+                <td className="lbl">종합 의견</td>
+                <td />
+              </tr>
+            </tbody>
+          </table>
+
+          <table className="fb-sign">
+            <colgroup>
+              <col style={{ width: "22mm" }} />
+              <col />
+              <col style={{ width: "22mm" }} />
+              <col style={{ width: "40mm" }} />
+            </colgroup>
+            <tbody>
+              <tr>
+                <td className="lbl">평가일시</td>
+                <td />
+                <td className="lbl">평 가 자</td>
+                <td className="sign-cell">(서명)</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
