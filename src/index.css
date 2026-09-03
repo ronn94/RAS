@@ -342,11 +342,13 @@
 }
 /* 칸 크기는 70×47mm로 고정하되 사진은 잘라내지 않는다 —
    개선 전/후를 증명하는 사진인데 가장자리가 잘리면 근거로 못 쓴다.
-   전체를 넣고 남는 자리는 여백으로 둔다(cover → contain). */
+   전체를 넣고 남는 자리는 여백으로 둔다(cover → contain).
+   칸 자체에 패딩을 주면 이미지가 고정 크기라 칸이 2mm 커진다 —
+   대신 이미지를 그만큼 줄여 테두리와 사진 사이에 여백을 만든다. */
 .sheet-photo .photo img,
 .sheet-photo .photo .empty {
-  width: var(--photo-w);
-  height: var(--photo-h);
+  width: calc(var(--photo-w) - 2mm);
+  height: calc(var(--photo-h) - 2mm);
   margin: 0 auto;
   display: block;
   object-fit: contain;
@@ -717,8 +719,10 @@
 }
 /* 칸 크기는 고정하되 사진은 잘라내지 않는다 — 전체를 넣고 남는 자리는 여백 */
 .sheet-inspection-photo .photo {
+  box-sizing: border-box;
   height: var(--photo-h);
   background: #fff;
+  padding: 1mm; /* 테두리와 사진이 맞닿으면 실선이 흐려 보인다 */
 }
 .sheet-inspection-photo .photo img {
   width: 100%;
@@ -781,9 +785,21 @@
   gap: 4mm;
 }
 .sheet-survey .photo {
-  height: 56mm;
   border: 0.75pt solid #000;
   background: #fff;
+}
+/* 개선 전/후 이름표 */
+.sheet-survey .photo .cap {
+  border-bottom: 0.75pt solid #000;
+  padding: 1mm 1.5mm;
+  text-align: center;
+  font-weight: 700;
+}
+/* 사진과 테두리가 맞닿으면 실선이 사진에 묻혀 흐리게 인쇄된다 — 안쪽에 여백을 조금 둔다 */
+.sheet-survey .photo .frame {
+  box-sizing: border-box;
+  height: 48mm; /* 이름표 줄과 안쪽 여백이 더해져도 A4 한 장을 넘지 않게 */
+  padding: 1mm;
 }
 /* 사진을 잘라내지 않는다 — 위험요인 근거인데 정작 위험한 부분이 잘리면 서류로 못 쓴다.
    칸을 채우는 대신 전체를 넣고 남는 자리는 여백으로 둔다(cover → contain). */

@@ -369,8 +369,10 @@ export function reviewOf(v: { review?: ReviewStatus }): ReviewStatus {
   return v.review ?? "접수";
 }
 
+/** 설문지 사진 칸 이름 — 화면과 인쇄물이 같은 이름을 쓴다(칸 수도 이 배열이 정한다) */
+export const SURVEY_PHOTO_LABELS = ["개선 전", "개선 후"] as const;
 /** 설문지에 붙일 수 있는 사진 장수 */
-export const SURVEY_MAX_PHOTOS = 2;
+export const SURVEY_MAX_PHOTOS = SURVEY_PHOTO_LABELS.length;
 
 export function emptySurvey(): Survey {
   return {

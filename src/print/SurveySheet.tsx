@@ -8,7 +8,7 @@
 import { usePhotoUrl } from "@/components/photo";
 import { codeLabel } from "@/lib/settings";
 import { riskOf } from "@/lib/risk";
-import { SURVEY_MAX_PHOTOS, type Survey } from "@/lib/types";
+import { SURVEY_PHOTO_LABELS, type Survey } from "@/lib/types";
 import { useStore } from "@/store";
 
 /** 아래 근로자 FEEDBACK 구역 높이 — A4 세로 본문 267mm의 40% */
@@ -18,11 +18,12 @@ const FEEDBACK_MM = 267 * 0.4;
 const FEEDBACK_ROWS = ["안전 효과", "작업수행시 불편사항", "현장적용 적합성", "외관상"];
 const FEEDBACK_SCALE = ["① 매우 만족", "② 만족", "③ 불편", "④ 매우 불편"];
 
-function Photo({ id, no }: { id?: string; no: number }) {
+function Photo({ id, name }: { id?: string; name: string }) {
   const url = usePhotoUrl(id);
   return (
     <div className="photo">
-      {url ? <img src={url} alt="" /> : <div className="empty">사진 {no}</div>}
+      <div className="cap">{name}</div>
+      <div className="frame">{url ? <img src={url} alt={name} /> : <div className="empty">{name} 사진</div>}</div>
     </div>
   );
 }
@@ -95,8 +96,8 @@ export function SurveySheet({ survey: v }: { survey: Survey }) {
 
         <div className="sec">◈ 사진</div>
         <div className="photos">
-          {Array.from({ length: SURVEY_MAX_PHOTOS }, (_, i) => (
-            <Photo key={i} id={v.photos[i]} no={i + 1} />
+          {SURVEY_PHOTO_LABELS.map((name, i) => (
+            <Photo key={name} id={v.photos[i]} name={name} />
           ))}
         </div>
 

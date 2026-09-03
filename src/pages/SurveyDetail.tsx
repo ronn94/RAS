@@ -30,7 +30,7 @@ import {
   emptyRow,
   REVIEW_STATUSES,
   reviewOf,
-  SURVEY_MAX_PHOTOS,
+  SURVEY_PHOTO_LABELS,
   type ReviewStatus,
   type RiskItem,
   type Survey,
@@ -339,12 +339,12 @@ export function SurveyDetail({
           </div>
 
           <div className="space-y-1.5">
-            <Label>사진 (최대 {SURVEY_MAX_PHOTOS}장)</Label>
+            <Label>사진 (개선 전·후 각 1장)</Label>
             <div className="grid grid-cols-2 gap-3 sm:max-w-md">
-              {Array.from({ length: SURVEY_MAX_PHOTOS }, (_, i) => (
+              {SURVEY_PHOTO_LABELS.map((name, i) => (
                 <PhotoSlot
-                  key={i}
-                  label={`사진 ${i + 1}`}
+                  key={name}
+                  label={name}
                   photoId={draft.photos[i]}
                   onChange={(id) => setPhoto(i, id)}
                   disabled={!canWrite}
