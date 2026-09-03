@@ -340,14 +340,16 @@
   text-align: center;
   height: var(--photo-h);
 }
-/* 사진은 비율과 무관하게 같은 크기 · 칸을 꽉 채우고 가장자리는 잘라낸다(중앙 기준) */
+/* 칸 크기는 70×47mm로 고정하되 사진은 잘라내지 않는다 —
+   개선 전/후를 증명하는 사진인데 가장자리가 잘리면 근거로 못 쓴다.
+   전체를 넣고 남는 자리는 여백으로 둔다(cover → contain). */
 .sheet-photo .photo img,
 .sheet-photo .photo .empty {
   width: var(--photo-w);
   height: var(--photo-h);
   margin: 0 auto;
   display: block;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
 }
 .sheet-photo .photo .empty {
@@ -713,14 +715,15 @@
   padding: 1.2mm 1.5mm;
   font-weight: 700;
 }
-/* 사진은 비율과 무관하게 같은 크기로 — 가장자리를 잘라 채운다(사진대지와 같은 규칙) */
+/* 칸 크기는 고정하되 사진은 잘라내지 않는다 — 전체를 넣고 남는 자리는 여백 */
 .sheet-inspection-photo .photo {
   height: var(--photo-h);
+  background: #fff;
 }
 .sheet-inspection-photo .photo img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 .sheet-inspection-photo .photo .empty {
@@ -761,7 +764,7 @@
 /* 유해위험요인·개선대책은 손으로 길게 쓰는 칸이라 넉넉히 잡는다.
    아래 FEEDBACK 40%를 얹어야 해서 26mm에서 23mm로 줄였다 */
 .sheet-survey .tall {
-  height: 23mm;
+  height: 18mm;
   vertical-align: top;
 }
 .sheet-survey .wrap {
@@ -778,13 +781,16 @@
   gap: 4mm;
 }
 .sheet-survey .photo {
-  height: 46mm;
+  height: 56mm;
   border: 0.75pt solid #000;
+  background: #fff;
 }
+/* 사진을 잘라내지 않는다 — 위험요인 근거인데 정작 위험한 부분이 잘리면 서류로 못 쓴다.
+   칸을 채우는 대신 전체를 넣고 남는 자리는 여백으로 둔다(cover → contain). */
 .sheet-survey .photo img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 .sheet-survey .photo .empty {

@@ -1,6 +1,6 @@
 import * as React from "react";
-import { Camera, ImageOff, ImagePlus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Camera, ImageOff, ImagePlus, Maximize2, Trash2 } from "lucide-react";
+import { Button, Dialog } from "@/components/ui";
 import { photoUrl, uploadPhoto, deletePhoto } from "@/lib/db";
 import { processPhoto } from "@/lib/photo";
 import { cn } from "@/lib/utils";
@@ -42,6 +42,9 @@ export function PhotoSlot({
   const [busy, setBusy] = React.useState(false);
   const [focused, setFocused] = React.useState(false);
   const [dragOver, setDragOver] = React.useState(false);
+  /* 칸에는 잘라서(cover) 가지런히 보여주고, 원본은 눌러서 전체로 본다 —
+     인쇄물은 아예 안 자르지만(contain) 화면 목록까지 여백투성이가 되면 보기 나쁘다 */
+  const [zoom, setZoom] = React.useState(false);
 
   const upload = React.useCallback(
     async (file: File) => {
@@ -83,6 +86,17 @@ export function PhotoSlot({
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <div className="flex items-center gap-0.5">
+          {photoId && (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => setZoom(true)}
+              aria-label={`${label} 원본 보기`}
+              title="원본 전체 보기"
+            >
+              <Maximize2 />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon-xs"
@@ -202,6 +216,12 @@ export function PhotoSlot({
           </span>
         )}
       </div>
+
+      {/* 원본 보기 — 잘리지 않은 전체 사진 */}
+      <Dialog open={zoom} onClose={() => setZoom(false)} className="max-w-3xl sm:max-w-3xl">
+        <p className="text-sm font-medium">{label}</p>
+        {url && <img src={url} alt={label} className="max-h-[70vh] w-full rounded-xl object-contain" />}
+      </Dialog>
     </div>
   );
 }
