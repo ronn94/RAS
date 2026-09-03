@@ -267,6 +267,24 @@ SSM처럼 헤더 왼쪽 토글로 데스크톱 사이드바를 접었다 펼 수
   `String.fromCharCode(...전체배열)`을 한 번에 쓰면 사진이 몇십 KB만 넘어도 인자 개수 한도를 넘겨 500이 난다
   (실제로 겪은 버그) — 사진 관련 서버 코드를 고칠 때 이 패턴을 다시 쓰지 않도록 주의.
 
+## 앱 아이콘
+
+3×3 위험성 매트릭스(가능성 × 중대성)를 그린 격자다 — 오른쪽 위 한 칸만 앱 경고색(`#ef4444`)으로
+칠해 고위험을 나타낸다. 칸 12 · 간격 3(64 기준)으로 사방 여백이 11로 같다.
+
+- `public/favicon.svg` — 모서리를 둥글린(rx 14) 판. 브라우저 탭·즐겨찾기가 그대로 쓴다
+- `public/apple-touch-icon.png`(180) · `icon-192.png` · `icon-512.png` — **모서리를 둥글리지 않은
+  정사각형**이다. iOS·안드로이드가 스스로 squircle로 깎으므로 미리 둥글리면 이중으로 깎여 어색해진다
+- `public/manifest.webmanifest` — 홈 화면에 추가했을 때 앱처럼 뜨게 한다(`display: standalone`).
+  512는 `maskable`로도 등록했다 — 격자가 캔버스의 66%라 안전영역(80%) 안에 들어온다
+
+PNG는 헤드리스 Chrome으로 SVG를 정확한 픽셀 크기에 렌더해 뽑았다(이 맥에 rsvg·ImageMagick이 없다):
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --disable-gpu \
+  --hide-scrollbars --screenshot=out.png --window-size=180,180 file://…/png-180.html
+```
+
 ## 디자인
 
 인트라넷 디자인 시스템 정본 토큰·클래스를 그대로 이식(`src/index.css`, `src/components/ui.tsx`).
