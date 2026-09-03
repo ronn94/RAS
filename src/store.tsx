@@ -5,10 +5,12 @@ import {
   emptyAssessment,
   emptyHazardInfo,
   emptyInspection,
+  emptySurvey,
   type Assessment,
   type HazardInfo,
   type Inspection,
   type RiskItem,
+  type Survey,
 } from "@/lib/types";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
 import type { Identity } from "@/lib/auth";
@@ -41,6 +43,12 @@ type Ctx = {
   createInspection: () => Promise<Inspection>;
   saveInspection: (v: Inspection) => Promise<void>;
   removeInspection: (id: string) => Promise<void>;
+  surveys: Survey[];
+  createSurvey: () => Promise<Survey>;
+  saveSurvey: (v: Survey) => Promise<void>;
+  removeSurvey: (id: string) => Promise<void>;
+  /** 게스트가 설문지를 쓸 수 있는가 (관리자는 항상 true) */
+  canSurvey: boolean;
 };
 
 const StoreContext = React.createContext<Ctx | null>(null);
@@ -49,6 +57,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   const [assessments, setAssessments] = React.useState<Assessment[]>([]);
   const [hazardInfos, setHazardInfos] = React.useState<HazardInfo[]>([]);
   const [inspections, setInspections] = React.useState<Inspection[]>([]);
+  const [surveys, setSurveys] = React.useState<Survey[]>([]);
   const [settings, setSettings] = React.useState<AppSettings>(DEFAULT_SETTINGS);
   const [lastBackup, setLastBackup] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -60,6 +69,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       setAssessments(await db.listAssessments());
       setHazardInfos(await db.listHazardInfos());
       setInspections(await db.listInspections());
+      setSurveys(await db.listSurveys());
       const s = await db.loadSettings();
       setSettings(s);
       setRiskThreshold(s.risk.threshold);
@@ -167,6 +177,27 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
     setInspections((prev) => prev.filter((x) => x.id !== id));
   }, []);
 
+  const saveSurvey = React.useCallback(async (v: Survey) => {
+    await db.putSurvey(v);
+    setSurveys((prev) => {
+      const next = prev.some((x) => x.id === v.id)
+        ? prev.map((x) => (x.id === v.id ? { ...v, updatedAt: Date.now() } : x))
+        : [{ ...v, updatedAt: Date.now() }, ...prev];
+      return [...next].sort((x, y) => y.updatedAt - x.updatedAt);
+    });
+  }, []);
+
+  const createSurvey = React.useCallback(async () => {
+    const v = emptySurvey();
+    await saveSurvey(v);
+    return v;
+  }, [saveSurvey]);
+
+  const removeSurvey = React.useCallback(async (id: string) => {
+    await db.deleteSurvey(id);
+    setSurveys((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
   const updateSettings = React.useCallback(
     async (patch: Partial<AppSettings>) => {
       const next = { ...settings, ...patch, updatedAt: Date.now() };
@@ -186,7 +217,8 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   const isAdmin = identity.role === "admin";
   const canEdit = isAdmin || settings.permissions.edit;
   const canDelete = isAdmin || settings.permissions.delete;
-  const canUploadPhoto = isAdmin || settings.permissions.photo;
+  const canUploadPhoto = isAdmin || settings.permissions.photo || settings.permissions.survey;
+  const canSurvey = isAdmin || settings.permissions.survey;
 
   const value = React.useMemo(
     () => ({
@@ -211,6 +243,11 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       createInspection,
       saveInspection,
       removeInspection,
+      surveys,
+      createSurvey,
+      saveSurvey,
+      removeSurvey,
+      canSurvey,
       settings,
       updateSettings,
       lastBackup,
@@ -238,6 +275,11 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       createInspection,
       saveInspection,
       removeInspection,
+      surveys,
+      createSurvey,
+      saveSurvey,
+      removeSurvey,
+      canSurvey,
       settings,
       updateSettings,
       lastBackup,

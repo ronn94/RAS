@@ -6,6 +6,7 @@ import { AssessmentsPage } from "@/pages/Assessments";
 import { HighRiskPage } from "@/pages/HighRisk";
 import { HazardInfoPage } from "@/pages/HazardInfo";
 import { InspectionsPage } from "@/pages/Inspections";
+import { SurveysPage } from "@/pages/Surveys";
 import { DashboardPage } from "@/pages/Dashboard";
 import { SettingsPage } from "@/pages/Settings";
 import { BackupPage } from "@/pages/Backup";
@@ -19,6 +20,7 @@ const TITLES: Record<ViewKey, string> = {
   highrisk: "고위험군 목록",
   hazardinfo: "유해위험정보 목록",
   inspections: "순회점검 목록",
+  surveys: "설문지",
   settings: "설정",
   backup: "백업·복원",
 };
@@ -59,6 +61,7 @@ function Router({ identity }: { identity: Identity }) {
       {activeView === "highrisk" && <HighRiskPage />}
       {activeView === "hazardinfo" && <HazardInfoPage openId={openId} onOpen={setOpenId} />}
       {activeView === "inspections" && <InspectionsPage openId={openId} onOpen={setOpenId} />}
+      {activeView === "surveys" && <SurveysPage openId={openId} onOpen={setOpenId} />}
       {isAdmin && activeView === "settings" && <SettingsPage />}
       {isAdmin && activeView === "backup" && <BackupPage />}
 

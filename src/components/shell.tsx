@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   ListChecks,
   LogOut,
+  MessageSquareText,
   PanelLeftClose,
   PanelLeftOpen,
   Settings2,
@@ -21,6 +22,7 @@ export type ViewKey =
   | "highrisk"
   | "hazardinfo"
   | "inspections"
+  | "surveys"
   | "settings"
   | "backup";
 
@@ -42,6 +44,10 @@ const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
       { key: "hazardinfo", title: "유해위험정보 목록", icon: <ClipboardList /> },
       { key: "inspections", title: "순회점검 목록", icon: <ClipboardCheck /> },
     ],
+  },
+  {
+    label: "의견청취",
+    items: [{ key: "surveys", title: "설문지", icon: <MessageSquareText /> }],
   },
 ];
 

@@ -13,6 +13,7 @@
 import { Hono, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
 import { login, loginGuest, logout, readSession } from "./auth";
+import { DEFAULT_SETTINGS } from "../src/lib/settings";
 
 type Bindings = {
   ras_db: D1Database;
@@ -44,18 +45,27 @@ app.use("/api/*", async (c, next) => {
   await next();
 });
 
-/** 게스트는 켜진 권한만, 관리자는 항상 통과 */
-async function loadPermissions(db: D1Database) {
+/**
+ * 게스트는 켜진 권한만, 관리자는 항상 통과.
+ *
+ * 저장된 설정에 없는 키는 **프런트와 같은 기본값**으로 채운다(DEFAULT_SETTINGS).
+ * 안 그러면 권한을 새로 추가할 때 프런트는 기본값을 보고 버튼을 열어 주는데
+ * 서버는 undefined를 보고 403을 내는 불일치가 생긴다(실제로 겪은 문제).
+ */
+async function loadPermissions(db: D1Database): Promise<Record<string, boolean>> {
   const row = await db.prepare("SELECT data FROM settings WHERE id = 'app'").first<{ data: string }>();
   const parsed = row ? (JSON.parse(row.data) as { permissions?: Record<string, boolean> }) : null;
-  return parsed?.permissions ?? {};
+  return { ...DEFAULT_SETTINGS.permissions, ...(parsed?.permissions ?? {}) };
 }
 
-function requirePermission(key: "edit" | "delete" | "photo"): MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> {
+type PermissionKey = "edit" | "delete" | "photo" | "survey";
+
+/** 나열한 권한 중 **하나라도** 켜져 있으면 통과한다 */
+function requirePermission(...keys: PermissionKey[]): MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> {
   return async (c, next) => {
     if (c.get("role") !== "guest") return next();
     const permissions = await loadPermissions(c.env.ras_db);
-    if (!permissions[key]) return c.json({ error: "게스트 계정에는 이 권한이 없습니다." }, 403);
+    if (!keys.some((k) => permissions[k])) return c.json({ error: "게스트 계정에는 이 권한이 없습니다." }, 403);
     await next();
   };
 }
@@ -79,7 +89,11 @@ app.get("/api/identity", async (c) => {
 });
 
 /* ── 공용: JSON 문서 컬렉션(assessments / hazard_infos) ──────── */
-function collection(table: "assessments" | "hazard_infos" | "inspections") {
+function collection(
+  table: "assessments" | "hazard_infos" | "inspections" | "surveys",
+  /** 이 컬렉션을 쓰기 위해 필요한 권한. 설문지는 전역 편집권한과 분리해 survey로 연다 */
+  perms: { write: PermissionKey[]; remove: PermissionKey[] } = { write: ["edit"], remove: ["delete"] },
+) {
   const r = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
   r.get("/", async (c) => {
@@ -89,7 +103,7 @@ function collection(table: "assessments" | "hazard_infos" | "inspections") {
     return c.json(results.map((row) => JSON.parse(row.data)));
   });
 
-  r.put("/:id", requirePermission("edit"), async (c) => {
+  r.put("/:id", requirePermission(...perms.write), async (c) => {
     const id = c.req.param("id");
     const body = await c.req.json<Record<string, unknown>>();
     const updatedAt = Date.now();
@@ -104,7 +118,7 @@ function collection(table: "assessments" | "hazard_infos" | "inspections") {
     return c.json(doc);
   });
 
-  r.delete("/:id", requirePermission("delete"), async (c) => {
+  r.delete("/:id", requirePermission(...perms.remove), async (c) => {
     const id = c.req.param("id");
     await c.env.ras_db.prepare(`DELETE FROM ${table} WHERE id = ?1`).bind(id).run();
     return c.json({ ok: true });
@@ -116,6 +130,7 @@ function collection(table: "assessments" | "hazard_infos" | "inspections") {
 app.route("/api/assessments", collection("assessments"));
 app.route("/api/hazardinfos", collection("hazard_infos"));
 app.route("/api/inspections", collection("inspections"));
+app.route("/api/surveys", collection("surveys", { write: ["survey"], remove: ["survey"] }));
 
 /* ── 설정 (단일 레코드) ────────────────────────────────────── */
 app.get("/api/settings", async (c) => {
@@ -141,7 +156,7 @@ app.put("/api/settings", adminOnly, async (c) => {
 
 /* ── 사진 (R2) ──────────────────────────────────────────────
    업로드 시 서버에서 새 id를 발급한다 — 클라이언트가 id를 정하지 않는다. */
-app.post("/api/photos", requirePermission("photo"), async (c) => {
+app.post("/api/photos", requirePermission("photo", "survey"), async (c) => {
   const body = await c.req.arrayBuffer();
   if (body.byteLength === 0) return c.json({ error: "빈 파일입니다" }, 400);
   const id = crypto.randomUUID();
@@ -165,7 +180,7 @@ app.get("/api/photos/:id", async (c) => {
   });
 });
 
-app.delete("/api/photos/:id", requirePermission("photo"), async (c) => {
+app.delete("/api/photos/:id", requirePermission("photo", "survey"), async (c) => {
   const id = c.req.param("id");
   await c.env.ras_photos.delete(id);
   await c.env.ras_db.prepare("DELETE FROM photo_meta WHERE id = ?1").bind(id).run();
@@ -210,10 +225,11 @@ function toBase64(buf: ArrayBuffer): string {
 
 /* ── 전체 백업 · 복원 ───────────────────────────────────────── */
 app.get("/api/backup", adminOnly, async (c) => {
-  const [assessments, hazardInfos, inspections, settingsRow] = await Promise.all([
+  const [assessments, hazardInfos, inspections, surveys, settingsRow] = await Promise.all([
     c.env.ras_db.prepare("SELECT data FROM assessments").all<{ data: string }>(),
     c.env.ras_db.prepare("SELECT data FROM hazard_infos").all<{ data: string }>(),
     c.env.ras_db.prepare("SELECT data FROM inspections").all<{ data: string }>(),
+    c.env.ras_db.prepare("SELECT data FROM surveys").all<{ data: string }>(),
     c.env.ras_db.prepare("SELECT data FROM settings WHERE id = 'app'").first<{ data: string }>(),
   ]);
 
@@ -229,6 +245,10 @@ app.get("/api/backup", adminOnly, async (c) => {
     const i = JSON.parse(row.data) as { items?: { photo?: string }[] };
     for (const it of i.items ?? []) if (it.photo) usedPhotoIds.add(it.photo);
   }
+  for (const row of surveys.results) {
+    const v = JSON.parse(row.data) as { photos?: string[] };
+    for (const id of v.photos ?? []) usedPhotoIds.add(id);
+  }
 
   const photos: Record<string, string> = {};
   for (const id of usedPhotoIds) {
@@ -243,6 +263,7 @@ app.get("/api/backup", adminOnly, async (c) => {
     assessments: assessments.results.map((r) => JSON.parse(r.data)),
     hazardInfos: hazardInfos.results.map((r) => JSON.parse(r.data)),
     inspections: inspections.results.map((r) => JSON.parse(r.data)),
+    surveys: surveys.results.map((r) => JSON.parse(r.data)),
     settings: settingsRow ? JSON.parse(settingsRow.data) : undefined,
     photos,
   });
@@ -253,6 +274,7 @@ app.post("/api/backup/restore", adminOnly, async (c) => {
     assessments?: { id: string; facility?: string; process?: string }[];
     hazardInfos?: { id: string; facility?: string; process?: string }[];
     inspections?: { id: string; facility?: string; process?: string }[];
+    surveys?: { id: string; process?: string }[];
     settings?: Record<string, unknown>;
     photos?: Record<string, string>;
   }>();
@@ -286,6 +308,16 @@ app.post("/api/backup/restore", adminOnly, async (c) => {
          ON CONFLICT(id) DO UPDATE SET data = ?2, facility = ?3, process = ?4, updated_at = ?5`,
       )
       .bind(i.id, JSON.stringify(i), i.facility ?? "", i.process ?? "", now)
+      .run();
+  }
+
+  for (const v of data.surveys ?? []) {
+    await c.env.ras_db
+      .prepare(
+        `INSERT INTO surveys (id, data, facility, process, updated_at) VALUES (?1, ?2, '', ?3, ?4)
+         ON CONFLICT(id) DO UPDATE SET data = ?2, process = ?3, updated_at = ?4`,
+      )
+      .bind(v.id, JSON.stringify(v), v.process ?? "", now)
       .run();
   }
 
@@ -326,6 +358,7 @@ app.post("/api/wipe", adminOnly, async (c) => {
     c.env.ras_db.prepare("DELETE FROM assessments"),
     c.env.ras_db.prepare("DELETE FROM hazard_infos"),
     c.env.ras_db.prepare("DELETE FROM inspections"),
+    c.env.ras_db.prepare("DELETE FROM surveys"),
     c.env.ras_db.prepare("DELETE FROM photo_meta"),
   ]);
   return c.json({ ok: true });

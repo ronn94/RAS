@@ -736,3 +736,59 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* ── 의견청취 설문지 (A4 세로 1장) ─────────────────────────── */
+.sheet-survey .print-page {
+  box-sizing: border-box;
+  width: 180mm;
+}
+.sheet-survey .sheet-title {
+  text-align: center;
+  font-size: 15pt;
+  font-weight: 700;
+}
+.sheet-survey .sheet-meta {
+  margin: 1mm 0 4mm;
+  text-align: center;
+  font-size: 8pt;
+}
+.sheet-survey :is(th, td) {
+  padding: 1.2mm 1.5mm;
+}
+.sheet-survey td {
+  height: 8mm;
+}
+/* 유해위험요인·개선대책은 손으로 길게 쓰는 칸이라 넉넉히 잡는다 */
+.sheet-survey .tall {
+  height: 26mm;
+  vertical-align: top;
+}
+.sheet-survey .wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.sheet-survey .sec {
+  margin: 4mm 0 1.5mm;
+  font-weight: 700;
+}
+.sheet-survey .photos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4mm;
+}
+.sheet-survey .photo {
+  height: 62mm;
+  border: 0.75pt solid #000;
+}
+.sheet-survey .photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.sheet-survey .photo .empty {
+  display: grid;
+  place-content: center;
+  height: 100%;
+  color: #666;
+}

@@ -322,3 +322,48 @@ export function emptyInspection(dept = ""): Inspection {
     updatedAt: Date.now(),
   };
 }
+
+/* ── 의견청취 · 설문지 ───────────────────────────────────────
+   근로자가 현장에서 발굴한 위험요인을 직접 제출하는 서식.
+   필드는 위험성평가표 행(RiskItem)과 거의 1:1이라 그대로 이관할 수 있다. */
+
+export type Survey = {
+  id: string;
+  author: string; // 작성자 (직원 명단에서 고름)
+  date: string; // 작성일자 (YYYY-MM-DD)
+  process: string; // 공정명
+  subProcess: string; // 세부공정
+  hazardClass: HazardClass | ""; // 위험분류
+  hazardCode: string; // 위험코드 — 번호만 저장 (예: "1.4")
+  hazard: string; // 유해위험요인
+  p: number | null; // 가능성
+  s: number | null; // 중대성 (위험성 = p × s, 저장하지 않고 그때그때 계산한다)
+  measure: string; // 개선대책
+  dueDate: string; // 개선예정일 (YYYY-MM-DD)
+  photos: string[]; // 사진 id (최대 SURVEY_MAX_PHOTOS장)
+  /** 위험성평가표로 옮긴 흔적 — 순회점검과 같은 방식으로 rowId까지 남긴다 */
+  movedTo?: { assessmentId: string; rowId: string; at: number };
+  updatedAt: number;
+};
+
+/** 설문지에 붙일 수 있는 사진 장수 */
+export const SURVEY_MAX_PHOTOS = 2;
+
+export function emptySurvey(): Survey {
+  return {
+    id: crypto.randomUUID(),
+    author: "",
+    date: new Date().toISOString().slice(0, 10),
+    process: "",
+    subProcess: "",
+    hazardClass: "",
+    hazardCode: "",
+    hazard: "",
+    p: null,
+    s: null,
+    measure: "",
+    dueDate: "",
+    photos: [],
+    updatedAt: Date.now(),
+  };
+}
