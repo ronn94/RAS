@@ -49,26 +49,38 @@ export function HazardInfoSheet({ info }: { info: HazardInfo }) {
             <col style={{ width: "25mm" }} />
           </colgroup>
           <tbody>
-            <tr>
+            <tr className="head-row">
               <td className="lbl">대상시설</td>
               <td>
                 <FitText>{info.facility}</FitText>
               </td>
-              <td className="head-title" rowSpan={2}>
+              <td className="head-title" rowSpan={3}>
                 유해 · 위험 정보
               </td>
               <th>담 당</th>
               <th>검 토</th>
               <th>승 인</th>
             </tr>
-            <tr>
+            <tr className="head-row">
               <td className="lbl">공 정 명</td>
               <td>
                 <FitText>{info.process}</FitText>
               </td>
-              <td className="approval num">{ap.charge}</td>
-              <td className="approval num">{ap.review}</td>
-              <td className="approval num">{ap.approve}</td>
+              <td className="approval num" rowSpan={2}>
+                {ap.charge}
+              </td>
+              <td className="approval num" rowSpan={2}>
+                {ap.review}
+              </td>
+              <td className="approval num" rowSpan={2}>
+                {ap.approve}
+              </td>
+            </tr>
+            <tr className="head-row">
+              <td className="lbl">작 업 명</td>
+              <td>
+                <FitText>{info.workName}</FitText>
+              </td>
             </tr>
           </tbody>
         </table>

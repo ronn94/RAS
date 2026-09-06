@@ -384,8 +384,12 @@
   font-weight: 700;
   text-align: center;
 }
-.sheet-hazard .approval {
-  height: 15mm;
+/* 대상시설·공정명·작업명 세 행의 세로 폭을 균등하게 — 전체 높이는 작업명을 추가하기 전
+   (대상시설·공정명 2행) 높이 그대로 유지하고 3등분한다. 결재란(담당·검토·승인)은 첫 행에
+   머리글을 두고 나머지 두 행에 rowSpan으로 값 칸을 붙여, 행 높이 변화를 그대로 따라간다. */
+.sheet-hazard .head-row td,
+.sheet-hazard .head-row th {
+  height: 6.85mm;
 }
 .sheet-hazard .steps table {
   height: auto;
