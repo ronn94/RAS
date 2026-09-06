@@ -336,7 +336,7 @@ export function InspectionDetail({ inspection, onBack }: { inspection: Inspectio
           </TableWrap>
           <div className="flex items-center justify-center gap-2 border-t p-2">
             <span className="text-xs text-muted-foreground">
-              서명은 인쇄한 뒤 손으로 받습니다 · 설정의 직원 명단에서 고릅니다
+              서명은 인쇄한 뒤 수기로 받습니다 · 설정의 직원 명단에서 고릅니다
             </span>
             <Button
               variant="ghost"
