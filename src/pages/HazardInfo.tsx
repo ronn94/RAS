@@ -71,6 +71,7 @@ export function HazardInfoPage({
                   <TR>
                     <TH>대상시설</TH>
                     <TH>공정명</TH>
+                    <TH>작업명</TH>
                     <TH className="w-32">작성일</TH>
                     <TH className="w-24 text-right">작업단계</TH>
                     <TH className="w-28 text-center">평가표 연동</TH>
@@ -82,6 +83,7 @@ export function HazardInfoPage({
                     <TR key={h.id} className="cursor-pointer" onClick={() => onOpen(h.id)}>
                       <TD className="font-medium">{h.facility || "-"}</TD>
                       <TD className="text-muted-foreground">{h.process || "-"}</TD>
+                      <TD className="text-muted-foreground">{h.workName || "-"}</TD>
                       <TD className="tabular-nums">{h.date || "-"}</TD>
                       <TD className="text-right tabular-nums">{h.steps.length}</TD>
                       <TD className="text-center text-muted-foreground">{h.assessmentId ? "연동" : "-"}</TD>

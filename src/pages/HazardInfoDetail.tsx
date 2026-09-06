@@ -136,7 +136,7 @@ export function HazardInfoDetail({ info, onBack }: { info: HazardInfo; onBack: (
 
       {/* 문서 정보 */}
       <Card className="no-print shadow-xs">
-        <CardContent className="grid grid-cols-1 gap-3 py-4 sm:grid-cols-2 lg:grid-cols-4">
+        <CardContent className="grid grid-cols-1 gap-3 py-4 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1.5">
             <Label>연동 평가표</Label>
             <Select
@@ -160,6 +160,10 @@ export function HazardInfoDetail({ info, onBack }: { info: HazardInfo; onBack: (
           <div className="space-y-1.5">
             <Label>공정명</Label>
             <ProcessSelect value={draft.process} onChange={(v) => patch({ process: v })} disabled={!canEdit} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>작업명</Label>
+            <Input disabled={!canEdit} value={draft.workName ?? ""} onChange={(ev) => patch({ workName: ev.target.value })} />
           </div>
           <div className="space-y-1.5">
             <Label>작성일</Label>

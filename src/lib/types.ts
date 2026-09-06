@@ -233,6 +233,7 @@ export type HazardInfo = {
   assessmentId: string | null; // 연동된 위험성평가표
   facility: string; // 대상시설
   process: string; // 공정명
+  workName: string; // 작업명
   date: string; // 작성일 (YYYY-MM-DD)
   steps: HazardStep[];
   extra: HazardExtra;
@@ -263,6 +264,7 @@ export function emptyHazardInfo(): HazardInfo {
     assessmentId: null,
     facility: "",
     process: "",
+    workName: "",
     date: new Date().toISOString().slice(0, 10),
     steps: [emptyStep(), emptyStep(), emptyStep()],
     extra: emptyExtra(),
