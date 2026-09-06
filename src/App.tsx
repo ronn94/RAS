@@ -56,7 +56,14 @@ function Router({ identity }: { identity: Identity }) {
       onLogout={() => void logout()}
       hiddenViews={isAdmin ? undefined : ADMIN_ONLY_VIEWS}
     >
-      {activeView === "dashboard" && <DashboardPage onNavigate={setView} />}
+      {activeView === "dashboard" && (
+        <DashboardPage
+          onNavigate={(v, id) => {
+            setView(v);
+            setOpenId(id ?? null);
+          }}
+        />
+      )}
       {activeView === "assessments" && <AssessmentsPage openId={openId} onOpen={setOpenId} />}
       {activeView === "highrisk" && <HighRiskPage />}
       {activeView === "hazardinfo" && <HazardInfoPage openId={openId} onOpen={setOpenId} />}

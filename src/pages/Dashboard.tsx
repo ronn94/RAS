@@ -1,5 +1,16 @@
 import * as React from "react";
-import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, Circle, History, Printer, ShieldAlert, StickyNote } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Circle,
+  History,
+  Printer,
+  ShieldAlert,
+  StickyNote,
+} from "lucide-react";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Select } from "@/components/ui";
 import { BarList, RiskHeatmap } from "@/components/charts";
 import { DashboardSheet } from "@/print/DashboardSheet";
@@ -25,11 +36,12 @@ function EntryRow({ e, right }: { e: Entry; right?: React.ReactNode }) {
   );
 }
 
-export function DashboardPage({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
+export function DashboardPage({ onNavigate }: { onNavigate: (v: ViewKey, id?: string) => void }) {
   const { assessments, hazardInfos, surveys, settings } = useStore();
   const m = React.useMemo(() => buildMetrics(assessments, hazardInfos), [assessments, hazardInfos]);
   const [cell, setCell] = React.useState<string | null>(null);
   const [cellAfter, setCellAfter] = React.useState<string | null>(null);
+  const [updatesExpanded, setUpdatesExpanded] = React.useState(false);
 
   /* 인쇄 — 회의자료용 상세 보고서와 게시용 월간 보고서 둘 중 고른 것만 DOM에 둔다.
      둘 다 렌더해 두고 CSS로 감추면 .print-root의 display:block !important와 부딪힌다. */
@@ -44,6 +56,10 @@ export function DashboardPage({ onNavigate }: { onNavigate: (v: ViewKey) => void
     setSheet(kind);
     setPrintTick((t) => t + 1);
   };
+
+  const monthUpdates = React.useMemo(() => entriesImprovedIn(m.entries, monthKey()), [m.entries]);
+  const UPDATES_COLLAPSED_COUNT = 6;
+  const visibleUpdates = updatesExpanded ? monthUpdates : monthUpdates.slice(0, UPDATES_COLLAPSED_COUNT);
 
   const cellEntries = cell ? m.entries.filter((e) => `${e.row.p}-${e.row.s}` === cell) : [];
   const cellAfterEntries = cellAfter ? m.entries.filter((e) => `${e.row.p2}-${e.row.s2}` === cellAfter) : [];
@@ -193,41 +209,59 @@ export function DashboardPage({ onNavigate }: { onNavigate: (v: ViewKey) => void
         </Card>
       </div>
 
-      {/* 이번 달 업데이트 내역 — 개선일자가 당월인 항목 요약 */}
+      {/* 이번 달 업데이트 내역 — 개선일자가 당월인 항목 요약. PC에서는 2열, 기본은 일부만 보이고 펼칠 수 있다 */}
       <Card className="no-print shadow-xs">
         <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
           <div>
             <CardTitle className="flex items-center gap-2">
               <History className="size-4" /> 이번 달 업데이트 내역
             </CardTitle>
-            <CardDescription>{monthLabel(monthKey())} 중 개선일자가 찍힌 항목</CardDescription>
+            <CardDescription>{monthLabel(monthKey())} 중 개선일자가 찍힌 항목 — 행을 누르면 평가표로 이동합니다</CardDescription>
           </div>
           <Badge variant="outline" className="shrink-0 font-normal">
-            {entriesImprovedIn(m.entries, monthKey()).length}건
+            {monthUpdates.length}건
           </Badge>
         </CardHeader>
-        <CardContent className="divide-y">
-          {entriesImprovedIn(m.entries, monthKey()).length === 0 ? (
+        <CardContent>
+          {monthUpdates.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">이번 달 업데이트된 항목이 없습니다</p>
           ) : (
-            entriesImprovedIn(m.entries, monthKey())
-              .slice(0, 5)
-              .map((e) => (
-                <div key={e.row.id} className="flex items-center gap-2 py-1.5">
-                  <Badge className={riskBadgeClass(riskAfter(e.row) ?? riskBefore(e.row))}>
-                    {riskAfter(e.row) ?? riskBefore(e.row) ?? "-"}
-                  </Badge>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm">{e.row.hazard || "내용 미입력"}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {e.row.code || "코드 미부여"} · {e.assessment.process || "공정 미입력"}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                    {e.row.improveDate.slice(5)}
-                  </span>
-                </div>
-              ))
+            <>
+              <div className="grid grid-cols-1 @xl/main:grid-cols-2 @xl/main:gap-x-6">
+                {visibleUpdates.map((e) => (
+                  <button
+                    key={e.row.id}
+                    type="button"
+                    onClick={() => onNavigate("assessments", e.assessment.id)}
+                    className="flex w-full items-center gap-2 border-b border-border py-1.5 text-left transition-colors last:border-b-0 hover:bg-muted/50"
+                  >
+                    <Badge className={riskBadgeClass(riskAfter(e.row) ?? riskBefore(e.row))}>
+                      {riskAfter(e.row) ?? riskBefore(e.row) ?? "-"}
+                    </Badge>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm">{e.row.hazard || "내용 미입력"}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {e.row.hazardCode || "위험코드 미부여"} · {e.assessment.process || "공정 미입력"}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                      {e.row.improveDate.slice(5)}
+                    </span>
+                    <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+                  </button>
+                ))}
+              </div>
+              {monthUpdates.length > UPDATES_COLLAPSED_COUNT && (
+                <button
+                  type="button"
+                  onClick={() => setUpdatesExpanded((v) => !v)}
+                  className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/50"
+                >
+                  {updatesExpanded ? "접기" : `더보기 (${monthUpdates.length - UPDATES_COLLAPSED_COUNT}건 더)`}
+                  <ChevronDown className={`size-3.5 transition-transform ${updatesExpanded ? "rotate-180" : ""}`} />
+                </button>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
