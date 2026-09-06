@@ -58,7 +58,7 @@ async function loadPermissions(db: D1Database): Promise<Record<string, boolean>>
   return { ...DEFAULT_SETTINGS.permissions, ...(parsed?.permissions ?? {}) };
 }
 
-type PermissionKey = "edit" | "delete" | "photo" | "survey";
+type PermissionKey = "edit" | "delete" | "photo" | "survey" | "stopwork";
 
 /** 나열한 권한 중 **하나라도** 켜져 있으면 통과한다 */
 function requirePermission(...keys: PermissionKey[]): MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> {
@@ -90,7 +90,7 @@ app.get("/api/identity", async (c) => {
 
 /* ── 공용: JSON 문서 컬렉션(assessments / hazard_infos) ──────── */
 function collection(
-  table: "assessments" | "hazard_infos" | "inspections" | "surveys",
+  table: "assessments" | "hazard_infos" | "inspections" | "surveys" | "stop_works" | "priority_actions",
   /** 이 컬렉션을 쓰기 위해 필요한 권한. 설문지는 전역 편집권한과 분리해 survey로 연다 */
   perms: { write: PermissionKey[]; remove: PermissionKey[] } = { write: ["edit"], remove: ["delete"] },
 ) {
@@ -145,6 +145,10 @@ app.route("/api/assessments", collection("assessments"));
 app.route("/api/hazardinfos", collection("hazard_infos"));
 app.route("/api/inspections", collection("inspections"));
 app.route("/api/surveys", collection("surveys", { write: ["survey"], remove: ["survey"] }));
+// 작업중지권은 근로자가 직접 내는 서식이라 설문지처럼 전용 권한(stopwork)으로 연다.
+// 우선조치 요청서는 점검자·본사가 발행하는 문서라 관리자(edit) 몫이다.
+app.route("/api/stopworks", collection("stop_works", { write: ["stopwork"], remove: ["stopwork"] }));
+app.route("/api/priorityactions", collection("priority_actions"));
 
 /* ── 설정 (단일 레코드) ────────────────────────────────────── */
 app.get("/api/settings", async (c) => {
@@ -170,7 +174,7 @@ app.put("/api/settings", adminOnly, async (c) => {
 
 /* ── 사진 (R2) ──────────────────────────────────────────────
    업로드 시 서버에서 새 id를 발급한다 — 클라이언트가 id를 정하지 않는다. */
-app.post("/api/photos", requirePermission("photo", "survey"), async (c) => {
+app.post("/api/photos", requirePermission("photo", "survey", "stopwork"), async (c) => {
   const body = await c.req.arrayBuffer();
   if (body.byteLength === 0) return c.json({ error: "빈 파일입니다" }, 400);
   const id = crypto.randomUUID();
@@ -194,7 +198,7 @@ app.get("/api/photos/:id", async (c) => {
   });
 });
 
-app.delete("/api/photos/:id", requirePermission("photo", "survey"), async (c) => {
+app.delete("/api/photos/:id", requirePermission("photo", "survey", "stopwork"), async (c) => {
   const id = c.req.param("id");
   await c.env.ras_photos.delete(id);
   await c.env.ras_db.prepare("DELETE FROM photo_meta WHERE id = ?1").bind(id).run();
@@ -239,11 +243,13 @@ function toBase64(buf: ArrayBuffer): string {
 
 /* ── 전체 백업 · 복원 ───────────────────────────────────────── */
 app.get("/api/backup", adminOnly, async (c) => {
-  const [assessments, hazardInfos, inspections, surveys, settingsRow] = await Promise.all([
+  const [assessments, hazardInfos, inspections, surveys, stopWorks, priorityActions, settingsRow] = await Promise.all([
     c.env.ras_db.prepare("SELECT data FROM assessments").all<{ data: string }>(),
     c.env.ras_db.prepare("SELECT data FROM hazard_infos").all<{ data: string }>(),
     c.env.ras_db.prepare("SELECT data FROM inspections").all<{ data: string }>(),
     c.env.ras_db.prepare("SELECT data FROM surveys").all<{ data: string }>(),
+    c.env.ras_db.prepare("SELECT data FROM stop_works").all<{ data: string }>(),
+    c.env.ras_db.prepare("SELECT data FROM priority_actions").all<{ data: string }>(),
     c.env.ras_db.prepare("SELECT data FROM settings WHERE id = 'app'").first<{ data: string }>(),
   ]);
 
@@ -263,6 +269,18 @@ app.get("/api/backup", adminOnly, async (c) => {
     const v = JSON.parse(row.data) as { photos?: string[] };
     for (const id of v.photos ?? []) usedPhotoIds.add(id);
   }
+  // 작업중지·우선조치는 사진뿐 아니라 **서명 이미지**도 R2에 있다 — 빠뜨리면 정리 때 지워진다
+  for (const row of stopWorks.results) {
+    const v = JSON.parse(row.data) as { photos?: string[]; requesterSign?: string };
+    for (const id of v.photos ?? []) usedPhotoIds.add(id);
+    if (v.requesterSign) usedPhotoIds.add(v.requesterSign);
+  }
+  for (const row of priorityActions.results) {
+    const v = JSON.parse(row.data) as { photos?: string[]; issuerSign?: string; coopSign?: string };
+    for (const id of v.photos ?? []) usedPhotoIds.add(id);
+    if (v.issuerSign) usedPhotoIds.add(v.issuerSign);
+    if (v.coopSign) usedPhotoIds.add(v.coopSign);
+  }
 
   const photos: Record<string, string> = {};
   for (const id of usedPhotoIds) {
@@ -273,11 +291,13 @@ app.get("/api/backup", adminOnly, async (c) => {
   }
 
   return c.json({
-    version: 3,
+    version: 4,
     assessments: assessments.results.map((r) => JSON.parse(r.data)),
     hazardInfos: hazardInfos.results.map((r) => JSON.parse(r.data)),
     inspections: inspections.results.map((r) => JSON.parse(r.data)),
     surveys: surveys.results.map((r) => JSON.parse(r.data)),
+    stopWorks: stopWorks.results.map((r) => JSON.parse(r.data)),
+    priorityActions: priorityActions.results.map((r) => JSON.parse(r.data)),
     settings: settingsRow ? JSON.parse(settingsRow.data) : undefined,
     photos,
   });
@@ -289,6 +309,8 @@ app.post("/api/backup/restore", adminOnly, async (c) => {
     hazardInfos?: { id: string; facility?: string; process?: string }[];
     inspections?: { id: string; facility?: string; process?: string }[];
     surveys?: { id: string; process?: string }[];
+    stopWorks?: { id: string; dept?: string; workName?: string }[];
+    priorityActions?: { id: string; site?: string }[];
     settings?: Record<string, unknown>;
     photos?: Record<string, string>;
   }>();
@@ -335,6 +357,26 @@ app.post("/api/backup/restore", adminOnly, async (c) => {
       .run();
   }
 
+  for (const v of data.stopWorks ?? []) {
+    await c.env.ras_db
+      .prepare(
+        `INSERT INTO stop_works (id, data, facility, process, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(id) DO UPDATE SET data = ?2, facility = ?3, process = ?4, updated_at = ?5`,
+      )
+      .bind(v.id, JSON.stringify(v), v.dept ?? "", v.workName ?? "", now)
+      .run();
+  }
+
+  for (const v of data.priorityActions ?? []) {
+    await c.env.ras_db
+      .prepare(
+        `INSERT INTO priority_actions (id, data, facility, process, updated_at) VALUES (?1, ?2, ?3, '', ?4)
+         ON CONFLICT(id) DO UPDATE SET data = ?2, facility = ?3, updated_at = ?4`,
+      )
+      .bind(v.id, JSON.stringify(v), v.site ?? "", now)
+      .run();
+  }
+
   if (data.settings) {
     await c.env.ras_db
       .prepare(
@@ -373,6 +415,8 @@ app.post("/api/wipe", adminOnly, async (c) => {
     c.env.ras_db.prepare("DELETE FROM hazard_infos"),
     c.env.ras_db.prepare("DELETE FROM inspections"),
     c.env.ras_db.prepare("DELETE FROM surveys"),
+    c.env.ras_db.prepare("DELETE FROM stop_works"),
+    c.env.ras_db.prepare("DELETE FROM priority_actions"),
     c.env.ras_db.prepare("DELETE FROM photo_meta"),
   ]);
   return c.json({ ok: true });

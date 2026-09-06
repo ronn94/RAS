@@ -5,11 +5,16 @@ import {
   emptyAssessment,
   emptyHazardInfo,
   emptyInspection,
+  emptyPriorityAction,
+  emptyStopWork,
   emptySurvey,
+  nextDocNo,
   type Assessment,
   type HazardInfo,
   type Inspection,
+  type PriorityAction,
   type RiskItem,
+  type StopWork,
   type Survey,
 } from "@/lib/types";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
@@ -49,6 +54,16 @@ type Ctx = {
   removeSurvey: (id: string) => Promise<void>;
   /** 게스트가 설문지를 쓸 수 있는가 (관리자는 항상 true) */
   canSurvey: boolean;
+  stopWorks: StopWork[];
+  createStopWork: () => StopWork;
+  saveStopWork: (v: StopWork) => Promise<void>;
+  removeStopWork: (id: string) => Promise<void>;
+  /** 게스트가 작업중지 요청서를 낼 수 있는가 (관리자는 항상 true) */
+  canStopWork: boolean;
+  priorityActions: PriorityAction[];
+  createPriorityAction: () => PriorityAction;
+  savePriorityAction: (v: PriorityAction) => Promise<void>;
+  removePriorityAction: (id: string) => Promise<void>;
 };
 
 const StoreContext = React.createContext<Ctx | null>(null);
@@ -58,6 +73,8 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   const [hazardInfos, setHazardInfos] = React.useState<HazardInfo[]>([]);
   const [inspections, setInspections] = React.useState<Inspection[]>([]);
   const [surveys, setSurveys] = React.useState<Survey[]>([]);
+  const [stopWorks, setStopWorks] = React.useState<StopWork[]>([]);
+  const [priorityActions, setPriorityActions] = React.useState<PriorityAction[]>([]);
   const [settings, setSettings] = React.useState<AppSettings>(DEFAULT_SETTINGS);
   const [lastBackup, setLastBackup] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -70,6 +87,8 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       setHazardInfos(await db.listHazardInfos());
       setInspections(await db.listInspections());
       setSurveys(await db.listSurveys());
+      setStopWorks(await db.listStopWorks());
+      setPriorityActions(await db.listPriorityActions());
       const s = await db.loadSettings();
       setSettings(s);
       setRiskThreshold(s.risk.threshold);
@@ -195,6 +214,48 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
     setSurveys((prev) => prev.filter((x) => x.id !== id));
   }, []);
 
+  const saveStopWork = React.useCallback(async (v: StopWork) => {
+    await db.putStopWork(v);
+    setStopWorks((prev) => {
+      const next = prev.some((x) => x.id === v.id)
+        ? prev.map((x) => (x.id === v.id ? { ...v, updatedAt: Date.now() } : x))
+        : [{ ...v, updatedAt: Date.now() }, ...prev];
+      return [...next].sort((x, y) => y.updatedAt - x.updatedAt);
+    });
+  }, []);
+
+  /** 설문지와 같이 화면에서만 만들고 '등록'을 눌러야 서버에 남는다.
+      접수번호는 그 해에 이미 쓴 번호 다음을 미리 채운다(고칠 수 있다). */
+  const createStopWork = React.useCallback(
+    () => emptyStopWork(nextDocNo(stopWorks), settings.org.orgName || settings.org.facility),
+    [stopWorks, settings.org],
+  );
+
+  const removeStopWork = React.useCallback(async (id: string) => {
+    await db.deleteStopWork(id);
+    setStopWorks((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
+  const savePriorityAction = React.useCallback(async (v: PriorityAction) => {
+    await db.putPriorityAction(v);
+    setPriorityActions((prev) => {
+      const next = prev.some((x) => x.id === v.id)
+        ? prev.map((x) => (x.id === v.id ? { ...v, updatedAt: Date.now() } : x))
+        : [{ ...v, updatedAt: Date.now() }, ...prev];
+      return [...next].sort((x, y) => y.updatedAt - x.updatedAt);
+    });
+  }, []);
+
+  const createPriorityAction = React.useCallback(
+    () => emptyPriorityAction(nextDocNo(priorityActions), settings.org.dept, settings.org.facility),
+    [priorityActions, settings.org],
+  );
+
+  const removePriorityAction = React.useCallback(async (id: string) => {
+    await db.deletePriorityAction(id);
+    setPriorityActions((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
   const updateSettings = React.useCallback(
     async (patch: Partial<AppSettings>) => {
       const next = { ...settings, ...patch, updatedAt: Date.now() };
@@ -214,8 +275,10 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   const isAdmin = identity.role === "admin";
   const canEdit = isAdmin || settings.permissions.edit;
   const canDelete = isAdmin || settings.permissions.delete;
-  const canUploadPhoto = isAdmin || settings.permissions.photo || settings.permissions.survey;
+  const canUploadPhoto =
+    isAdmin || settings.permissions.photo || settings.permissions.survey || settings.permissions.stopwork;
   const canSurvey = isAdmin || settings.permissions.survey;
+  const canStopWork = isAdmin || settings.permissions.stopwork;
 
   const value = React.useMemo(
     () => ({
@@ -245,6 +308,15 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       saveSurvey,
       removeSurvey,
       canSurvey,
+      stopWorks,
+      createStopWork,
+      saveStopWork,
+      removeStopWork,
+      canStopWork,
+      priorityActions,
+      createPriorityAction,
+      savePriorityAction,
+      removePriorityAction,
       settings,
       updateSettings,
       lastBackup,
@@ -277,6 +349,15 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       saveSurvey,
       removeSurvey,
       canSurvey,
+      stopWorks,
+      createStopWork,
+      saveStopWork,
+      removeStopWork,
+      canStopWork,
+      priorityActions,
+      createPriorityAction,
+      savePriorityAction,
+      removePriorityAction,
       settings,
       updateSettings,
       lastBackup,

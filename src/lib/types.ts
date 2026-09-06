@@ -395,3 +395,154 @@ export function emptySurvey(): Survey {
     updatedAt: Date.now(),
   };
 }
+
+/* ── 작업중지권 · 우선조치권 ─────────────────────────────────
+   근거: '작업중지권 활성화 및 우선조치권 운영 안내'(지속경영본부, 2025.06).
+   서식 두 종류를 한 메뉴에서 다룬다.
+   - 작업중지 요청서(첨부1) + 작업중지명령서(첨부2, 현장 게시물)는 **한 건**이다.
+     명령서는 같은 사건의 게시용 출력물이라 따로 문서를 만들지 않는다.
+   - 우선조치 요청서(Appendix 2)는 점검자·본사가 발행하는 별개 문서다. */
+
+/**
+ * 작업중지 진행 단계 — Process Flow의 2(중지)→7·8(조치)→10(재개)/11(중단)을 따른다.
+ * '재개'는 작업재개 검토 승인, '중단'은 불승인(중대한 사항은 본사 지원 검토)이다.
+ */
+export const STOP_STATUSES = ["중지", "조치중", "재개", "중단"] as const;
+export type StopStatus = (typeof STOP_STATUSES)[number];
+
+/** 우선조치 진행 단계 — 발행 후 48시간 이내 처리가 원칙이다 */
+export const PRIORITY_STATUSES = ["발행", "조치중", "완료"] as const;
+export type PriorityStatus = (typeof PRIORITY_STATUSES)[number];
+
+/** 작업중지 요청서 + 작업중지명령서 — 한 사건이 문서 한 건이다 */
+export type StopWork = {
+  id: string;
+  no: string; // 접수번호 (YYYY-N, 자동 채번 후 수정 가능)
+  receivedBy: string; // 접수자
+  dept: string; // 소속(업체)
+  workName: string; // 작업명
+  requesterRank: string; // 요청자 직급
+  requesterName: string; // 요청자 성명
+  requesterPhone: string; // 요청자 전화번호
+  /** 요청자 서명 이미지 id (R2) — 화면에서 손으로 그린다. 없으면 인쇄물에 빈 칸이 남는다 */
+  requesterSign?: string;
+  reason: string; // 요청내용 (중지 사유)
+  result: string; // 조치결과
+  note: string; // 기타사항
+  date: string; // 작성일 (YYYY-MM-DD)
+  stoppedAt: string; // 작업중지 시각 (HH:MM)
+  resumedAt: string; // 작업재개 시각 (HH:MM) — 둘을 빼서 총 중지시간을 만든다
+  status: StopStatus;
+  /* 작업중지명령서(현장 게시물) 전용 항목 */
+  orderScope: string; // 작업중지범위
+  orderManager: string; // 담당자
+  orderPhone: string; // 연락처
+  photos: string[]; // 현장 사진 (최대 STOPWORK_PHOTO_LABELS.length장)
+  /** 위험성평가표로 옮긴 흔적 — 순회점검·설문지와 같은 방식(inspectionMoved로 판정) */
+  movedTo?: { assessmentId: string; rowId: string; at: number };
+  /** 잠금 — 관리자가 걸면 게스트는 고치지도 지우지도 못한다(워커가 다시 검사한다) */
+  locked?: boolean;
+  updatedAt: number;
+};
+
+/** 우선조치 요청서 — 점검자가 중대 이슈를 발견해 사업부문에 발행한다 */
+export type PriorityAction = {
+  id: string;
+  no: string; // 발행번호 (YYYY-N)
+  issuedBy: string; // 발행 부서 (예: 지속경영본부_안전보건팀)
+  site: string; // 사업장명
+  rep: string; // 대표 (현장소장)
+  inspectedAt: string; // 점검일시 (YYYY-MM-DD)
+  standard: string; // 관련기준 (예: 산업안전보건법 제39조)
+  penalty: string; // 위반시 Penalty (벌칙·행정처분·과태료)
+  finding: string; // 확인내용
+  request: string; // 요청사항
+  dueDate: string; // 조치기간 (YYYY-MM-DD)
+  note: string; // 기타사항
+  date: string; // 발행일 (YYYY-MM-DD)
+  issuerName: string; // 발행자 성명 (예: 지속경영본부장 ○○○)
+  issuerSign?: string; // 발행자 서명 이미지 id
+  coopName: string; // 협조자 성명 (예: ○○사업부문장 ○○○)
+  coopSign?: string; // 협조자 서명 이미지 id
+  result: string; // 조치결과 (사업부문 회신)
+  status: PriorityStatus;
+  photos: string[];
+  movedTo?: { assessmentId: string; rowId: string; at: number };
+  locked?: boolean;
+  updatedAt: number;
+};
+
+/** 작업중지 사진 칸 이름 — 설문지와 같이 화면·인쇄물이 같은 이름을 쓴다 */
+export const STOPWORK_PHOTO_LABELS = ["조치 전", "조치 후"] as const;
+
+/** 접수번호·발행번호는 `연도-일련번호` — 그 해에 이미 쓴 번호 다음을 준다 */
+export function nextDocNo(docs: { no?: string }[], year = new Date().getFullYear()): string {
+  const prefix = `${year}-`;
+  const used = docs
+    .map((d) => d.no ?? "")
+    .filter((no) => no.startsWith(prefix))
+    .map((no) => Number(no.slice(prefix.length)))
+    .filter((n) => Number.isFinite(n));
+  return `${prefix}${used.length ? Math.max(...used) + 1 : 1}`;
+}
+
+/** 총 작업중지 시간 — 서식의 '기타사항'에 자동으로 들어간다. 재개 전이면 null */
+export function stopMinutes(v: { stoppedAt: string; resumedAt: string }): number | null {
+  const toMin = (t: string) => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(t.trim());
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  };
+  const a = toMin(v.stoppedAt);
+  const b = toMin(v.resumedAt);
+  if (a === null || b === null) return null;
+  return b >= a ? b - a : b + 24 * 60 - a; // 자정을 넘긴 경우
+}
+
+export function emptyStopWork(no = "", dept = ""): StopWork {
+  return {
+    id: crypto.randomUUID(),
+    no,
+    receivedBy: "",
+    dept,
+    workName: "",
+    requesterRank: "",
+    requesterName: "",
+    requesterPhone: "",
+    reason: "",
+    result: "",
+    note: "",
+    date: new Date().toISOString().slice(0, 10),
+    stoppedAt: "",
+    resumedAt: "",
+    status: "중지",
+    orderScope: "",
+    orderManager: "",
+    orderPhone: "",
+    photos: [],
+    updatedAt: Date.now(),
+  };
+}
+
+export function emptyPriorityAction(no = "", issuedBy = "", site = ""): PriorityAction {
+  return {
+    id: crypto.randomUUID(),
+    no,
+    issuedBy,
+    site,
+    rep: "",
+    inspectedAt: new Date().toISOString().slice(0, 10),
+    standard: "",
+    penalty: "",
+    finding: "",
+    request: "",
+    dueDate: "",
+    note: "",
+    date: new Date().toISOString().slice(0, 10),
+    issuerName: "",
+    coopName: "",
+    result: "",
+    status: "발행",
+    photos: [],
+    updatedAt: Date.now(),
+  };
+}

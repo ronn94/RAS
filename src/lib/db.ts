@@ -7,7 +7,7 @@
  * store.tsx 쪽 변경을 최소화했다. 사진만 예외 — 서버가 id를 발급하므로
  * putPhoto(id, blob) 대신 uploadPhoto(blob) → id 형태다.
  */
-import type { Assessment, HazardInfo, Inspection, Survey } from "./types";
+import type { Assessment, HazardInfo, Inspection, PriorityAction, StopWork, Survey } from "./types";
 import { withDefaults, type AppSettings } from "./settings";
 
 /** 세션이 끊겼을 때(401) store.tsx가 로그인 화면으로 되돌릴 수 있도록 알린다.
@@ -57,6 +57,17 @@ export const deleteInspection = (id: string) => api(`/inspections/${id}`, { meth
 export const listSurveys = () => api<Survey[]>("/surveys");
 export const putSurvey = (v: Survey) => api<Survey>(`/surveys/${v.id}`, { method: "PUT", body: JSON.stringify(v) });
 export const deleteSurvey = (id: string) => api(`/surveys/${id}`, { method: "DELETE" });
+
+/* ── 작업중지권 · 우선조치권 ────────────────────────────── */
+export const listStopWorks = () => api<StopWork[]>("/stopworks");
+export const putStopWork = (v: StopWork) =>
+  api<StopWork>(`/stopworks/${v.id}`, { method: "PUT", body: JSON.stringify(v) });
+export const deleteStopWork = (id: string) => api(`/stopworks/${id}`, { method: "DELETE" });
+
+export const listPriorityActions = () => api<PriorityAction[]>("/priorityactions");
+export const putPriorityAction = (v: PriorityAction) =>
+  api<PriorityAction>(`/priorityactions/${v.id}`, { method: "PUT", body: JSON.stringify(v) });
+export const deletePriorityAction = (id: string) => api(`/priorityactions/${id}`, { method: "DELETE" });
 
 /* ── 설정 ───────────────────────────────────────────────── */
 export const loadSettings = () =>
@@ -114,10 +125,12 @@ export async function storageUsage() {
 
 /* ── 고아 사진 정리 ─────────────────────────────────────── */
 export async function cleanupOrphanPhotos(): Promise<number> {
-  const [assessments, inspections, surveys] = await Promise.all([
+  const [assessments, inspections, surveys, stopWorks, priorityActions] = await Promise.all([
     listAssessments(),
     listInspections(),
     listSurveys(),
+    listStopWorks(),
+    listPriorityActions(),
   ]);
   const used: string[] = [];
   for (const a of assessments) {
@@ -131,6 +144,16 @@ export async function cleanupOrphanPhotos(): Promise<number> {
     for (const it of i.items) if (it.photo) used.push(it.photo);
   }
   for (const v of surveys) used.push(...v.photos);
+  // 작업중지·우선조치는 **서명 이미지도 R2 사진**이다 — 빠뜨리면 서명이 통째로 지워진다
+  for (const v of stopWorks) {
+    used.push(...v.photos);
+    if (v.requesterSign) used.push(v.requesterSign);
+  }
+  for (const v of priorityActions) {
+    used.push(...v.photos);
+    if (v.issuerSign) used.push(v.issuerSign);
+    if (v.coopSign) used.push(v.coopSign);
+  }
   const { removed } = await api<{ removed: number }>("/photos/cleanup", {
     method: "POST",
     body: JSON.stringify({ used }),

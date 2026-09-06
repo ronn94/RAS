@@ -7,6 +7,7 @@ import {
   ListChecks,
   LogOut,
   MessageSquareText,
+  OctagonAlert,
   PanelLeftClose,
   PanelLeftOpen,
   Settings2,
@@ -23,6 +24,7 @@ export type ViewKey =
   | "hazardinfo"
   | "inspections"
   | "surveys"
+  | "stopworks"
   | "settings"
   | "backup";
 
@@ -47,7 +49,12 @@ const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
   },
   {
     label: "의견청취",
-    items: [{ key: "surveys", title: "설문지", icon: <MessageSquareText /> }],
+    items: [
+      { key: "surveys", title: "설문지", icon: <MessageSquareText /> },
+      // 작업중지권 — 근로자가 급박한 위험에 작업을 멈추고 요청서를 내는 자리라
+      // 설문지와 같은 '의견청취' 묶음에 둔다(둘 다 근로자가 직접 쓰는 서식이다)
+      { key: "stopworks", title: "작업중지권", icon: <OctagonAlert /> },
+    ],
   },
 ];
 

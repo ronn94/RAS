@@ -37,7 +37,7 @@ function EntryRow({ e, right }: { e: Entry; right?: React.ReactNode }) {
 }
 
 export function DashboardPage({ onNavigate }: { onNavigate: (v: ViewKey, id?: string) => void }) {
-  const { assessments, hazardInfos, surveys, settings } = useStore();
+  const { assessments, hazardInfos, surveys, stopWorks, settings } = useStore();
   const m = React.useMemo(() => buildMetrics(assessments, hazardInfos), [assessments, hazardInfos]);
   const [cell, setCell] = React.useState<string | null>(null);
   const [cellAfter, setCellAfter] = React.useState<string | null>(null);
@@ -91,7 +91,11 @@ export function DashboardPage({ onNavigate }: { onNavigate: (v: ViewKey, id?: st
   /** 아직 손대지 않은 의견 — 방치되면 의견청취 제도가 굴러가지 않는다 */
   const pendingSurveys = surveys.filter((v) => reviewOf(v) === "접수").length;
 
+  /** 아직 재개되지 않은 작업중지 — 현장이 멈춰 있다는 뜻이라 가장 먼저 봐야 한다 */
+  const openStopWorks = stopWorks.filter((v) => v.status === "중지" || v.status === "조치중").length;
+
   const gapItems = [
+    { label: "조치 중인 작업중지", n: openStopWorks, go: "stopworks" as ViewKey },
     { label: "미검토 의견", n: pendingSurveys, go: "surveys" as ViewKey },
     { label: "개선 전·후 사진 미첨부", n: m.gaps.noPhoto.length, go: "highrisk" as ViewKey },
     { label: "개선대책 미입력", n: m.gaps.noMeasure.length, go: "assessments" as ViewKey },

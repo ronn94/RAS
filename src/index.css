@@ -868,3 +868,248 @@
   text-align: right;
   color: #666;
 }
+
+/* ── 작업중지 요청서 (A4 세로) ─────────────────────────────── */
+.sheet-stopwork .print-page {
+  box-sizing: border-box;
+  width: 180mm;
+}
+/* 접수번호·접수자 — 오른쪽 위 작은 상자. 표 전체 폭을 쓰지 않는다 */
+.sheet-stopwork .head-box,
+.sheet-priority .head-box {
+  width: auto;
+  margin-left: auto;
+  margin-bottom: 6mm;
+}
+.sheet-stopwork .sheet-title,
+.sheet-priority .sheet-title {
+  margin-bottom: 5mm;
+  text-align: center;
+  font-size: 16pt;
+  font-weight: 700;
+  letter-spacing: 2pt;
+}
+.sheet-stopwork :is(th, td),
+.sheet-priority :is(th, td) {
+  padding: 1.2mm 1.5mm;
+}
+.sheet-stopwork td,
+.sheet-priority td {
+  height: 9mm;
+}
+.sheet-stopwork .sub {
+  white-space: nowrap;
+}
+.sheet-stopwork .tall,
+.sheet-priority .tall {
+  height: 26mm;
+  vertical-align: top;
+}
+.sheet-priority .taller {
+  height: 34mm;
+  vertical-align: top;
+}
+.sheet-stopwork .wrap,
+.sheet-priority .wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.sheet-priority .num-left {
+  font-variant-numeric: tabular-nums;
+}
+/* 서명 — 이미지가 있으면 이름 옆에 얹고, 없으면 (서명) 안내만 흐리게 둔다 */
+.sheet-stopwork .sign-cell,
+.sheet-priority .sign-line {
+  white-space: nowrap;
+}
+.sheet-stopwork .sign-img,
+.sheet-priority .sign-img {
+  display: inline-block;
+  height: 9mm;
+  margin-left: 1mm;
+  vertical-align: middle;
+}
+.sheet-stopwork .sign-hint,
+.sheet-priority .sign-hint {
+  color: #666;
+}
+.sheet-stopwork .sec {
+  margin: 4mm 0 1.5mm;
+  font-weight: 700;
+}
+.sheet-stopwork .photos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4mm;
+}
+.sheet-stopwork .photo {
+  border: 0.75pt solid #000;
+  background: #fff;
+}
+.sheet-stopwork .photo .cap {
+  border-bottom: 0.75pt solid #000;
+  padding: 1mm 1.5mm;
+  text-align: center;
+  font-weight: 700;
+}
+/* 사진은 잘라내지 않는다(contain) — 다른 서식과 같은 규칙. 안쪽 여백 1mm */
+.sheet-stopwork .photo .frame {
+  box-sizing: border-box;
+  height: 46mm;
+  padding: 1mm;
+}
+.sheet-stopwork .photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.sheet-stopwork .photo .empty {
+  display: grid;
+  place-content: center;
+  height: 100%;
+  color: #666;
+}
+.sheet-stopwork .date-line,
+.sheet-priority .date-line {
+  margin-top: 8mm;
+  text-align: center;
+  font-size: 11pt;
+  font-weight: 700;
+}
+.sheet-stopwork .org-line {
+  margin-top: 2mm;
+  text-align: center;
+  font-size: 11pt;
+  font-weight: 700;
+}
+.sheet-priority .sign-lines {
+  margin-top: 6mm;
+  text-align: right;
+  line-height: 1.9;
+}
+
+/* ── 작업중지명령서 (A4 세로 · 현장 게시용) ─────────────────────
+   유일하게 색을 쓰는 서식이다 — 멀리서도 보이는 경고 게시물이라 색이 곧 기능이다.
+   브라우저 인쇄에서 '배경 그래픽'을 켜야 노란 바탕이 나온다. */
+.sheet-stoporder .print-page {
+  box-sizing: border-box;
+  width: 180mm;
+  height: 267mm;
+  background: #ffd400;
+  padding: 6mm;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.sheet-stoporder .frame {
+  box-sizing: border-box;
+  height: 100%;
+  border: 2mm solid #e30613;
+  padding: 8mm 7mm;
+  text-align: center;
+  /* 표까지가 위 묶음, 날짜·회사명·안내문은 아래로 붙인다 —
+     사유가 짧아도 게시물 아래쪽이 휑하게 비지 않는다 */
+  display: flex;
+  flex-direction: column;
+}
+.sheet-stoporder .title {
+  font-size: 40pt;
+  font-weight: 800;
+  letter-spacing: 2pt;
+}
+.sheet-stoporder .lead {
+  margin: 8mm 0 0;
+  font-size: 13pt;
+  font-weight: 700;
+  line-height: 1.7;
+}
+.sheet-stoporder .lead strong {
+  color: #e30613;
+}
+.sheet-stoporder .sub {
+  margin: 6mm 0 8mm;
+  font-size: 11pt;
+  font-weight: 700;
+  line-height: 1.8;
+}
+.sheet-stoporder table {
+  border-top: 1pt solid #000;
+  border-left: 1pt solid #000;
+  text-align: left;
+}
+.sheet-stoporder :is(th, td) {
+  border-right: 1pt solid #000;
+  border-bottom: 1pt solid #000;
+  padding: 2mm 3mm;
+  font-size: 11pt;
+  font-weight: 700;
+}
+.sheet-stoporder .lbl {
+  background: transparent; /* 노란 바탕을 그대로 살린다 */
+  text-align: center;
+}
+.sheet-stoporder .tall {
+  height: 46mm;
+  vertical-align: top;
+}
+.sheet-stoporder .wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-weight: 400;
+}
+.sheet-stoporder .contact {
+  margin-top: 4mm;
+  font-weight: 700;
+}
+.sheet-stoporder .date-line {
+  margin-top: auto;
+  padding-top: 8mm;
+  font-size: 14pt;
+  font-weight: 800;
+  letter-spacing: 1pt;
+}
+.sheet-stoporder .org {
+  margin-top: 4mm;
+  font-size: 20pt;
+  font-weight: 800;
+}
+.sheet-stoporder .foot {
+  margin-top: 6mm;
+  font-size: 8pt;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+/* ── 작업중지권 운영 현황 (반기 실적표 · A4 가로) ───────────── */
+.sheet-stopreport .print-page {
+  box-sizing: border-box;
+  width: 267mm;
+  padding-right: 2mm; /* 표 우측 테두리가 경계에 걸려 사라지지 않게 */
+}
+.sheet-stopreport .report-title {
+  margin-bottom: 4mm;
+  text-align: center;
+  font-size: 14pt;
+  font-weight: 700;
+}
+.sheet-stopreport :is(th, td) {
+  padding: 1.5mm 2mm;
+}
+.sheet-stopreport td {
+  height: 10mm;
+  vertical-align: top;
+}
+.sheet-stopreport .wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.sheet-stopreport .empty {
+  height: 20mm;
+  text-align: center;
+  color: #666;
+  vertical-align: middle;
+}
+.sheet-stopreport .foot {
+  margin-top: 3mm;
+  font-size: 8pt;
+}

@@ -17,7 +17,7 @@ export type AppSettings = {
   /** 로컬 프로필 — 사이드바 표시·인쇄물 기본값에만 쓰인다 */
   profile: { name: string; role: string };
   /** 게스트 계정이 쓸 수 있는 기능. 관리 기능(설정 변경·백업·초기화)은 항상 막혀 있어 여기 없다 */
-  permissions: { edit: boolean; delete: boolean; photo: boolean; survey: boolean };
+  permissions: { edit: boolean; delete: boolean; photo: boolean; survey: boolean; stopwork: boolean };
   /** 목록 */
   processes: string[]; // 공정명
   /**
@@ -46,8 +46,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
     approver: { charge: "", review: "", approve: "" },
   },
   profile: { name: "관리자", role: "안전관리자" },
-  // 설문지는 게스트에게 의견을 받는 게 목적이라 기본으로 켜 둔다
-  permissions: { edit: false, delete: false, photo: false, survey: true },
+  // 설문지·작업중지권은 근로자에게 직접 받는 것이 목적이라 기본으로 켜 둔다
+  // (작업중지권은 근로자의 법정 권리라 막아 두면 제도 자체가 굴러가지 않는다)
+  permissions: { edit: false, delete: false, photo: false, survey: true, stopwork: true },
   processes: [],
   hazardFactors: HAZARD_FACTORS.map((f) => ({ ...f, types: f.types.map((t) => ({ ...t })) })),
   statuses: [...STATUSES],
