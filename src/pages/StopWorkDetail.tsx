@@ -28,6 +28,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import { PhotoSlot } from "@/components/photo";
+import { ProcessSelect } from "@/components/fields";
 import { SignatureField } from "@/components/signature";
 import { StopWorkSheet } from "@/print/StopWorkSheet";
 import { StopOrderSheet } from "@/print/StopOrderSheet";
@@ -87,6 +88,7 @@ export function StopWorkDetail({
   /** 등록·저장에 필요한 항목 — 사진·서명·조치결과는 나중에 채울 수 있다 */
   const missing = [
     !draft.dept && "소속(업체)",
+    !draft.process && "공정명",
     !draft.workName && "작업명",
     !draft.requesterName && "요청자 성명",
     !draft.reason && "중지 사유",
@@ -119,7 +121,7 @@ export function StopWorkDetail({
       hazard: draft.reason,
       measure: draft.result,
       note: `작업중지권 · ${draft.requesterName || draft.dept}`,
-      subProcess: draft.workName,
+      subProcess: draft.workName || draft.process,
     };
     await saveAssessment({ ...a, rows: [...a.rows, row] });
     const next: StopWork = {
@@ -144,7 +146,7 @@ export function StopWorkDetail({
               {isNew ? "새 작업중지 요청서" : `접수번호 ${draft.no || "-"}`}
             </div>
             <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-              {draft.workName || "작업명 미입력"} · {draft.date}
+              {[draft.process, draft.workName].filter(Boolean).join(" · ") || "공정명 미입력"} · {draft.date}
               <Badge variant="outline" className={cn("font-normal", STOP_TONE[draft.status])}>
                 {draft.status}
               </Badge>
@@ -263,20 +265,18 @@ export function StopWorkDetail({
         <CardContent className="space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1.5">
+              <Label>공정명</Label>
+              <ProcessSelect value={draft.process} onChange={(v) => patch({ process: v })} disabled={!canWrite} />
+            </div>
+            <div className="space-y-1.5">
               <Label>작업명</Label>
-              {/* 공정명 목록에 없는 작업(예: "슬러지 저류조 준설")도 그대로 적을 수 있어야 한다 —
-                  급박한 상황에서 목록에 없다고 못 적으면 서식 자체가 막힌다. 목록은 추천만 한다 */}
+              {/* 공정 안에서 실제로 하던 일 — 목록에 없는 작업(예: "슬러지 저류조 준설")도
+                  그대로 적어야 하므로 자유 입력이다. 급박한 상황에서 못 적으면 서식이 막힌다 */}
               <Input
                 disabled={!canWrite}
-                list="ras-processes"
                 value={draft.workName}
                 onChange={(e) => patch({ workName: e.target.value })}
               />
-              <datalist id="ras-processes">
-                {settings.processes.map((n) => (
-                  <option key={n} value={n} />
-                ))}
-              </datalist>
             </div>
             <div className="space-y-1.5">
               <Label>요청자 직급</Label>

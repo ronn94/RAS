@@ -55,7 +55,7 @@ export function StopOrderSheet({ stopWork: v }: { stopWork: StopWork }) {
             <tbody>
               <tr>
                 <td className="lbl">작업중지범위</td>
-                <td className="wrap">{v.orderScope || v.workName}</td>
+                <td className="wrap">{v.orderScope || [v.process, v.workName].filter(Boolean).join(" · ")}</td>
               </tr>
               <tr>
                 <td className="lbl tall">작업중지 사유</td>

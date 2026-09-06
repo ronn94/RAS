@@ -86,8 +86,10 @@ export function StopWorkSheet({ stopWork: v }: { stopWork: StopWork }) {
               <td colSpan={4}>{v.dept}</td>
             </tr>
             <tr>
+              <td className="lbl">공 정 명</td>
+              <td colSpan={2}>{v.process}</td>
               <td className="lbl">작 업 명</td>
-              <td colSpan={4}>{v.workName}</td>
+              <td>{v.workName}</td>
             </tr>
             <tr>
               <td className="lbl">요 청 자</td>

@@ -123,7 +123,7 @@ export function StopWorksPage({ openId, onOpen }: { openId: string | null; onOpe
     .filter((v) => {
       if (fStatus && v.status !== fStatus) return false;
       if (!query) return true;
-      return [v.no, v.dept, v.workName, v.requesterName, v.reason, v.result]
+      return [v.no, v.dept, v.process, v.workName, v.requesterName, v.reason, v.result]
         .some((t) => (t || "").toLowerCase().includes(query));
     });
   const priorityRows = [...priorityActions]
@@ -260,18 +260,23 @@ export function StopWorksPage({ openId, onOpen }: { openId: string | null; onOpe
             <EmptyState>조건에 맞는 문서가 없습니다.</EmptyState>
           ) : isStop ? (
             <TableWrap>
-              <Table className="[&_:is(th,td)]:px-4">
+              {/* PC에서는 표가 화면 안에 들어가고(가로 스크롤 없음), 좁은 화면에서만 스크롤된다 —
+                  min-w는 모바일용 최소 폭이고 md부터 풀어 100%를 나눠 쓴다(평가표 목록과 같은 방식).
+                  긴 글이 들어가는 작업명·중지 사유는 잘라내지 않고 줄바꿈한다 */}
+              <Table className="min-w-[64rem] table-fixed md:min-w-0 [&_:is(th,td)]:px-4">
                 <THead>
                   <TR>
-                    <TH className="w-24">접수번호</TH>
-                    <TH className="w-32">작성일</TH>
-                    <TH className="w-32">소속(업체)</TH>
-                    <TH className="w-32">작업명</TH>
-                    <TH className="w-24">요청자</TH>
-                    <TH>중지 사유</TH>
-                    <TH className="w-20 text-center">상태</TH>
-                    <TH className="w-24 text-center">평가표 이관</TH>
-                    <TH className="w-16" />
+                    {/* 폭은 %로 나눈다 — rem 고정폭은 화면이 좁아지면 합이 100%를 넘어
+                        마지막 칸이 한 글자씩 세로로 접힌다(실제로 겪은 문제) */}
+                    <TH className="w-[8%]">접수번호</TH>
+                    <TH className="w-[9%]">작성일</TH>
+                    <TH className="w-[12%]">소속(업체)</TH>
+                    <TH className="w-[7%]">요청자</TH>
+                    <TH className="w-[19%]">작업명</TH>
+                    <TH className="w-[27%]">중지 사유</TH>
+                    <TH className="w-[6%] text-center">상태</TH>
+                    <TH className="w-[7%] text-center">평가표 이관</TH>
+                    <TH className="w-[5%]" />
                   </TR>
                 </THead>
                 <TBody>
@@ -279,10 +284,12 @@ export function StopWorksPage({ openId, onOpen }: { openId: string | null; onOpe
                     <TR key={v.id} className="cursor-pointer" onClick={() => onOpen(v.id)}>
                       <TD className="font-medium tabular-nums">{v.no || "-"}</TD>
                       <TD className="tabular-nums">{v.date || "-"}</TD>
-                      <TD className="text-muted-foreground">{v.dept || "-"}</TD>
-                      <TD className="text-muted-foreground">{v.workName || "-"}</TD>
-                      <TD className="text-muted-foreground">{v.requesterName || "-"}</TD>
-                      <TD className="max-w-md truncate whitespace-normal">{v.reason || "-"}</TD>
+                      <TD className="truncate text-muted-foreground">{v.dept || "-"}</TD>
+                      <TD className="truncate text-muted-foreground">{v.requesterName || "-"}</TD>
+                      <TD className="whitespace-normal break-words">
+                        {[v.process, v.workName].filter(Boolean).join(" · ") || "-"}
+                      </TD>
+                      <TD className="whitespace-normal break-words">{v.reason || "-"}</TD>
                       <TD className="text-center">
                         <Badge variant="outline" className={cn("font-normal", STOP_TONE[v.status])}>
                           {v.status}
@@ -316,17 +323,17 @@ export function StopWorksPage({ openId, onOpen }: { openId: string | null; onOpe
             </TableWrap>
           ) : (
             <TableWrap>
-              <Table className="[&_:is(th,td)]:px-4">
+              <Table className="min-w-[64rem] table-fixed md:min-w-0 [&_:is(th,td)]:px-4">
                 <THead>
                   <TR>
-                    <TH className="w-24">발행번호</TH>
-                    <TH className="w-32">발행일</TH>
-                    <TH className="w-36">사업장명</TH>
-                    <TH>확인내용</TH>
-                    <TH className="w-32">조치기간</TH>
-                    <TH className="w-20 text-center">상태</TH>
-                    <TH className="w-24 text-center">평가표 이관</TH>
-                    <TH className="w-16" />
+                    <TH className="w-[8%]">발행번호</TH>
+                    <TH className="w-[9%]">발행일</TH>
+                    <TH className="w-[15%]">사업장명</TH>
+                    <TH className="w-[40%]">확인내용</TH>
+                    <TH className="w-[9%]">조치기간</TH>
+                    <TH className="w-[6%] text-center">상태</TH>
+                    <TH className="w-[8%] text-center">평가표 이관</TH>
+                    <TH className="w-[5%]" />
                   </TR>
                 </THead>
                 <TBody>
@@ -334,8 +341,8 @@ export function StopWorksPage({ openId, onOpen }: { openId: string | null; onOpe
                     <TR key={v.id} className="cursor-pointer" onClick={() => onOpen(v.id)}>
                       <TD className="font-medium tabular-nums">{v.no || "-"}</TD>
                       <TD className="tabular-nums">{v.date || "-"}</TD>
-                      <TD className="text-muted-foreground">{v.site || "-"}</TD>
-                      <TD className="max-w-md truncate whitespace-normal">{v.finding || "-"}</TD>
+                      <TD className="truncate text-muted-foreground">{v.site || "-"}</TD>
+                      <TD className="whitespace-normal break-words">{v.finding || "-"}</TD>
                       <TD className="tabular-nums text-muted-foreground">{v.dueDate || "-"}</TD>
                       <TD className="text-center">
                         <Badge variant="outline" className={cn("font-normal", PRIORITY_TONE[v.status])}>
@@ -377,7 +384,8 @@ export function StopWorksPage({ openId, onOpen }: { openId: string | null; onOpe
           <DialogTitle>이 작업중지 요청서를 삭제할까요?</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          {deleteStop?.no || "-"} · {deleteStop?.workName || "-"} · {deleteStop?.requesterName || "-"}
+          {deleteStop?.no || "-"} · {[deleteStop?.process, deleteStop?.workName].filter(Boolean).join(" · ") || "-"} ·{" "}
+          {deleteStop?.requesterName || "-"}
           <br />
           삭제하면 되돌릴 수 없습니다. 반기 실적표에서도 빠집니다.
         </p>
