@@ -1,11 +1,11 @@
 import * as React from "react";
-import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, Circle, Printer, ShieldAlert, StickyNote } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, Circle, History, Printer, ShieldAlert, StickyNote } from "lucide-react";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Select } from "@/components/ui";
 import { BarList, RiskHeatmap } from "@/components/charts";
 import { DashboardSheet } from "@/print/DashboardSheet";
 import { MonthlyReportSheet } from "@/print/MonthlyReportSheet";
-import { availableMonths, buildMetrics, daysLeft, monthKey, monthLabel, type Entry } from "@/lib/metrics";
-import { riskBadgeClass, riskBefore } from "@/lib/risk";
+import { availableMonths, buildMetrics, daysLeft, entriesImprovedIn, monthKey, monthLabel, type Entry } from "@/lib/metrics";
+import { riskBadgeClass, riskAfter, riskBefore } from "@/lib/risk";
 import { reviewOf } from "@/lib/types";
 import { useStore } from "@/store";
 import type { ViewKey } from "@/components/shell";
@@ -192,6 +192,45 @@ export function DashboardPage({ onNavigate }: { onNavigate: (v: ViewKey) => void
           </CardContent>
         </Card>
       </div>
+
+      {/* 이번 달 업데이트 내역 — 개선일자가 당월인 항목 요약 */}
+      <Card className="no-print shadow-xs">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <History className="size-4" /> 이번 달 업데이트 내역
+            </CardTitle>
+            <CardDescription>{monthLabel(monthKey())} 중 개선일자가 찍힌 항목</CardDescription>
+          </div>
+          <Badge variant="outline" className="shrink-0 font-normal">
+            {entriesImprovedIn(m.entries, monthKey()).length}건
+          </Badge>
+        </CardHeader>
+        <CardContent className="divide-y">
+          {entriesImprovedIn(m.entries, monthKey()).length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">이번 달 업데이트된 항목이 없습니다</p>
+          ) : (
+            entriesImprovedIn(m.entries, monthKey())
+              .slice(0, 5)
+              .map((e) => (
+                <div key={e.row.id} className="flex items-center gap-2 py-1.5">
+                  <Badge className={riskBadgeClass(riskAfter(e.row) ?? riskBefore(e.row))}>
+                    {riskAfter(e.row) ?? riskBefore(e.row) ?? "-"}
+                  </Badge>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm">{e.row.hazard || "내용 미입력"}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {e.row.code || "코드 미부여"} · {e.assessment.process || "공정 미입력"}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                    {e.row.improveDate.slice(5)}
+                  </span>
+                </div>
+              ))
+          )}
+        </CardContent>
+      </Card>
 
       {/* 위험성 분포 — 개선 전/후 나란히 */}
       <div className="no-print grid grid-cols-1 gap-4 @3xl/main:grid-cols-2">
