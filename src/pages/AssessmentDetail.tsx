@@ -66,7 +66,7 @@ const COLS: { key: string; label: string; sub?: string; className?: string }[] =
 ];
 
 export function AssessmentDetail({ assessment, onBack }: { assessment: Assessment; onBack: () => void }) {
-  const { assessments, saveAssessment, settings, canEdit, canDelete } = useStore();
+  const { assessments, saveAssessment, settings, stopWorks, canEdit, canDelete } = useStore();
   const [draft, setDraft] = React.useState<Assessment>(assessment);
   const [q, setQ] = React.useState("");
   const [fClass, setFClass] = React.useState("");
@@ -76,6 +76,18 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
   const [pending, setPending] = React.useState<RiskItem[] | null>(null);
   const [moveRowId, setMoveRowId] = React.useState<string | null>(null);
   const [moveTargetId, setMoveTargetId] = React.useState("");
+
+  /** 작업중지권에서 이관돼 올라온 행 id — 그 행은 원본과 양방향으로 묶여 있다 */
+  const stopWorkRowIds = React.useMemo(
+    () =>
+      new Set(
+        stopWorks
+          .filter((v) => v.movedTo?.assessmentId === assessment.id)
+          .map((v) => v.movedTo?.rowId)
+          .filter((id): id is string => !!id),
+      ),
+    [stopWorks, assessment.id],
+  );
 
   // 입력 중에는 로컬 상태로 두고, 멈추면 저장한다
   const first = React.useRef(true);
@@ -295,13 +307,19 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
                     const before = riskBefore(r);
                     const after = riskAfter(r);
                     const idx = draft.rows.findIndex((x) => x.id === r.id);
+                    /* 작업중지권에서 올라온 행은 주황색으로 구분한다 — 이 행을 고치면 원본
+                       작업중지 요청서까지 함께 바뀌므로(양방향 연동) 미리 알아볼 수 있어야 한다.
+                       비고 글자가 아니라 이관 흔적(movedTo.rowId)으로 판단한다 — 비고는 지워질 수 있다 */
+                    const fromStopWork = stopWorkRowIds.has(r.id);
                     return (
                       <TR
                         key={r.id}
                         className={
-                          r.status === "미조치"
-                            ? "align-top bg-destructive/5 hover:bg-destructive/10"
-                            : "align-top"
+                          fromStopWork
+                            ? "align-top bg-orange-500/10 hover:bg-orange-500/20"
+                            : r.status === "미조치"
+                              ? "align-top bg-destructive/5 hover:bg-destructive/10"
+                              : "align-top"
                         }
                       >
                         <TD className="text-center text-muted-foreground tabular-nums">{idx + 1}</TD>

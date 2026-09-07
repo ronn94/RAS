@@ -12,7 +12,7 @@
  */
 import * as React from "react";
 import { Eraser, PenLine, Trash2 } from "lucide-react";
-import { Button, Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui";
+import { Button, Dialog, DialogFooter, DialogHeader, DialogTitle, Label } from "@/components/ui";
 import { usePhotoUrl } from "@/components/photo";
 import { deletePhoto, uploadPhoto } from "@/lib/db";
 import { cn } from "@/lib/utils";
@@ -132,10 +132,18 @@ export function SignatureField({
   };
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        <div className="flex items-center gap-0.5">
+    /* 옆 칸(요청내용 등)과 아래끝을 정확히 맞추려고 세로로 늘어나는 구조를 쓴다.
+       라벨 줄 높이를 아무리 맞춰도 글꼴·확대율에 따라 1~2px씩 어긋나므로,
+       상자가 남는 높이를 채우게 두는 편이 확실하다(그리드가 칸을 같은 높이로 늘려 준다). */
+    <div className="flex h-full flex-col gap-1.5">
+      {/* 라벨 줄은 옆 칸(<Label> 한 줄)과 **똑같은 구조**여야 한다 — flex 줄로 만들면 인라인
+          여백이 사라져 줄 높이가 2px 짧아지고 그만큼 상자가 위로 밀린다(실제로 겪은 문제).
+          그래서 라벨은 그대로 두고 버튼만 절대배치로 띄운다 */}
+      <div className="relative leading-none">
+        {/* leading-none으로 줄 높이를 옆 칸의 라벨 블록(14px)과 같게 맞췄다. 그러면 글자가 살짝
+            위로 붙으므로 transform으로만 내린다 — transform은 배치에 영향을 주지 않아 상자는 그대로다 */}
+        <Label className="inline-block translate-y-[1.5px]">{label}</Label>
+        <div className="absolute -top-[3px] right-0 flex items-center gap-0.5">
           <Button
             variant="ghost"
             size="icon-xs"
@@ -169,7 +177,7 @@ export function SignatureField({
         disabled={disabled}
         onClick={() => setOpen(true)}
         className={cn(
-          "flex h-16 w-full items-center justify-center overflow-hidden rounded-xl bg-input/50 ring-1 ring-foreground/5 transition-colors",
+          "flex min-h-16 w-full flex-1 items-center justify-center overflow-hidden rounded-xl bg-input/50 ring-1 ring-foreground/5 transition-colors",
           disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-input/70",
         )}
       >
