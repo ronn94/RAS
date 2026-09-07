@@ -260,10 +260,11 @@ export function StopWorksPage({ openId, onOpen }: { openId: string | null; onOpe
             <EmptyState>조건에 맞는 문서가 없습니다.</EmptyState>
           ) : isStop ? (
             <TableWrap>
-              {/* PC에서는 표가 화면 안에 들어가고(가로 스크롤 없음), 좁은 화면에서만 스크롤된다 —
-                  min-w는 모바일용 최소 폭이고 md부터 풀어 100%를 나눠 쓴다(평가표 목록과 같은 방식).
-                  긴 글이 들어가는 작업명·중지 사유는 잘라내지 않고 줄바꿈한다 */}
-              <Table className="min-w-[64rem] table-fixed md:min-w-0 [&_:is(th,td)]:px-4">
+              {/* 최소 폭(64rem)을 푸는 기준은 **뷰포트가 아니라 본문 영역 너비**다(@5xl/main = 64rem).
+                  md(768px)로 풀었더니 아이패드에서 사이드바를 뺀 자리가 64rem이 안 되는데도 표가
+                  압축돼 머리글이 겹쳤다(실제로 겪은 문제). 컨테이너 기준이면 사이드바를 접었는지까지
+                  반영된다. 긴 글이 들어가는 작업명·중지 사유는 잘라내지 않고 줄바꿈한다 */}
+              <Table className="min-w-[64rem] table-fixed @5xl/main:min-w-0 [&_:is(th,td)]:px-4">
                 <THead>
                   <TR>
                     {/* 폭은 %로 나눈다 — rem 고정폭은 화면이 좁아지면 합이 100%를 넘어
@@ -273,9 +274,9 @@ export function StopWorksPage({ openId, onOpen }: { openId: string | null; onOpe
                     <TH className="w-[12%]">소속(업체)</TH>
                     <TH className="w-[7%]">요청자</TH>
                     <TH className="w-[19%]">작업명</TH>
-                    <TH className="w-[27%]">중지 사유</TH>
+                    <TH className="w-[26%]">중지 사유</TH>
                     <TH className="w-[6%] text-center">상태</TH>
-                    <TH className="w-[7%] text-center">평가표 이관</TH>
+                    <TH className="w-[8%] text-center">평가표 이관</TH>
                     <TH className="w-[5%]" />
                   </TR>
                 </THead>
@@ -323,16 +324,16 @@ export function StopWorksPage({ openId, onOpen }: { openId: string | null; onOpe
             </TableWrap>
           ) : (
             <TableWrap>
-              <Table className="min-w-[64rem] table-fixed md:min-w-0 [&_:is(th,td)]:px-4">
+              <Table className="min-w-[64rem] table-fixed @5xl/main:min-w-0 [&_:is(th,td)]:px-4">
                 <THead>
                   <TR>
                     <TH className="w-[8%]">발행번호</TH>
                     <TH className="w-[9%]">발행일</TH>
                     <TH className="w-[15%]">사업장명</TH>
-                    <TH className="w-[40%]">확인내용</TH>
+                    <TH className="w-[39%]">확인내용</TH>
                     <TH className="w-[9%]">조치기간</TH>
                     <TH className="w-[6%] text-center">상태</TH>
-                    <TH className="w-[8%] text-center">평가표 이관</TH>
+                    <TH className="w-[9%] text-center">평가표 이관</TH>
                     <TH className="w-[5%]" />
                   </TR>
                 </THead>
