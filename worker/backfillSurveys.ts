@@ -50,7 +50,9 @@ export async function backfillSurveysFromNotes(env: Bindings): Promise<{ registe
       const survey: Survey = {
         id: crypto.randomUUID(),
         author: "", // 원본에 제출자 이름이 없다 — 목록에는 '-'로 보인다
-        date: a.date, // 그 평가표의 평가일시를 대신 쓴다(원본에 남은 유일한 날짜 정보)
+        // 작성일자는 개선일자(실제로 조치가 끝난 날)를 쓴다 — 개선일자가 없는 극소수 행만
+        // 평가표의 평가일시로 대신한다(빈 값으로 두지 않기 위한 최후의 대안)
+        date: row.improveDate || a.date,
         process: a.process,
         subProcess: row.subProcess,
         hazardClass: row.hazardClass || "",
