@@ -19,6 +19,7 @@ import type { Bindings } from "./bindings";
 import { runDailyDigest } from "./digest";
 import { sendPush } from "./push";
 import { backfillSurveysFromNotes } from "./backfillSurveys";
+import { fixSurveyDatesOnce } from "./fixSurveyDates"; // TODO: 한 번 쓰고 이 줄과 아래 라우트·파일을 지운다
 
 type Variables = { role: "admin" | "guest" };
 
@@ -279,6 +280,12 @@ app.post("/api/push/run-digest", adminOnly, async (c) => {
  */
 app.post("/api/admin/backfill-surveys", adminOnly, async (c) => {
   const result = await backfillSurveysFromNotes(c.env);
+  return c.json(result);
+});
+
+/** 일회성 — 사용 후 이 라우트와 worker/fixSurveyDates.ts를 지운다 */
+app.post("/api/admin/fix-survey-dates-once", adminOnly, async (c) => {
+  const result = await fixSurveyDatesOnce(c.env);
   return c.json(result);
 });
 
