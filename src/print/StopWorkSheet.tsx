@@ -61,7 +61,7 @@ export function StopWorkSheet({ stopWork: v }: { stopWork: StopWork }) {
             </tr>
             <tr>
               <td className="lbl">접 수 자</td>
-              <td>{v.receivedBy}</td>
+              <td className="center">{v.receivedBy}</td>
             </tr>
           </tbody>
         </table>

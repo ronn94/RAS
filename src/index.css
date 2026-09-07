@@ -900,6 +900,9 @@
 .sheet-stopwork .sub {
   white-space: nowrap;
 }
+.sheet-stopwork .center {
+  text-align: center;
+}
 .sheet-stopwork .tall,
 .sheet-priority .tall {
   height: 26mm;

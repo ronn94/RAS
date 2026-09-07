@@ -6,7 +6,7 @@
  * 게시용 출력물**이라 상세 화면의 인쇄 버튼으로만 나온다.
  */
 import * as React from "react";
-import { FileWarning, OctagonAlert, Plus, Printer, Trash2 } from "lucide-react";
+import { FileWarning, Lock, LockOpen, OctagonAlert, Plus, Printer, Trash2 } from "lucide-react";
 import {
   Badge,
   Button,
@@ -63,6 +63,7 @@ export function StopWorksPage({ openId, onOpen }: { openId: string | null; onOpe
     loading,
     identity,
     createStopWork,
+    saveStopWork,
     removeStopWork,
     canStopWork,
     createPriorityAction,
@@ -274,10 +275,10 @@ export function StopWorksPage({ openId, onOpen }: { openId: string | null; onOpe
                     <TH className="w-[12%]">소속(업체)</TH>
                     <TH className="w-[7%]">요청자</TH>
                     <TH className="w-[19%]">작업명</TH>
-                    <TH className="w-[26%]">중지 사유</TH>
+                    <TH className="w-[23%]">중지 사유</TH>
                     <TH className="w-[6%] text-center">상태</TH>
                     <TH className="w-[8%] text-center">평가표 이관</TH>
-                    <TH className="w-[5%]" />
+                    <TH className="w-[8%]" />
                   </TR>
                 </THead>
                 <TBody>
@@ -305,7 +306,27 @@ export function StopWorksPage({ openId, onOpen }: { openId: string | null; onOpe
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TD>
-                      <TD onClick={(e) => e.stopPropagation()}>
+                      <TD className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        {/* 잠금 — 설문지와 같은 방식. 관리자만 걸고 푼다, 게스트에게는 상태만 보여준다 */}
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={!isAdmin}
+                          className={v.locked ? "text-foreground" : "text-muted-foreground"}
+                          onClick={() => void saveStopWork({ ...v, locked: !v.locked })}
+                          aria-label={v.locked ? "잠금 해제" : "잠금"}
+                          title={
+                            !isAdmin
+                              ? v.locked
+                                ? "관리자가 잠근 요청서입니다"
+                                : "잠금은 관리자만 할 수 있습니다"
+                              : v.locked
+                                ? "잠금 해제 — 구성원이 다시 고칠 수 있게 합니다"
+                                : "잠금 — 구성원이 고치거나 지우지 못하게 합니다"
+                          }
+                        >
+                          {v.locked ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon-sm"

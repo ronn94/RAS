@@ -105,6 +105,13 @@ export function StopWorkDetail({
     }
   };
 
+  /** 설문지와 같은 규칙 — 작성하다 만 내용이 있으면 뒤로가기 전에 한 번 확인한다 */
+  const goBack = () => {
+    const touched = JSON.stringify(draft) !== JSON.stringify(stopWork);
+    if (touched && !confirm("작성 중인 내용이 저장되지 않습니다. 나갈까요?")) return;
+    onDone(false);
+  };
+
   /** 상태는 바로 저장한다 — 현장에서 재개 승인을 누르는 즉시 남아야 한다 */
   const setStatus = async (st: StopStatus) => {
     const next: StopWork = { ...draft, status: st };
@@ -142,7 +149,7 @@ export function StopWorkDetail({
     <div className="space-y-4">
       <div className="no-print flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon-sm" onClick={() => onDone(false)} aria-label="목록으로">
+          <Button variant="ghost" size="icon-sm" onClick={goBack} aria-label="목록으로">
             <ArrowLeft />
           </Button>
           <div>
