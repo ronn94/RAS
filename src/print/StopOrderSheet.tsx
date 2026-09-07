@@ -18,10 +18,12 @@ function eunNeun(word: string): string {
 
 export function StopOrderSheet({ stopWork: v }: { stopWork: StopWork }) {
   const { settings } = useStore();
+  /* 게시물에 찍히는 이름은 **법인명**이다(설정 → 기관명). 사업소·시설명이 아니라
+     "리뉴어스(주)"처럼 법적 책임 주체를 적는 서식이라, 기관명이 비었을 때만 시설명으로 대신한다 */
   const org = settings.org.orgName || settings.org.facility || "";
-  /* 원본은 "리뉴어스㈜ ○○사업소는 …" — 회사명 + 소속이다.
-     둘이 같은 값이면(기관명을 안 넣고 시설명만 쓰는 경우) 한 번만 쓴다 */
-  const who = [org, v.dept].filter(Boolean).filter((x, i, a) => a.indexOf(x) === i);
+  /* 원본의 밑줄(______) 자리 — 위험요인을 확인하고 조치할 사람, 즉 요청자 성명이 들어간다.
+     비어 있으면 빈 밑줄로 나가 인쇄 후 손으로 적을 수 있다 */
+  const who = v.requesterName;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v.date);
 
   return (
@@ -32,19 +34,15 @@ export function StopOrderSheet({ stopWork: v }: { stopWork: StopWork }) {
           <div className="title">작업중지명령서</div>
 
           <p className="lead">
-            아래 작업은 <strong>중대산업재해 발생 또는 발생할 급박한 위험</strong>이 있으므로 작업을 중지합니다.
+            아래 작업은 <strong>중대산업재해 발생 또는 발생할 급박한 위험</strong>이 있으므로
+            <br />
+            작업을 중지합니다.
           </p>
 
           <p className="sub">
-            {who.length > 1 ? (
-              <>
-                {who[0]} <u>{who[1]}</u>
-              </>
-            ) : (
-              <u>{who[0] || "○○○"}</u>
-            )}
-            {eunNeun(who[who.length - 1] || "")} 위험요인을 확인하고 필요한 안전보건 조치를 취한 후 충분히
-            안전하다고 인정되는 경우 작업을 재개하도록 하겠습니다.
+            {org} <u className="blank">{who || "\u00a0".repeat(10)}</u>
+            {eunNeun(who)} 위험요인을 확인하고 필요한 안전보건 조치를 취한 후 충분히 안전하다고 인정되는
+            경우 작업을 재개하도록 하겠습니다.
           </p>
 
           <table>
@@ -58,12 +56,16 @@ export function StopOrderSheet({ stopWork: v }: { stopWork: StopWork }) {
                 <td className="wrap">{v.orderScope || [v.process, v.workName].filter(Boolean).join(" · ")}</td>
               </tr>
               <tr>
-                <td className="lbl tall">작업중지 사유</td>
-                <td className="wrap tall">
-                  {v.reason}
-                  <div className="contact">
-                    〮 담당자 : {v.orderManager}
-                    <br />〮 연락처 : {v.orderPhone}
+                {/* 라벨은 칸 세로 가운데, 사유 본문은 왼쪽 위 — 글이 길어져도 읽는 자리가 안 바뀐다.
+                    담당자·연락처는 같은 칸 맨 아래로 붙인다(내용이 짧아도 자리가 고정된다) */}
+                <td className="lbl tall mid">작업중지 사유</td>
+                <td className="tall">
+                  <div className="reason-cell">
+                    <div className="wrap">{v.reason}</div>
+                    <div className="contact">
+                      ○ 담당자 : {v.orderManager}
+                      <br />○ 연락처 : {v.orderPhone}
+                    </div>
                   </div>
                 </td>
               </tr>

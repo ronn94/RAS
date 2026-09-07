@@ -1052,13 +1052,27 @@
   height: 46mm;
   vertical-align: top;
 }
+/* 라벨만 세로 가운데 — 사유 본문은 위에서 시작해야 글이 길어져도 읽는 자리가 안 바뀐다 */
+.sheet-stoporder .mid {
+  vertical-align: middle;
+}
+/* 사유 칸 — 본문은 위, 담당자·연락처는 맨 아래(margin-top:auto)로 붙인다 */
+.sheet-stoporder .reason-cell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 42mm;
+}
+.sheet-stoporder .reason-cell .contact {
+  margin-top: auto;
+}
 .sheet-stoporder .wrap {
   white-space: pre-wrap;
   word-break: break-word;
   font-weight: 400;
 }
 .sheet-stoporder .contact {
-  margin-top: 4mm;
+  padding-top: 4mm;
   font-weight: 700;
 }
 .sheet-stoporder .date-line {
