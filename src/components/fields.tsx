@@ -3,9 +3,16 @@ import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
 import { allTypes, classNames, typesOf } from "@/lib/settings";
 
-/** 표 안에서 쓰는 인라인 입력 — 평소엔 선이 없고, 포커스 시에만 채워진 필드가 된다 */
+/**
+ * 표 안에서 쓰는 인라인 입력 — 평소엔 선이 없고, 포커스 시에만 채워진 필드가 된다.
+ *
+ * `align-top`이 꼭 있어야 한다. 입력칸은 인라인 요소라 기본값(baseline)으로 두면
+ * 태그마다 기준선이 달라 같은 행에서도 위아래로 어긋난다 — 실제로 담당자(input)와
+ * 비고(textarea)가 2.5px, 여러 줄 textarea는 11.5px까지 벌어졌다.
+ * 위쪽 정렬로 맞추면 칸 높이가 달라도 시작선이 한 줄로 선다.
+ */
 export const cellBase =
-  "w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm outline-none transition-[color,box-shadow,background-color] duration-200 hover:bg-input/40 focus:bg-input/50 focus:border-ring focus:ring-3 focus:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent";
+  "w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 py-1 align-top text-sm outline-none transition-[color,box-shadow,background-color] duration-200 hover:bg-input/40 focus:bg-input/50 focus:border-ring focus:ring-3 focus:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent";
 
 export function CellInput({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(cellBase, "h-8", className)} {...props} />;
