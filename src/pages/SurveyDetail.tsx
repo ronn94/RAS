@@ -140,9 +140,13 @@ export function SurveyDetail({
       measure: draft.measure,
       dueDate: draft.dueDate,
       note: `의견청취 · ${draft.author || "작성자 미상"}`,
+      // 사진은 복사하지 않고 **같은 id를 가리킨다** — 한쪽에서 바꾸면 양쪽이 함께 바뀐다
+      beforePhoto: draft.photos[0] || undefined,
+      afterPhoto: draft.photos[1] || undefined,
     };
     await saveAssessment({ ...target, rows: [...target.rows, row] });
-    // 평가표에 반영된 뒤 원본이 바뀌면 근거가 어긋나므로 함께 잠근다(관리자는 풀 수 있다)
+    // 이관 뒤에도 평가표 행과 양방향으로 묶인다(작업중지권과 같은 방식) — 게스트는
+    // 계속 잠겨서 못 고치지만, 관리자가 평가표 쪽을 고치면 이 의견도 같이 바뀐다
     const next: Survey = {
       ...draft,
       movedTo: { assessmentId: target.id, rowId: row.id, at: Date.now() },

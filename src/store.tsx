@@ -115,6 +115,63 @@ function rowFromStopWork(row: RiskItem, v: StopWork): RiskItem | null {
   return same ? null : next;
 }
 
+/** 평가표 행 → 설문지. 바뀔 게 없으면 null */
+function surveyFromRow(v: Survey, row: RiskItem): Survey | null {
+  const next: Survey = {
+    ...v,
+    subProcess: row.subProcess,
+    hazardClass: row.hazardClass || v.hazardClass,
+    hazardCode: row.hazardCode || v.hazardCode,
+    hazard: row.hazard,
+    p: row.p,
+    s: row.s,
+    measure: row.measure,
+    dueDate: row.dueDate,
+    photos: [row.beforePhoto ?? "", row.afterPhoto ?? ""].filter(Boolean),
+  };
+  const same =
+    next.subProcess === v.subProcess &&
+    next.hazardClass === v.hazardClass &&
+    next.hazardCode === v.hazardCode &&
+    next.hazard === v.hazard &&
+    next.p === v.p &&
+    next.s === v.s &&
+    next.measure === v.measure &&
+    next.dueDate === v.dueDate &&
+    next.photos[0] === (v.photos[0] ?? "") &&
+    next.photos[1] === (v.photos[1] ?? "");
+  return same ? null : next;
+}
+
+/** 설문지 → 평가표 행. 바뀔 게 없으면 null */
+function rowFromSurvey(row: RiskItem, v: Survey): RiskItem | null {
+  const next: RiskItem = {
+    ...row,
+    subProcess: v.subProcess,
+    hazardClass: v.hazardClass || row.hazardClass,
+    hazardCode: v.hazardCode || row.hazardCode,
+    hazard: v.hazard,
+    p: v.p,
+    s: v.s,
+    measure: v.measure,
+    dueDate: v.dueDate,
+    beforePhoto: v.photos[0] || undefined,
+    afterPhoto: v.photos[1] || undefined,
+  };
+  const same =
+    next.subProcess === row.subProcess &&
+    next.hazardClass === row.hazardClass &&
+    next.hazardCode === row.hazardCode &&
+    next.hazard === row.hazard &&
+    next.p === row.p &&
+    next.s === row.s &&
+    next.measure === row.measure &&
+    next.dueDate === row.dueDate &&
+    next.beforePhoto === row.beforePhoto &&
+    next.afterPhoto === row.afterPhoto;
+  return same ? null : next;
+}
+
 const StoreContext = React.createContext<Ctx | null>(null);
 
 export function StoreProvider({ identity, children }: { identity: Identity; children: React.ReactNode }) {
@@ -132,6 +189,8 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   /** 저장 콜백 안에서 최신 목록을 보기 위한 참조 — 의존성 배열이 늘어나 콜백이 매번 새로 만들어지는 것을 막는다 */
   const stopWorksRef = React.useRef<StopWork[]>([]);
   stopWorksRef.current = stopWorks;
+  const surveysRef = React.useRef<Survey[]>([]);
+  surveysRef.current = surveys;
   const assessmentsRef = React.useRef<Assessment[]>([]);
   assessmentsRef.current = assessments;
 
@@ -178,6 +237,19 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
     }
   }, []);
 
+  /** 평가표에서 바뀐 내용을 이관된 설문지 문서에 밀어 넣는다 */
+  const syncSurveysFrom = React.useCallback(async (a: Assessment) => {
+    const linked = surveysRef.current.filter((v) => v.movedTo?.assessmentId === a.id);
+    for (const v of linked) {
+      const row = a.rows.find((r) => r.id === v.movedTo?.rowId);
+      if (!row) continue; // 행을 지웠으면 '이관됨'이 저절로 풀린다 — 손대지 않는다
+      const next = surveyFromRow(v, row);
+      if (!next) continue;
+      await db.putSurvey(next);
+      setSurveys((prev) => prev.map((x) => (x.id === next.id ? { ...next, updatedAt: Date.now() } : x)));
+    }
+  }, []);
+
   const saveAssessment = React.useCallback(
     async (a: Assessment) => {
       const withCodes = reassignCodes(a);
@@ -189,8 +261,9 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
         return [...next].sort((x, y) => y.updatedAt - x.updatedAt);
       });
       await syncStopWorksFrom(withCodes);
+      await syncSurveysFrom(withCodes);
     },
-    [syncStopWorksFrom],
+    [syncStopWorksFrom, syncSurveysFrom],
   );
 
   const createAssessment = React.useCallback(async () => {
@@ -221,10 +294,11 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
         void db.putAssessment(updated);
         // 고위험군 화면의 사진·개선내용 수정도 이 경로를 타므로 여기서도 함께 맞춘다
         void syncStopWorksFrom(updated);
+        void syncSurveysFrom(updated);
         return prev.map((a) => (a.id === assessmentId ? { ...updated, updatedAt: Date.now() } : a));
       });
     },
-    [syncStopWorksFrom],
+    [syncStopWorksFrom, syncSurveysFrom],
   );
 
   const saveHazardInfo = React.useCallback(async (h: HazardInfo) => {
@@ -277,6 +351,18 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
         : [{ ...v, updatedAt: Date.now() }, ...prev];
       return [...next].sort((x, y) => y.updatedAt - x.updatedAt);
     });
+
+    // 이관된 건이면 평가표 행도 같이 맞춘다(반대 방향)
+    const link = v.movedTo;
+    if (!link) return;
+    const a = assessmentsRef.current.find((x) => x.id === link.assessmentId);
+    const row = a?.rows.find((r) => r.id === link.rowId);
+    if (!a || !row) return;
+    const nextRow = rowFromSurvey(row, v);
+    if (!nextRow) return;
+    const updated = reassignCodes({ ...a, rows: a.rows.map((r) => (r.id === nextRow.id ? nextRow : r)) });
+    await db.putAssessment(updated);
+    setAssessments((prev) => prev.map((x) => (x.id === updated.id ? { ...updated, updatedAt: Date.now() } : x)));
   }, []);
 
   /** 새 설문지는 화면에서만 만든다 — '제출'을 눌러야 saveSurvey로 서버에 등록된다 */
