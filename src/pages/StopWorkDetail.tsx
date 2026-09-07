@@ -118,10 +118,14 @@ export function StopWorkDetail({
     if (!a) return;
     const row: RiskItem = {
       ...emptyRow(),
+      subProcess: draft.subProcess,
       hazard: draft.reason,
       measure: draft.result,
-      note: `작업중지권 · ${draft.requesterName || draft.dept}`,
-      subProcess: draft.workName || draft.process,
+      note: "작업중지권",
+      owner: draft.orderManager || draft.requesterName,
+      // 사진은 복사하지 않고 **같은 id를 가리킨다** — 한쪽에서 바꾸면 양쪽이 함께 바뀐다
+      beforePhoto: draft.photos[0] || undefined,
+      afterPhoto: draft.photos[1] || undefined,
     };
     await saveAssessment({ ...a, rows: [...a.rows, row] });
     const next: StopWork = {
@@ -267,6 +271,14 @@ export function StopWorkDetail({
             <div className="space-y-1.5">
               <Label>공정명</Label>
               <ProcessSelect value={draft.process} onChange={(v) => patch({ process: v })} disabled={!canWrite} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>세부공정</Label>
+              <Input
+                disabled={!canWrite}
+                value={draft.subProcess}
+                onChange={(e) => patch({ subProcess: e.target.value })}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>작업명</Label>

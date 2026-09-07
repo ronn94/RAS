@@ -66,6 +66,55 @@ type Ctx = {
   removePriorityAction: (id: string) => Promise<void>;
 };
 
+/* ── 이관으로 묶인 항목 동기화 ────────────────────────────────
+   작업중지권을 위험성평가표로 이관하면 둘은 **같은 사건**이다. 한쪽만 고치면
+   근거가 어긋나므로 양쪽을 함께 맞춘다(사진은 복사하지 않고 같은 id를 공유한다).
+
+   되먹임(무한 저장)이 나지 않도록 규칙이 둘 있다:
+   1) 동기화는 saveX를 다시 부르지 않고 db에 직접 쓴다 — 서로를 호출하면 끝없이 돈다
+   2) 값이 실제로 달라졌을 때만 쓴다 — 같은 값이면 아무것도 하지 않는다 */
+
+/** 평가표 행 → 작업중지권. 바뀔 게 없으면 null */
+function stopWorkFromRow(v: StopWork, row: RiskItem): StopWork | null {
+  const next: StopWork = {
+    ...v,
+    subProcess: row.subProcess,
+    reason: row.hazard,
+    result: row.measure,
+    orderManager: row.owner || v.orderManager,
+    photos: [row.beforePhoto ?? "", row.afterPhoto ?? ""],
+  };
+  const same =
+    next.subProcess === v.subProcess &&
+    next.reason === v.reason &&
+    next.result === v.result &&
+    next.orderManager === v.orderManager &&
+    next.photos[0] === (v.photos[0] ?? "") &&
+    next.photos[1] === (v.photos[1] ?? "");
+  return same ? null : next;
+}
+
+/** 작업중지권 → 평가표 행. 바뀔 게 없으면 null */
+function rowFromStopWork(row: RiskItem, v: StopWork): RiskItem | null {
+  const next: RiskItem = {
+    ...row,
+    subProcess: v.subProcess,
+    hazard: v.reason,
+    measure: v.result,
+    owner: v.orderManager || row.owner,
+    beforePhoto: v.photos[0] || undefined,
+    afterPhoto: v.photos[1] || undefined,
+  };
+  const same =
+    next.subProcess === row.subProcess &&
+    next.hazard === row.hazard &&
+    next.measure === row.measure &&
+    next.owner === row.owner &&
+    next.beforePhoto === row.beforePhoto &&
+    next.afterPhoto === row.afterPhoto;
+  return same ? null : next;
+}
+
 const StoreContext = React.createContext<Ctx | null>(null);
 
 export function StoreProvider({ identity, children }: { identity: Identity; children: React.ReactNode }) {
@@ -80,6 +129,11 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [unauthorized, setUnauthorized] = React.useState(false);
+  /** 저장 콜백 안에서 최신 목록을 보기 위한 참조 — 의존성 배열이 늘어나 콜백이 매번 새로 만들어지는 것을 막는다 */
+  const stopWorksRef = React.useRef<StopWork[]>([]);
+  stopWorksRef.current = stopWorks;
+  const assessmentsRef = React.useRef<Assessment[]>([]);
+  assessmentsRef.current = assessments;
 
   const reload = React.useCallback(async () => {
     try {
@@ -111,16 +165,33 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
     return () => db.setOnUnauthorized(null);
   }, []);
 
-  const saveAssessment = React.useCallback(async (a: Assessment) => {
-    const withCodes = reassignCodes(a);
-    await db.putAssessment(withCodes);
-    setAssessments((prev) => {
-      const next = prev.some((x) => x.id === withCodes.id)
-        ? prev.map((x) => (x.id === withCodes.id ? { ...withCodes, updatedAt: Date.now() } : x))
-        : [{ ...withCodes, updatedAt: Date.now() }, ...prev];
-      return [...next].sort((x, y) => y.updatedAt - x.updatedAt);
-    });
+  /** 평가표에서 바뀐 내용을 이관된 작업중지권 문서에 밀어 넣는다 */
+  const syncStopWorksFrom = React.useCallback(async (a: Assessment) => {
+    const linked = stopWorksRef.current.filter((v) => v.movedTo?.assessmentId === a.id);
+    for (const v of linked) {
+      const row = a.rows.find((r) => r.id === v.movedTo?.rowId);
+      if (!row) continue; // 행을 지웠으면 '이관됨'이 저절로 풀린다 — 손대지 않는다
+      const next = stopWorkFromRow(v, row);
+      if (!next) continue;
+      await db.putStopWork(next);
+      setStopWorks((prev) => prev.map((x) => (x.id === next.id ? { ...next, updatedAt: Date.now() } : x)));
+    }
   }, []);
+
+  const saveAssessment = React.useCallback(
+    async (a: Assessment) => {
+      const withCodes = reassignCodes(a);
+      await db.putAssessment(withCodes);
+      setAssessments((prev) => {
+        const next = prev.some((x) => x.id === withCodes.id)
+          ? prev.map((x) => (x.id === withCodes.id ? { ...withCodes, updatedAt: Date.now() } : x))
+          : [{ ...withCodes, updatedAt: Date.now() }, ...prev];
+        return [...next].sort((x, y) => y.updatedAt - x.updatedAt);
+      });
+      await syncStopWorksFrom(withCodes);
+    },
+    [syncStopWorksFrom],
+  );
 
   const createAssessment = React.useCallback(async () => {
     const base = emptyAssessment();
@@ -148,10 +219,12 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
           rows: target.rows.map((r) => (r.id === rowId ? { ...r, ...patch } : r)),
         });
         void db.putAssessment(updated);
+        // 고위험군 화면의 사진·개선내용 수정도 이 경로를 타므로 여기서도 함께 맞춘다
+        void syncStopWorksFrom(updated);
         return prev.map((a) => (a.id === assessmentId ? { ...updated, updatedAt: Date.now() } : a));
       });
     },
-    [],
+    [syncStopWorksFrom],
   );
 
   const saveHazardInfo = React.useCallback(async (h: HazardInfo) => {
@@ -222,6 +295,18 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
         : [{ ...v, updatedAt: Date.now() }, ...prev];
       return [...next].sort((x, y) => y.updatedAt - x.updatedAt);
     });
+
+    // 이관된 건이면 평가표 행도 같이 맞춘다(반대 방향)
+    const link = v.movedTo;
+    if (!link) return;
+    const a = assessmentsRef.current.find((x) => x.id === link.assessmentId);
+    const row = a?.rows.find((r) => r.id === link.rowId);
+    if (!a || !row) return;
+    const nextRow = rowFromStopWork(row, v);
+    if (!nextRow) return;
+    const updated = reassignCodes({ ...a, rows: a.rows.map((r) => (r.id === nextRow.id ? nextRow : r)) });
+    await db.putAssessment(updated);
+    setAssessments((prev) => prev.map((x) => (x.id === updated.id ? { ...updated, updatedAt: Date.now() } : x)));
   }, []);
 
   /** 설문지와 같이 화면에서만 만들고 '등록'을 눌러야 서버에 남는다.

@@ -421,6 +421,7 @@ export type StopWork = {
   receivedBy: string; // 접수자
   dept: string; // 소속(업체)
   process: string; // 공정명 — 설정의 공정명 목록에서 고른다
+  subProcess: string; // 세부공정 — 평가표로 이관할 때 그대로 세부공정 칸에 들어간다
   workName: string; // 작업명 — 공정 안에서 실제로 하던 일(자유 입력)
   requesterRank: string; // 요청자 직급
   requesterName: string; // 요청자 성명
@@ -506,6 +507,7 @@ export function emptyStopWork(no = "", dept = ""): StopWork {
     receivedBy: "",
     dept,
     process: "",
+    subProcess: "",
     workName: "",
     requesterRank: "",
     requesterName: "",
