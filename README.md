@@ -60,7 +60,7 @@ npm run db:migrate
 | 대시보드 | 지표 4종(전체 항목 기준, 고위험군은 부연 표기) · 기한 초과/임박 · **이번 달 업데이트 내역**(개선일자가 당월인 항목, PC 2열·6건 초과 시 접기/펼치기, 행 클릭 시 해당 평가표로 이동) · 개선 전/후 위험성 히트맵(1행 2열) · 위험분류별 고위험군 + 공정별 위험성 건수(1행 2열) · 빈칸 점검 · **A4 보고서 2종 인쇄**(회의자료용 상세 / 월간 게시용) |
 | 위험성평가 · 위험성평가 목록 | 공정순번 오름차순 정렬, 개선완료 비율(개선일자 기준) 표시. 상세 화면은 상단 컬럼 고정 · 행 추가/복제/삭제/순서변경/다른 평가표로 이동 · 미조치 행 강조 · 엑셀 가져오기·내보내기(모든 컬럼) |
 | 위험성평가 · 고위험군 목록 | 위험성 8점 이상 자동 수집(세부공정 표시) · 개선 전/후 사진 첨부 · 세부공정·위험분류·조치상태·사진 미첨부 필터 · 선택 항목 사진대지 인쇄 |
-| 설정 | 기관 기본값(결재자 없음), **공정명**·조치상태·담당자 목록, **유해위험요인 분류표**(위험분류+위험코드), **직원 명단**(열람 서명표용), 고위험군 기준점·척도 라벨, 게스트 권한(편집·삭제·사진 첨부) |
+| 설정 | 기관 기본값(결재자 없음), **공정명**·조치상태·담당자 목록, **유해위험요인 분류표**(위험분류+위험코드), **직원 명단**(열람 서명표용), 고위험군 기준점·척도 라벨, 게스트 권한(편집·삭제·사진 첨부·설문지·작업중지), **웹 푸시 알림**(종류별 on/off + 이 기기 구독) |
 | 백업·복원 | 저장 현황, JSON 백업(사진 포함)·복원(병합), 저장소 사용량·고아 사진 정리·전체 초기화 |
 | 안전정보 · 유해위험정보 목록 | 공정(작업)순서·설비·취급물질 표 + 그 밖의 유해위험정보 체크리스트 · A4 가로 인쇄 |
 | 안전정보 · 순회점검 목록 | 순회점검으로 발굴한 유해·위험요인 기록 · 발굴 항목을 위험성평가표로 이관 · 조사표(A4 세로)와 사진대지(1X2·2X2) 인쇄 |
@@ -345,6 +345,63 @@ SSM처럼 헤더 왼쪽 토글로 데스크톱 사이드바를 접었다 펼 수
 
 사이드바 그룹 라벨은 `위험성평가`가 아니라 `리스크 관리`다(`NAV_GROUPS` in `shell.tsx`) — 그룹 안의
 개별 메뉴 이름(위험성평가·고위험군)은 그대로 두고 그룹 라벨만 바꿨다.
+
+## 웹 푸시 알림
+
+핸드폰에 앱처럼 설치해 쓸 때(PWA) 브라우저·앱이 꺼져 있어도 알림을 받을 수 있다.
+**관리자 전용**이다 — 게스트(근로자)는 대상이 아니다.
+
+- **네 가지 종류**, 설정 → 알림에서 각각 켜고 끈다(`settings.notifications`, 기본 전부 켜짐):
+  - **개선기한 초과·임박** — 매일 08:00(KST) 검사, 해결될 때까지 매일 반복
+  - **작업중지 24시간 이상 미해제** — 매일 08:00(KST) 검사, 해결될 때까지 매일 반복
+  - **설문지 제출** — 등록되는 즉시
+  - **작업중지·우선조치 신규 접수** — 등록되는 즉시
+- **즉시 알림과 요약 알림은 만드는 방식이 다르다.** 설문지·작업중지·우선조치는 "일어난 순간 아는 게
+  의미 있는" 일이라 워커의 `collection()` PUT 핸들러가 **새 id일 때만**(수정이 아니라 최초 등록일 때만)
+  그 자리에서 바로 보낸다(`c.executionCtx.waitUntil()`로 응답을 기다리게 하지 않는다). 반면 기한 초과·
+  임박과 작업중지 장기 미해제는 "시간이 지나야 판단되는" 조건이라 **Cron Trigger**(`wrangler.toml`의
+  `[triggers] crons`)가 매일 08:00(KST=UTC 23:00)에 `worker/digest.ts`의 `runDailyDigest()`를 불러
+  검사한다 — **대시보드 화면과 같은 `buildMetrics`·`isHighRisk`를 그대로 재사용**해서 "화면에서 본
+  건수"와 "알림으로 온 건수"가 절대 어긋나지 않는다
+- **작업중지 장기 미해제 판정**은 `updatedAt`이 아니라 전용 필드 `StopWork.statusChangedAt`을 쓴다.
+  `updatedAt`은 세부공정 하나만 고쳐도 갱신돼 "상태가 바뀐 시각"으로 못 쓴다. `statusChangedAt`은
+  실제로 상태가 바뀔 때만(`StopWorkDetail.tsx`의 `setStatus`) 갱신된다
+- **같은 건을 매일 반복해서 보내되, 기기에 알림이 쌓이지는 않는다.** `sendPush()`가 `topic`
+  (`ras-duedate` / `ras-stopwork-stale`)을 붙여 보내면 푸시 서비스가 같은 topic의 옛 미전달 알림을
+  새것으로 덮어쓴다(RFC 8030 Topic) — 기기가 며칠 꺼져 있었어도 알림이 쌓여 있지 않고 최신 것 하나만 온다
+- **Cloudflare Workers는 Node의 `crypto`(web-push 패키지가 쓰는)를 온전히 지원하지 않는다.**
+  그래서 순수 Web Crypto API만으로 동작하는 `@block65/webcrypto-web-push`를 쓴다 — VAPID 서명(RFC 8292)과
+  `aes128gcm` 암호화(RFC 8291)를 브라우저·Workers·Deno 어디서든 같은 코드로 처리한다
+  (`worker/push.ts`). 만료된 구독(404/410)은 보내는 김에 D1에서 지운다
+- **VAPID 키**는 공개키(`VAPID_PUBLIC_KEY`)만 `wrangler.toml`의 `[vars]`에 평문으로 둔다 — 브라우저에
+  그대로 내려주는 값이라 비밀이 아니다. 개인키(`VAPID_PRIVATE_KEY`)와 발신 주소(`VAPID_SUBJECT`,
+  `mailto:` 형식)는 `wrangler secret put`으로 넣는다. 로컬 개발은 `.dev.vars`에 셋 다 넣는다. 키를
+  새로 만들려면:
+  ```bash
+  node -e '
+  const { webcrypto } = require("crypto");
+  (async () => {
+    const kp = await webcrypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign","verify"]);
+    const pub = Buffer.from(await webcrypto.subtle.exportKey("raw", kp.publicKey));
+    const priv = await webcrypto.subtle.exportKey("jwk", kp.privateKey);
+    const b64url = (b) => b.toString("base64").replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+    console.log("PUBLIC:", b64url(pub));
+    console.log("PRIVATE:", priv.d);
+  })();'
+  ```
+  키를 바꾸면 기존에 구독한 기기는 전부 다시 구독해야 한다(공개키가 곧 구독의 일부다)
+- **서비스워커**(`public/sw.js`)는 오프라인 캐싱을 하지 않는다 — 이 앱은 서버 데이터가 정본이라 캐시가
+  옛 자료를 보여줄 위험만 있고 얻는 게 없다. `push`(알림 표시)와 `notificationclick`(이동)만 처리한다
+- **알림을 누르면 SPA 안에서 라우팅 없이 이동한다.** 이 앱은 서버 라우팅이 없으므로, 앱이 이미 열려
+  있으면 서비스워커가 `postMessage({type:"ras-navigate", view, id})`를 보내 화면만 바꾸고(새로고침 없이,
+  `App.tsx`의 `Router`가 수신), 안 열려 있으면 `/?view=stopworks&id=…` 형태로 새 창을 연다
+  (`App.tsx`의 `initialViewFromUrl()`이 시작할 때 한 번 읽고 주소창에서 지운다)
+- **iOS는 16.4 이상 + 홈 화면에 추가(standalone)한 상태에서만** 동작한다. 설정 화면이
+  `needsHomeScreenOnIOS()`로 미리 감지해 안내 문구를 보여준다(`src/lib/push.ts`)
+- 구독은 **기기별**(브라우저 origin당 하나, D1 `push_subscriptions` 테이블), 알림 종류 on/off는
+  **계정 전체에 공통**(`settings.notifications`, 관리자 계정 하나를 공유하는 이 앱의 구조에 맞춤)이다.
+  설정 화면에 '테스트 알림 보내기' 버튼이 있어 종류 켜고 끄기와 별개로 이 기기가 실제로 받는지 바로
+  확인할 수 있다
 
 ## 대시보드 — 이번 달 업데이트 내역
 

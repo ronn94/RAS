@@ -69,6 +69,14 @@ export const putPriorityAction = (v: PriorityAction) =>
   api<PriorityAction>(`/priorityactions/${v.id}`, { method: "PUT", body: JSON.stringify(v) });
 export const deletePriorityAction = (id: string) => api(`/priorityactions/${id}`, { method: "DELETE" });
 
+/* ── 푸시 알림 구독 ──────────────────────────────────────── */
+export const getPushVapidKey = () => api<{ publicKey: string }>("/push/vapid-key");
+export const putPushSubscription = (sub: PushSubscriptionJSON) =>
+  api("/push/subscribe", { method: "POST", body: JSON.stringify(sub) });
+export const deletePushSubscription = (endpoint: string) =>
+  api("/push/subscribe", { method: "DELETE", body: JSON.stringify({ endpoint }) });
+export const sendTestPush = () => api<{ sent: number; removed: number }>("/push/test", { method: "POST" });
+
 /* ── 설정 ───────────────────────────────────────────────── */
 export const loadSettings = () =>
   api<Partial<AppSettings> | null>("/settings").then(withDefaults);

@@ -18,6 +18,16 @@ export type AppSettings = {
   profile: { name: string; role: string };
   /** 게스트 계정이 쓸 수 있는 기능. 관리 기능(설정 변경·백업·초기화)은 항상 막혀 있어 여기 없다 */
   permissions: { edit: boolean; delete: boolean; photo: boolean; survey: boolean; stopwork: boolean };
+  /**
+   * 푸시 알림 종류별 on/off — 관리자 전용 기능이라 계정 하나에 공통으로 적용된다(기기별이 아니다).
+   * 실제로 이 기기가 알림을 받을지는 별도로 이 기기에서 구독해야 한다(설정 → 알림).
+   */
+  notifications: {
+    dueDate: boolean; // 개선기한 초과·임박 (매일 08:00, 해결될 때까지 반복)
+    stopworkStale: boolean; // 작업중지 24시간 이상 미해제 (매일 08:00, 해결될 때까지 반복)
+    newSurvey: boolean; // 설문지 제출 즉시
+    newStopwork: boolean; // 작업중지·우선조치 신규 접수 즉시
+  };
   /** 목록 */
   processes: string[]; // 공정명
   /**
@@ -49,6 +59,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   // 설문지·작업중지권은 근로자에게 직접 받는 것이 목적이라 기본으로 켜 둔다
   // (작업중지권은 근로자의 법정 권리라 막아 두면 제도 자체가 굴러가지 않는다)
   permissions: { edit: false, delete: false, photo: false, survey: true, stopwork: true },
+  // 전부 기본 켜짐 — 관리자가 필요 없는 종류만 끈다
+  notifications: { dueDate: true, stopworkStale: true, newSurvey: true, newStopwork: true },
   processes: [],
   hazardFactors: HAZARD_FACTORS.map((f) => ({ ...f, types: f.types.map((t) => ({ ...t })) })),
   statuses: [...STATUSES],
@@ -95,6 +107,7 @@ export function withDefaults(saved: Partial<AppSettings> | undefined | null): Ap
     org: { ...DEFAULT_SETTINGS.org, ...saved.org, approver: { ...DEFAULT_SETTINGS.org.approver, ...saved.org?.approver } },
     profile: { ...DEFAULT_SETTINGS.profile, ...saved.profile },
     permissions: { ...DEFAULT_SETTINGS.permissions, ...saved.permissions },
+    notifications: { ...DEFAULT_SETTINGS.notifications, ...saved.notifications },
     processes: saved.processes ?? [],
     hazardFactors: migrateFactors(saved),
     statuses: saved.statuses?.length ? saved.statuses : DEFAULT_SETTINGS.statuses,

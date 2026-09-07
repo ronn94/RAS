@@ -435,6 +435,9 @@ export type StopWork = {
   stoppedAt: string; // 작업중지 시각 (HH:MM)
   resumedAt: string; // 작업재개 시각 (HH:MM) — 둘을 빼서 총 중지시간을 만든다
   status: StopStatus;
+  /** status가 마지막으로 바뀐 시각 — '중지'·'조치중' 상태로 24시간 넘게 머물면
+      알림을 보내는 기준이 된다(updatedAt은 다른 필드만 고쳐도 같이 바뀌어 쓸 수 없다) */
+  statusChangedAt?: number;
   /* 작업중지명령서(현장 게시물) 전용 항목 */
   orderScope: string; // 작업중지범위
   orderManager: string; // 담당자
@@ -519,6 +522,7 @@ export function emptyStopWork(no = "", dept = ""): StopWork {
     stoppedAt: "",
     resumedAt: "",
     status: "중지",
+    statusChangedAt: Date.now(),
     orderScope: "",
     orderManager: "",
     orderPhone: "",

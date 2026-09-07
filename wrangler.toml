@@ -18,3 +18,13 @@ database_id = "923f87c5-ea9d-4c34-893e-024827af7cde"
 [[r2_buckets]]
 binding = "ras_photos"
 bucket_name = "ras-photos"
+
+# 매일 08:00(KST, UTC 23:00) — 개선기한 초과·임박, 작업중지 장기 미해제 알림을 검사해 보낸다
+[triggers]
+crons = ["0 23 * * *"]
+
+[vars]
+# 웹 푸시 공개키 — 비밀이 아니라 브라우저에 그대로 내려주는 값이라 [vars]에 둔다.
+# 짝이 되는 개인키(VAPID_PRIVATE_KEY)와 발신 주소(VAPID_SUBJECT)는
+# `wrangler secret put`으로 넣는다(README '웹 푸시 알림' 절 참고).
+VAPID_PUBLIC_KEY = "BGu-uRzCe0jycQouCshMqZO-u4OMF8rcrqvK5TZXqNFUnp11XoDKTCeG8bl62K2BqzNwZkiX0vE7JMSHpixBciA"

@@ -1,9 +1,83 @@
 import * as React from "react";
-import { Plus, RotateCcw, Save, X } from "lucide-react";
+import { Bell, BellOff, Plus, RotateCcw, Save, X } from "lucide-react";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Input, Label } from "@/components/ui";
 import { DEFAULT_SETTINGS, type AppSettings, type ScaleLabel } from "@/lib/settings";
 import type { HazardFactor } from "@/lib/types";
+import { currentSubscription, needsHomeScreenOnIOS, pushSupported, subscribePush, unsubscribePush } from "@/lib/push";
+import { sendTestPush } from "@/lib/db";
 import { useStore } from "@/store";
+
+/** 이 기기가 지금 알림을 받고 있는지 켜고 끄는 버튼 — 계정 설정(종류별 on/off)과는 별개다 */
+function PushDeviceToggle() {
+  const [subscribed, setSubscribed] = React.useState<boolean | null>(null); // null = 확인 중
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [testMsg, setTestMsg] = React.useState<string | null>(null);
+
+  const refresh = React.useCallback(async () => {
+    if (!pushSupported()) {
+      setSubscribed(false);
+      return;
+    }
+    setSubscribed(!!(await currentSubscription()));
+  }, []);
+
+  React.useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const toggle = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      if (subscribed) await unsubscribePush();
+      else await subscribePush();
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!pushSupported()) {
+    return <p className="text-sm text-muted-foreground">이 브라우저는 푸시 알림을 지원하지 않습니다.</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2.5 rounded-xl bg-muted/40 px-3 py-2.5">
+        {subscribed ? <Bell className="size-4 shrink-0" /> : <BellOff className="size-4 shrink-0 text-muted-foreground" />}
+        <span className="flex-1 text-sm">
+          {subscribed === null ? "확인 중…" : subscribed ? "이 기기에서 알림을 받고 있습니다" : "이 기기는 알림을 받지 않습니다"}
+        </span>
+        <Button size="sm" variant={subscribed ? "outline" : "default"} disabled={busy || subscribed === null} onClick={() => void toggle()}>
+          {busy ? "처리 중…" : subscribed ? "알림 끄기" : "알림 켜기"}
+        </Button>
+        {subscribed && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() =>
+              void sendTestPush()
+                .then((r) => setTestMsg(r.sent > 0 ? "테스트 알림을 보냈습니다. 잠시 후 확인해 보세요." : "보낼 기기가 없습니다."))
+                .catch((e) => setTestMsg(e instanceof Error ? e.message : String(e)))
+            }
+          >
+            테스트 알림
+          </Button>
+        )}
+      </div>
+      {needsHomeScreenOnIOS() && (
+        <p className="text-xs text-muted-foreground">
+          iOS에서는 공유 버튼 → &lsquo;홈 화면에 추가&rsquo;로 설치한 뒤 그 아이콘으로 열어야 알림을 켤 수 있습니다.
+        </p>
+      )}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      {testMsg && <p className="text-xs text-muted-foreground">{testMsg}</p>}
+    </div>
+  );
+}
 
 /** 게시용 보고서 서명표의 기본 칸 수 — MonthlyReportSheet의 SIGN_MIN_SLOTS와 같은 값 */
 const SIGN_SLOTS = 24;
@@ -363,6 +437,40 @@ export function SettingsPage() {
               </span>
             </label>
           ))}
+        </CardContent>
+      </Card>
+
+      {/* 알림 */}
+      <Card className="shadow-xs">
+        <CardHeader>
+          <CardTitle>알림</CardTitle>
+          <CardDescription>
+            관리자 전용입니다. 종류별 스위치는 계정 전체에 적용되고, 실제로 이 기기가 받을지는 아래에서 따로 켭니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <PushDeviceToggle />
+          <div className="flex flex-wrap gap-4">
+            {(
+              [
+                { key: "dueDate", label: "개선기한 초과·임박", hint: "매일 오전 8시 · 해결될 때까지 반복" },
+                { key: "stopworkStale", label: "작업중지 장기 미해제", hint: "24시간 이상 · 매일 오전 8시 반복" },
+                { key: "newSurvey", label: "설문지 제출", hint: "등록되는 즉시" },
+                { key: "newStopwork", label: "작업중지·우선조치 신규 접수", hint: "등록되는 즉시" },
+              ] as const
+            ).map((p) => (
+              <label key={p.key} className="flex items-center gap-2.5 rounded-xl bg-muted/40 px-3 py-2.5">
+                <Checkbox
+                  checked={settings.notifications[p.key]}
+                  onChange={(e) => void patch({ notifications: { ...settings.notifications, [p.key]: e.target.checked } })}
+                />
+                <span>
+                  <span className="block text-sm font-medium">{p.label}</span>
+                  <span className="block text-xs text-muted-foreground">{p.hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
         </CardContent>
       </Card>
 

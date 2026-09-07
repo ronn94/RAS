@@ -10,10 +10,11 @@
     "preview": "vite preview",
     "dev:api": "wrangler dev --port 8788",
     "deploy": "npm run build && wrangler deploy",
-    "db:migrate": "wrangler d1 execute ras-db --remote --file=migrations/0001_init.sql && wrangler d1 execute ras-db --remote --file=migrations/0002_inspections.sql && wrangler d1 execute ras-db --remote --file=migrations/0003_surveys.sql && wrangler d1 execute ras-db --remote --file=migrations/0004_stopworks.sql",
-    "db:migrate:local": "wrangler d1 execute ras-db --local --file=migrations/0001_init.sql && wrangler d1 execute ras-db --local --file=migrations/0002_inspections.sql && wrangler d1 execute ras-db --local --file=migrations/0003_surveys.sql && wrangler d1 execute ras-db --local --file=migrations/0004_stopworks.sql"
+    "db:migrate": "wrangler d1 execute ras-db --remote --file=migrations/0001_init.sql && wrangler d1 execute ras-db --remote --file=migrations/0002_inspections.sql && wrangler d1 execute ras-db --remote --file=migrations/0003_surveys.sql && wrangler d1 execute ras-db --remote --file=migrations/0004_stopworks.sql && wrangler d1 execute ras-db --remote --file=migrations/0005_push_subscriptions.sql",
+    "db:migrate:local": "wrangler d1 execute ras-db --local --file=migrations/0001_init.sql && wrangler d1 execute ras-db --local --file=migrations/0002_inspections.sql && wrangler d1 execute ras-db --local --file=migrations/0003_surveys.sql && wrangler d1 execute ras-db --local --file=migrations/0004_stopworks.sql && wrangler d1 execute ras-db --local --file=migrations/0005_push_subscriptions.sql"
   },
   "dependencies": {
+    "@block65/webcrypto-web-push": "^2.0.0",
     "@tailwindcss/vite": "^4.3.3",
     "clsx": "^2.1.1",
     "hono": "^4.13.3",

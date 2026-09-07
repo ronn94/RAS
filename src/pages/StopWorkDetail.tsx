@@ -112,9 +112,11 @@ export function StopWorkDetail({
     onDone(false);
   };
 
-  /** 상태는 바로 저장한다 — 현장에서 재개 승인을 누르는 즉시 남아야 한다 */
+  /** 상태는 바로 저장한다 — 현장에서 재개 승인을 누르는 즉시 남아야 한다.
+      실제로 상태가 바뀔 때만 statusChangedAt을 갱신한다(장기 미해제 알림의 기준 시각) */
   const setStatus = async (st: StopStatus) => {
-    const next: StopWork = { ...draft, status: st };
+    if (st === draft.status) return;
+    const next: StopWork = { ...draft, status: st, statusChangedAt: Date.now() };
     setDraft(next);
     if (!isNew) await saveStopWork(next);
   };

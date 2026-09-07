@@ -29,12 +29,46 @@ const TITLES: Record<ViewKey, string> = {
 
 /** 관리자 전용 화면 — 게스트가 직접 상태를 조작해도 여기서 막는다 */
 const ADMIN_ONLY_VIEWS = new Set<ViewKey>(["settings", "backup"]);
+const VIEW_KEYS = new Set<ViewKey>(Object.keys(TITLES) as ViewKey[]);
+
+/**
+ * 알림을 눌러 앱이 새로 열렸을 때 쓰는 진입점 — 서비스워커(public/sw.js)가
+ * `/?view=stopworks&id=xxx` 형태로 열어 준다. 한 번 읽으면 주소창에서 지운다
+ * (새로고침·뒤로가기 때 다시 그 화면으로 튀지 않게).
+ */
+function initialViewFromUrl(): { view: ViewKey; id: string | null } | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const v = params.get("view");
+  if (!v || !VIEW_KEYS.has(v as ViewKey)) return null;
+  return { view: v as ViewKey, id: params.get("id") };
+}
 
 function Router({ identity }: { identity: Identity }) {
   const { settings, error, unauthorized, reload } = useStore();
-  const [view, setView] = React.useState<ViewKey>("assessments");
-  const [openId, setOpenId] = React.useState<string | null>(null);
+  const initialFromUrl = React.useMemo(initialViewFromUrl, []);
+  const [view, setView] = React.useState<ViewKey>(initialFromUrl?.view ?? "assessments");
+  const [openId, setOpenId] = React.useState<string | null>(initialFromUrl?.id ?? null);
   const isAdmin = identity.role === "admin";
+
+  React.useEffect(() => {
+    if (initialFromUrl) window.history.replaceState(null, "", window.location.pathname);
+  }, [initialFromUrl]);
+
+  /** 앱이 이미 열려 있을 때 알림을 누르면 서비스워커가 새로고침 없이 이 메시지로 화면을 바꾼다 */
+  React.useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type !== "ras-navigate") return;
+      const v = event.data.view as string | undefined;
+      if (v && VIEW_KEYS.has(v as ViewKey)) {
+        setView(v as ViewKey);
+        setOpenId((event.data.id as string | undefined) ?? null);
+      }
+    };
+    navigator.serviceWorker?.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker?.removeEventListener("message", onMessage);
+  }, []);
+
   const activeView = !isAdmin && ADMIN_ONLY_VIEWS.has(view) ? "assessments" : view;
 
   const logout = async () => {
