@@ -77,6 +77,10 @@ export const deletePushSubscription = (endpoint: string) =>
   api("/push/subscribe", { method: "DELETE", body: JSON.stringify({ endpoint }) });
 export const sendTestPush = () => api<{ sent: number; removed: number }>("/push/test", { method: "POST" });
 
+/** 비고='설문'인 옛 평가표 행을 설문지로 등록한다 — 몇 번을 눌러도 안전하다(이미 등록된 건 자동 건너뜀) */
+export const backfillSurveysFromNotes = () =>
+  api<{ registered: number; skipped: number }>("/admin/backfill-surveys", { method: "POST" });
+
 /* ── 설정 ───────────────────────────────────────────────── */
 export const loadSettings = () =>
   api<Partial<AppSettings> | null>("/settings").then(withDefaults);

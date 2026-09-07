@@ -18,6 +18,7 @@ import type { PriorityAction, StopWork, Survey } from "../src/lib/types";
 import type { Bindings } from "./bindings";
 import { runDailyDigest } from "./digest";
 import { sendPush } from "./push";
+import { backfillSurveysFromNotes } from "./backfillSurveys";
 
 type Variables = { role: "admin" | "guest" };
 
@@ -269,6 +270,16 @@ app.post("/api/push/test", adminOnly, async (c) => {
 app.post("/api/push/run-digest", adminOnly, async (c) => {
   await runDailyDigest(c.env);
   return c.json({ ok: true });
+});
+
+/**
+ * 위험성평가표에 엑셀로 일괄 입력되면서 비고에 '설문'이라고만 남고 실제 설문지로는
+ * 등록되지 않았던 옛 행을 지금 [의견청취 → 설문지]로 등록한다(설정 화면 버튼).
+ * 몇 번을 다시 눌러도 안전하다 — 이미 등록된 행은 자동으로 건너뛴다.
+ */
+app.post("/api/admin/backfill-surveys", adminOnly, async (c) => {
+  const result = await backfillSurveysFromNotes(c.env);
+  return c.json(result);
 });
 
 /* ── 사진 (R2) ──────────────────────────────────────────────

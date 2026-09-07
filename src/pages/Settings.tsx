@@ -1,10 +1,58 @@
 import * as React from "react";
-import { Bell, BellOff, Plus, RotateCcw, Save, X } from "lucide-react";
+import { Bell, BellOff, ListPlus, Plus, RotateCcw, Save, X } from "lucide-react";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Input, Label } from "@/components/ui";
 import { DEFAULT_SETTINGS, type AppSettings, type ScaleLabel } from "@/lib/settings";
 import type { HazardFactor } from "@/lib/types";
 import { currentSubscription, needsHomeScreenOnIOS, pushSupported, subscribePush, unsubscribePush } from "@/lib/push";
-import { sendTestPush } from "@/lib/db";
+import { backfillSurveysFromNotes, sendTestPush } from "@/lib/db";
+
+/** 위험성평가표에 비고='설문'으로만 남고 실제 설문지로 등록되지 않았던 옛 행을 지금 등록한다.
+    몇 번을 눌러도 안전하다 — 이미 등록된 행은 서버가 자동으로 건너뛴다 */
+function SurveyBackfillCard() {
+  const [busy, setBusy] = React.useState(false);
+  const [result, setResult] = React.useState<{ registered: number; skipped: number } | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const run = async () => {
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      setResult(await backfillSurveysFromNotes());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card className="shadow-xs">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ListPlus className="size-4" /> 설문지 일괄 등록
+        </CardTitle>
+        <CardDescription>
+          위험성평가표에 엑셀로 일괄 입력되면서 비고에 &lsquo;설문&rsquo;이라고만 남고 실제 설문지로는
+          등록되지 않았던 옛 행을 지금 [의견청취 → 설문지] 목록에 등록합니다. 검토상태는 &lsquo;반영&rsquo;,
+          평가표 이관 여부는 &lsquo;이관됨&rsquo;으로 표시됩니다. 이미 등록된 행은 자동으로 건너뛰므로
+          여러 번 눌러도 안전합니다.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <Button disabled={busy} onClick={() => void run()}>
+          {busy ? "등록 중…" : "지금 등록"}
+        </Button>
+        {result && (
+          <p className="text-sm text-muted-foreground">
+            새로 등록 {result.registered}건 · 이미 등록돼 건너뜀 {result.skipped}건
+          </p>
+        )}
+        {error && <p className="text-sm text-destructive">{error}</p>}
+      </CardContent>
+    </Card>
+  );
+}
 import { useStore } from "@/store";
 
 /** 이 기기가 지금 알림을 받고 있는지 켜고 끄는 버튼 — 계정 설정(종류별 on/off)과는 별개다 */
@@ -592,6 +640,8 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <SurveyBackfillCard />
     </div>
   );
 }
