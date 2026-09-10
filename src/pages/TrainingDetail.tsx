@@ -11,7 +11,7 @@
  * 서명을 본문 저장에 실어 보내면 서로의 내용을 덮어쓴다.
  */
 import * as React from "react";
-import { ArrowLeft, Eraser, Lock, PenLine, Plus, Printer, Trash2, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Eraser, ListChecks, ListX, Lock, PenLine, Plus, Printer, Trash2, TriangleAlert } from "lucide-react";
 import {
   Badge,
   Button,
@@ -118,6 +118,31 @@ export function TrainingDetail({
       }
       return { ...d, attendees: d.attendees.filter((a) => a.id !== found.id) };
     });
+  };
+
+  /* 전체 선택·해제는 **직원 명단(체크박스)에만** 적용한다 — 명단에 없는 협력업체 인원은
+     체크박스가 없으니 '해제'할 대상도 아니다. 실수로 지워지지 않게 그대로 둔다. */
+  const checkedStaffCount = staff.filter((n) => attendeeNames.has(n)).length;
+  const allStaffChecked = staff.length > 0 && checkedStaffCount === staff.length;
+
+  const selectAllStaff = () =>
+    setDraft((d) => {
+      const have = new Set(d.attendees.map((a) => a.name.trim()));
+      const added = staff.filter((n) => !have.has(n)).map((n) => emptyTrainingAttendee(settings.org.dept, n));
+      return { ...d, attendees: [...d.attendees, ...added] };
+    });
+
+  const clearAllStaff = () => {
+    const staffSet = new Set(staff);
+    const signedOff = draft.attendees.filter((a) => staffSet.has(a.name.trim()) && a.sign);
+    // 서명까지 지우는 것은 되돌릴 수 없다 — 한 번만 묻는다(사람마다 묻지 않는다)
+    if (
+      signedOff.length > 0 &&
+      !confirm(`이미 서명한 ${signedOff.length}명(${signedOff.map((a) => a.name).join(", ")})의 서명도 함께 지워집니다. 계속할까요?`)
+    ) {
+      return;
+    }
+    setDraft((d) => ({ ...d, attendees: d.attendees.filter((a) => !staffSet.has(a.name.trim())) }));
   };
 
   const patchAttendee = (id: string, p: Partial<TrainingAttendee>) =>
@@ -295,9 +320,12 @@ export function TrainingDetail({
       <Card className="no-print shadow-xs">
         <CardHeader>
           <CardTitle>{isPre ? "교육 · 회의사항" : "교육내용"}</CardTitle>
-          <CardDescription>
-            서식의 표준문구가 미리 채워져 있습니다. 그날 실제로 다룬 내용에 맞게 고쳐 주세요.
-          </CardDescription>
+          {/* 작성 단계의 안내라 읽기만 하는 사람에게는 띄우지 않는다 */}
+          {canWrite && (
+            <CardDescription>
+              서식의 표준문구가 미리 채워져 있습니다. 그날 실제로 다룬 내용에 맞게 고쳐 주세요.
+            </CardDescription>
+          )}
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1.5">
@@ -375,16 +403,30 @@ export function TrainingDetail({
                 설정 → 직원 명단이 비어 있습니다. 먼저 직원을 등록하면 여기서 체크할 수 있습니다.
               </p>
             ) : (
-              <div className="grid grid-cols-2 gap-1 sm:grid-cols-4 lg:grid-cols-6">
-                {staff.map((name) => (
-                  <label
-                    key={name}
-                    className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-sm hover:bg-muted"
-                  >
-                    <Checkbox checked={attendeeNames.has(name)} onChange={() => toggleStaff(name)} />
-                    <span className="truncate">{name}</span>
-                  </label>
-                ))}
+              <div className="space-y-2">
+                {/* 교육은 전원 참석이 흔해서 하나씩 누르는 것보다 전체를 켜고 빠진 사람만 빼는 편이 빠르다 */}
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled={allStaffChecked} onClick={selectAllStaff}>
+                    <ListChecks className="size-3.5" /> 전체 선택
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={checkedStaffCount === 0} onClick={clearAllStaff}>
+                    <ListX className="size-3.5" /> 전체 해제
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    직원 {checkedStaffCount}/{staff.length}명 선택
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-1 sm:grid-cols-4 lg:grid-cols-6">
+                  {staff.map((name) => (
+                    <label
+                      key={name}
+                      className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-sm hover:bg-muted"
+                    >
+                      <Checkbox checked={attendeeNames.has(name)} onChange={() => toggleStaff(name)} />
+                      <span className="truncate">{name}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             ))}
 
