@@ -555,3 +555,137 @@ export function emptyPriorityAction(no = "", issuedBy = "", site = ""): Priority
     updatedAt: Date.now(),
   };
 }
+
+/* ── 이력 관리 · 회의·교육 실시서 ────────────────────────────
+   원본 서식 두 종류를 **한 목록**에서 다룬다(표의 '구분' 칸으로 나뉜다).
+   - 사전 교육·회의 실시서(SSI-602-03): 교육내용 + 회의내용 + 비고, 사진 2장
+   - 결과 교육 실시서(SSI-602-04): 교육내용만, 사진 1장
+   나머지(결재란·일시·장소·강사·참석자 명단)는 두 서식이 똑같아 한 타입으로 묶었다. */
+
+export const TRAINING_KINDS = ["사전 교육·회의", "결과 교육"] as const;
+export type TrainingKind = (typeof TRAINING_KINDS)[number];
+
+/** 사진 칸 이름 — 서식마다 칸 수가 다르다(원본 그대로). 칸 수도 이 배열이 정한다 */
+export const TRAINING_PHOTO_LABELS: Record<TrainingKind, readonly string[]> = {
+  "사전 교육·회의": ["교육·회의 사진 1", "교육·회의 사진 2"],
+  "결과 교육": ["교육 실시 사진"],
+};
+
+/**
+ * 참석자 한 명. 서명은 **게스트가 직접 손으로 그린다** — 이미지 id만 남기고
+ * 실제 그림은 R2에 있다(사진과 같은 취급이라 백업·고아 정리에서 함께 세어야 한다).
+ */
+export type TrainingAttendee = {
+  id: string;
+  dept: string; // 소속
+  name: string; // 성명
+  sign?: string; // 서명 이미지 id (R2)
+  signedAt?: number; // 서명한 시각 — 언제 받았는지 알 수 있게 남긴다
+};
+
+export type Training = {
+  id: string;
+  kind: TrainingKind;
+  date: string; // 교육·회의일자 (YYYY-MM-DD)
+  startAt: string; // 시작 시각 (HH:MM)
+  endAt: string; // 종료 시각 (HH:MM) — 둘을 빼서 '(○○분)'을 만든다
+  place: string; // 교육·회의장소
+  instructor: string; // 교육강사(회의주관자)
+  /** 교육인원 — 비워 두면 참석자 수가 그대로 쓰인다(headcountOf) */
+  headcount: number | null;
+  eduContent: string; // 교육내용
+  meetContent: string; // 회의내용 — '사전 교육·회의'에만 쓴다
+  note: string; // 비고 — '사전 교육·회의'에만 있는 칸이다
+  photos: string[]; // 사진 id (칸 수는 TRAINING_PHOTO_LABELS가 정한다)
+  attendees: TrainingAttendee[];
+  approver: { charge: string; review: string; approve: string }; // 결재란 (설정 기본값에서 채운다)
+  /** 잠금 — 관리자가 걸면 게스트는 고치지도, **서명하지도** 못한다(워커가 다시 검사한다) */
+  locked?: boolean;
+  updatedAt: number;
+};
+
+/* 원본 서식에 인쇄돼 있는 표준문구. 새 문서에 기본값으로 들어가고 그날 실제
+   다룬 내용에 맞게 고칠 수 있다 — 매번 다시 적지 않게 하려는 것이다. */
+export const TRAINING_EDU_TEXT: Record<TrainingKind, string> = {
+  "사전 교육·회의": `○ 위험성평가 사전교육에 대한 사항
+  - 전반적인 위험성평가에 대한 내용 교육
+  ① 「위험성평가」를 위한 사업주의 방침과 추진목표
+  ② 「위험성평가」를 위한 사전준비 및 유해ㆍ위험요인 파악방법
+  ③ 유해ㆍ위험요인에 대한 위험성 결정방법
+     (허용가능/불가능한 위험등급 결정)
+  ④ 위험성 감소대책 수립 및 실행의 절차와 기록유지 방법`,
+  "결과 교육": `○ 위험성평가 결과 교육에 대한 사항
+  - 위험성평가 결과에 대한 내용 공유
+   ① 「위험성평가」 결과 발굴된 유해ㆍ위험요인에 대한 위험등급 결과 공유
+      - 사업장 내 허용가능/허용불가능한 주요 유해·위험 요인
+
+   ② 「위험성평가」 결과 허용불가능한 사항에 대한 감소대책 이행 결과 공유
+      - 이행된 감소대책에 대해 근로자가 준수하거나 주의하여야 할 사항
+      - 감소대책 이행 결과에 대한 FEED BACK 의견 청취
+
+   ③ 「위험성평가」 결과 개선 예정 사항 공유`,
+};
+
+/** 회의내용 표준문구 — '사전 교육·회의'에만 있다 */
+export const TRAINING_MEET_TEXT = `○ 위험성평가 대상 선정에 관한 사항
+  - 평가대상 추가 및 확정
+○ 위험성평가 참여 방법 및 인원에 대한 사항
+  - 대상공정별 참여 관리감독자, 근로자 선정
+  - 위험성평가 참여 방법(순회점검 외 기타 방법)
+○ 위험성평가 추진을 위한 계획에 대한 사항
+  - 실시 일정 확정(대상 공정별 순회점검 일정)
+○ 위험성평가 역할 및 책임(권한)에 대한 사항
+  - 참여 인원에 대한 역할 및 책임(권한) 확정
+  - 근로자 대표 선정 관련 논의 (선정 또는 미선정)
+    ※근로자대표 선정 시 선정방법 논의 (거수법, 투표법 등)
+○ 위험성평가 공유방법
+  - 결과에 대한 게시 및 교육 방법
+  - 이행된 감소대책 유효성에 대한
+    FEEDBACK 청취 방법 및 청취 안내`;
+
+export function emptyTrainingAttendee(dept = "", name = ""): TrainingAttendee {
+  return { id: crypto.randomUUID(), dept, name };
+}
+
+export function emptyTraining(
+  kind: TrainingKind,
+  approver: { charge: string; review: string; approve: string } = { charge: "", review: "", approve: "" },
+): Training {
+  return {
+    id: crypto.randomUUID(),
+    kind,
+    date: new Date().toISOString().slice(0, 10),
+    startAt: "",
+    endAt: "",
+    place: "",
+    instructor: "",
+    headcount: null,
+    eduContent: TRAINING_EDU_TEXT[kind],
+    meetContent: kind === "사전 교육·회의" ? TRAINING_MEET_TEXT : "",
+    note: "",
+    photos: [],
+    attendees: [],
+    approver: { ...approver },
+    updatedAt: Date.now(),
+  };
+}
+
+/** 소요시간(분) — 시작·종료가 다 있어야 계산된다. 작업중지권의 stopMinutes와 같은 규칙 */
+export function trainingMinutes(v: Training): number | null {
+  if (!v.startAt || !v.endAt) return null;
+  const [sh, sm] = v.startAt.split(":").map(Number);
+  const [eh, em] = v.endAt.split(":").map(Number);
+  if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return null;
+  const diff = eh * 60 + em - (sh * 60 + sm);
+  return diff < 0 ? diff + 24 * 60 : diff; // 자정을 넘긴 경우
+}
+
+/** 교육인원 — 직접 적은 숫자가 있으면 그것을, 없으면 참석자 수를 쓴다 */
+export function headcountOf(v: Training): number {
+  return v.headcount ?? v.attendees.length;
+}
+
+/** 서명 현황 — 목록의 '서명' 칸과 상세 화면 안내에 함께 쓴다 */
+export function signedCount(v: Training): number {
+  return v.attendees.filter((a) => a.sign).length;
+}

@@ -21,7 +21,8 @@ import { cn } from "@/lib/utils";
 const W = 480;
 const H = 180;
 
-function SignatureCanvas({ onReady }: { onReady: (canvas: HTMLCanvasElement | null) => void }) {
+/** 그리는 칸 자체. 저장 방식이 다른 화면(회의·교육 실시서의 참석자 서명)도 이걸 그대로 쓴다 */
+export function SignatureCanvas({ onReady }: { onReady: (canvas: HTMLCanvasElement | null) => void }) {
   const ref = React.useRef<HTMLCanvasElement>(null);
   const drawing = React.useRef(false);
   const last = React.useRef<{ x: number; y: number } | null>(null);
@@ -85,6 +86,11 @@ function SignatureCanvas({ onReady }: { onReady: (canvas: HTMLCanvasElement | nu
       }}
     />
   );
+}
+
+/** 캔버스를 PNG data URL로 굳힌다 — 서버가 R2에 바로 넣을 수 있는 형태 */
+export function signatureDataUrl(canvas: HTMLCanvasElement): string {
+  return canvas.toDataURL("image/png");
 }
 
 /**

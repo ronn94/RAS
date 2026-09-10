@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   ListChecks,
   LogOut,
+  GraduationCap,
   MessageSquareText,
   OctagonAlert,
   PanelLeftClose,
@@ -25,6 +26,7 @@ export type ViewKey =
   | "inspections"
   | "surveys"
   | "stopworks"
+  | "trainings"
   | "settings"
   | "backup";
 
@@ -55,6 +57,11 @@ const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
       // 설문지와 같은 '의견청취' 묶음에 둔다(둘 다 근로자가 직접 쓰는 서식이다)
       { key: "stopworks", title: "작업중지권", icon: <OctagonAlert /> },
     ],
+  },
+  {
+    // 실시한 교육·회의를 서식 그대로 남기는 자리 — 다른 이력 서식이 늘어나면 여기에 붙인다
+    label: "이력 관리",
+    items: [{ key: "trainings", title: "회의·교육 실시서", icon: <GraduationCap /> }],
   },
 ];
 

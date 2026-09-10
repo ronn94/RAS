@@ -748,6 +748,119 @@
   word-break: break-word;
 }
 
+/* ── 회의·교육 실시서 (원본 SSI-602-03 / SSI-602-04) ──────────
+   1쪽 본문 + 2쪽부터 참석자 명단. 본문 쪽은 A4 한 장(267mm)을 넘지 않도록
+   교육내용·회의내용 칸을 고정 높이로 잡고, 넘치는 글은 잘라내지 않고 줄인다. */
+.sheet-training .print-page {
+  box-sizing: border-box;
+  width: 180mm;
+}
+.sheet-training table {
+  margin-bottom: 3mm;
+}
+.sheet-training :is(th, td) {
+  padding: 1mm 1.5mm;
+}
+.sheet-training .head-title {
+  text-align: center;
+  font-size: 15pt;
+  font-weight: 700;
+}
+.sheet-training .head :is(th, td) {
+  height: 8mm;
+}
+.sheet-training .head .sign {
+  height: 12mm;
+}
+/* 결재란의 '결재' 글자는 세로쓰기 */
+.sheet-training .vert {
+  line-height: 1.1;
+}
+.sheet-training .meta td {
+  height: 9mm;
+}
+/* 라벨에 줄바꿈(교육강사\n(회의주관자))을 살린다 */
+.sheet-training .meta .lbl {
+  white-space: pre-line;
+  line-height: 1.15;
+}
+.sheet-training .body :is(th, td) {
+  vertical-align: top;
+}
+.sheet-training .body .lbl {
+  vertical-align: middle;
+  line-height: 1.3;
+}
+.sheet-training .wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+/* 본문 두 칸의 높이는 원본 비율을 따른다(교육 : 회의 ≈ 1 : 2.3) */
+.sheet-training .edu {
+  height: 42mm;
+}
+.sheet-training .meet {
+  height: 78mm;
+}
+/* 결과 교육은 회의내용 칸이 없어 교육내용에 그만큼을 더 준다 */
+.sheet-training .body:not(:has(thead)) .edu {
+  height: 68mm;
+}
+.sheet-training .photos {
+  padding: 1.5mm;
+}
+.sheet-training .photos .grid {
+  display: grid;
+  gap: 2mm;
+}
+.sheet-training .photos .cols-1 {
+  grid-template-columns: 1fr;
+}
+.sheet-training .photos .cols-2 {
+  grid-template-columns: 1fr 1fr;
+}
+/* 칸 크기는 고정하되 사진은 잘라내지 않는다 — 전체를 넣고 남는 자리는 여백 */
+.sheet-training .photos .cell {
+  box-sizing: border-box;
+  height: 58mm;
+  border: 0.5pt solid #999;
+  padding: 1mm;
+}
+.sheet-training .photos img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+/* 명단 쪽 */
+.sheet-training .roster-head .title {
+  height: 12mm;
+  font-size: 12pt;
+}
+.sheet-training .roster-date td {
+  height: 8mm;
+  border: none;
+}
+.sheet-training .roster-date {
+  border: none;
+}
+.sheet-training .roster {
+  table-layout: fixed;
+}
+.sheet-training .roster td {
+  height: 9mm;
+}
+/* 받아 둔 손서명 — 칸 안에 통째로 들어가게 줄인다(없으면 빈 칸으로 남아 수기로 받는다) */
+.sheet-training .roster .sign-cell {
+  padding: 0.3mm;
+}
+.sheet-training .roster .sign-cell img {
+  width: 100%;
+  height: 8mm;
+  object-fit: contain;
+  display: block;
+}
+
 /* ── 의견청취 설문지 (A4 세로 1장) ─────────────────────────── */
 .sheet-survey .print-page {
   box-sizing: border-box;

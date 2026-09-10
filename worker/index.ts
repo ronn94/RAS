@@ -14,7 +14,7 @@ import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
 import { login, loginGuest, logout, readSession } from "./auth";
 import { DEFAULT_SETTINGS, withDefaults, type AppSettings } from "../src/lib/settings";
-import type { PriorityAction, StopWork, Survey } from "../src/lib/types";
+import type { PriorityAction, StopWork, Survey, Training, TrainingAttendee } from "../src/lib/types";
 import type { Bindings } from "./bindings";
 import { runDailyDigest } from "./digest";
 import { sendPush } from "./push";
@@ -100,10 +100,16 @@ type NotifyOnCreate<T> = {
 
 /* ── 공용: JSON 문서 컬렉션(assessments / hazard_infos) ──────── */
 function collection<T extends { id: string } = Record<string, unknown> & { id: string }>(
-  table: "assessments" | "hazard_infos" | "inspections" | "surveys" | "stop_works" | "priority_actions",
+  table: "assessments" | "hazard_infos" | "inspections" | "surveys" | "stop_works" | "priority_actions" | "trainings",
   /** 이 컬렉션을 쓰기 위해 필요한 권한. 설문지는 전역 편집권한과 분리해 survey로 연다 */
   perms: { write: PermissionKey[]; remove: PermissionKey[] } = { write: ["edit"], remove: ["delete"] },
   notifyOnCreate?: NotifyOnCreate<T>,
+  /**
+   * 저장된 문서에서 **반드시 지켜야 할 값**을 새 본문 위에 다시 얹는다.
+   * 화면에서 문서를 열어 둔 채 다른 사람이 값을 바꾸면(교육 실시서의 서명이 그렇다)
+   * 나중에 누른 저장이 그 값을 통째로 지운다 — 그 사고를 서버에서 막는다.
+   */
+  preserve?: (incoming: Record<string, unknown>, stored: Record<string, unknown>) => Record<string, unknown>,
 ) {
   const r = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -133,7 +139,11 @@ function collection<T extends { id: string } = Record<string, unknown> & { id: s
     const existed = notifyOnCreate
       ? !!(await c.env.ras_db.prepare(`SELECT 1 FROM ${table} WHERE id = ?1`).bind(id).first())
       : true;
-    const body = await c.req.json<Record<string, unknown>>();
+    let body = await c.req.json<Record<string, unknown>>();
+    if (preserve) {
+      const row = await c.env.ras_db.prepare(`SELECT data FROM ${table} WHERE id = ?1`).bind(id).first<{ data: string }>();
+      if (row) body = preserve(body, JSON.parse(row.data) as Record<string, unknown>);
+    }
     const updatedAt = Date.now();
     const doc = { ...body, id, updatedAt };
     await c.env.ras_db
@@ -203,6 +213,80 @@ app.route(
     view: "stopworks",
     title: () => "우선조치 요청 발행",
     body: (v) => `${v.site || "사업장 미입력"} · ${v.finding || "확인내용 미입력"}`,
+  }),
+);
+
+/* ── 이력 관리 · 회의·교육 실시서 ────────────────────────────
+   발행·수정은 관리자 몫(기본값이 꺼져 있는 edit 권한)이지만, **서명만은**
+   게스트가 로그인만 하면 언제나 남길 수 있다 — 교육장에서 직원이 자기 이름 옆에
+   직접 손서명하는 것이 이 서식의 목적이기 때문이다.
+   그래서 서명은 문서 전체를 덮어쓰는 PUT이 아니라 아래 전용 경로로만 받는다:
+   본문에 무엇을 보내든 **해당 참석자의 서명 한 칸** 말고는 절대 바뀌지 않는다. */
+app.post("/api/trainings/:id/sign", async (c) => {
+  const id = c.req.param("id");
+  const { attendeeId, image } = await c.req.json<{ attendeeId: string; image: string | null }>();
+
+  const row = await c.env.ras_db.prepare("SELECT data FROM trainings WHERE id = ?1").bind(id).first<{ data: string }>();
+  if (!row) return c.json({ error: "문서를 찾을 수 없습니다." }, 404);
+  const doc = JSON.parse(row.data) as Training;
+  // 잠긴 문서는 게스트가 서명도 못 한다(관리자는 계속 가능) — 다른 서식의 잠금과 같은 규칙
+  if (doc.locked && c.get("role") === "guest") {
+    return c.json({ error: "잠긴 문서에는 서명할 수 없습니다." }, 403);
+  }
+  const target = doc.attendees.find((a) => a.id === attendeeId);
+  if (!target) return c.json({ error: "참석자를 찾을 수 없습니다." }, 404);
+
+  const previous = target.sign;
+  if (image) {
+    // 서명 그림은 사진과 같은 취급이다 — R2에 넣고 id만 문서에 남긴다.
+    // 사진 업로드 권한(/api/photos)에 기대지 않고 여기서 직접 넣는다:
+    // 관리자가 그 권한을 꺼 두더라도 서명은 항상 받을 수 있어야 하기 때문이다.
+    const comma = image.indexOf(",");
+    const meta = image.slice(0, comma);
+    const contentType = meta.match(/^data:([^;]+)/)?.[1] ?? "image/png";
+    const binary = atob(image.slice(comma + 1));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    const signId = crypto.randomUUID();
+    await c.env.ras_photos.put(signId, bytes, { httpMetadata: { contentType } });
+    // photo_meta에도 반드시 넣는다 — 초기화·고아 정리·용량 계산이 전부 이 표를 본다
+    await c.env.ras_db
+      .prepare("INSERT INTO photo_meta (id, size, content_type, created_at) VALUES (?1, ?2, ?3, ?4)")
+      .bind(signId, bytes.byteLength, contentType, Date.now())
+      .run();
+    target.sign = signId;
+    target.signedAt = Date.now();
+  } else {
+    delete target.sign;
+    delete target.signedAt;
+  }
+  if (previous) {
+    // 다시 서명하거나 지우면 옛 그림은 남겨 둘 이유가 없다
+    await c.env.ras_photos.delete(previous);
+    await c.env.ras_db.prepare("DELETE FROM photo_meta WHERE id = ?1").bind(previous).run();
+  }
+
+  doc.updatedAt = Date.now();
+  await c.env.ras_db
+    .prepare("UPDATE trainings SET data = ?2, updated_at = ?3 WHERE id = ?1")
+    .bind(id, JSON.stringify(doc), doc.updatedAt)
+    .run();
+  return c.json(doc);
+});
+
+app.route(
+  "/api/trainings",
+  collection<Training>("trainings", undefined, undefined, (incoming, stored) => {
+    // 관리자가 문서를 열어 둔 사이에 받은 서명을 저장 한 번으로 날리지 않게 지킨다.
+    // 참석자를 명단에서 아예 빼면 그 사람은 incoming에 없으므로 정상적으로 사라진다.
+    const signs = new Map(
+      ((stored.attendees as TrainingAttendee[] | undefined) ?? []).map((a) => [a.id, a]),
+    );
+    const attendees = ((incoming.attendees as TrainingAttendee[] | undefined) ?? []).map((a) => {
+      const kept = signs.get(a.id);
+      return a.sign || !kept?.sign ? a : { ...a, sign: kept.sign, signedAt: kept.signedAt };
+    });
+    return { ...incoming, attendees };
   }),
 );
 
@@ -353,15 +437,17 @@ function toBase64(buf: ArrayBuffer): string {
 
 /* ── 전체 백업 · 복원 ───────────────────────────────────────── */
 app.get("/api/backup", adminOnly, async (c) => {
-  const [assessments, hazardInfos, inspections, surveys, stopWorks, priorityActions, settingsRow] = await Promise.all([
-    c.env.ras_db.prepare("SELECT data FROM assessments").all<{ data: string }>(),
-    c.env.ras_db.prepare("SELECT data FROM hazard_infos").all<{ data: string }>(),
-    c.env.ras_db.prepare("SELECT data FROM inspections").all<{ data: string }>(),
-    c.env.ras_db.prepare("SELECT data FROM surveys").all<{ data: string }>(),
-    c.env.ras_db.prepare("SELECT data FROM stop_works").all<{ data: string }>(),
-    c.env.ras_db.prepare("SELECT data FROM priority_actions").all<{ data: string }>(),
-    c.env.ras_db.prepare("SELECT data FROM settings WHERE id = 'app'").first<{ data: string }>(),
-  ]);
+  const [assessments, hazardInfos, inspections, surveys, stopWorks, priorityActions, trainings, settingsRow] =
+    await Promise.all([
+      c.env.ras_db.prepare("SELECT data FROM assessments").all<{ data: string }>(),
+      c.env.ras_db.prepare("SELECT data FROM hazard_infos").all<{ data: string }>(),
+      c.env.ras_db.prepare("SELECT data FROM inspections").all<{ data: string }>(),
+      c.env.ras_db.prepare("SELECT data FROM surveys").all<{ data: string }>(),
+      c.env.ras_db.prepare("SELECT data FROM stop_works").all<{ data: string }>(),
+      c.env.ras_db.prepare("SELECT data FROM priority_actions").all<{ data: string }>(),
+      c.env.ras_db.prepare("SELECT data FROM trainings").all<{ data: string }>(),
+      c.env.ras_db.prepare("SELECT data FROM settings WHERE id = 'app'").first<{ data: string }>(),
+    ]);
 
   const usedPhotoIds = new Set<string>();
   for (const row of assessments.results) {
@@ -391,6 +477,12 @@ app.get("/api/backup", adminOnly, async (c) => {
     if (v.issuerSign) usedPhotoIds.add(v.issuerSign);
     if (v.coopSign) usedPhotoIds.add(v.coopSign);
   }
+  // 회의·교육 실시서는 현장 사진 + **참석자 서명이 사람 수만큼** 있다
+  for (const row of trainings.results) {
+    const v = JSON.parse(row.data) as { photos?: string[]; attendees?: { sign?: string }[] };
+    for (const id of v.photos ?? []) usedPhotoIds.add(id);
+    for (const a of v.attendees ?? []) if (a.sign) usedPhotoIds.add(a.sign);
+  }
 
   const photos: Record<string, string> = {};
   for (const id of usedPhotoIds) {
@@ -408,6 +500,7 @@ app.get("/api/backup", adminOnly, async (c) => {
     surveys: surveys.results.map((r) => JSON.parse(r.data)),
     stopWorks: stopWorks.results.map((r) => JSON.parse(r.data)),
     priorityActions: priorityActions.results.map((r) => JSON.parse(r.data)),
+    trainings: trainings.results.map((r) => JSON.parse(r.data)),
     settings: settingsRow ? JSON.parse(settingsRow.data) : undefined,
     photos,
   });
@@ -421,11 +514,22 @@ app.post("/api/backup/restore", adminOnly, async (c) => {
     surveys?: { id: string; process?: string }[];
     stopWorks?: { id: string; dept?: string; workName?: string }[];
     priorityActions?: { id: string; site?: string }[];
+    trainings?: { id: string; kind?: string; place?: string }[];
     settings?: Record<string, unknown>;
     photos?: Record<string, string>;
   }>();
 
   const now = Date.now();
+
+  for (const v of data.trainings ?? []) {
+    await c.env.ras_db
+      .prepare(
+        `INSERT INTO trainings (id, data, facility, process, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(id) DO UPDATE SET data = ?2, facility = ?3, process = ?4, updated_at = ?5`,
+      )
+      .bind(v.id, JSON.stringify(v), v.kind ?? "", v.place ?? "", now)
+      .run();
+  }
 
   for (const a of data.assessments ?? []) {
     await c.env.ras_db
@@ -527,6 +631,7 @@ app.post("/api/wipe", adminOnly, async (c) => {
     c.env.ras_db.prepare("DELETE FROM surveys"),
     c.env.ras_db.prepare("DELETE FROM stop_works"),
     c.env.ras_db.prepare("DELETE FROM priority_actions"),
+    c.env.ras_db.prepare("DELETE FROM trainings"),
     c.env.ras_db.prepare("DELETE FROM photo_meta"),
     c.env.ras_db.prepare("DELETE FROM push_subscriptions"),
   ]);

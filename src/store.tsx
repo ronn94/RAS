@@ -8,6 +8,7 @@ import {
   emptyPriorityAction,
   emptyStopWork,
   emptySurvey,
+  emptyTraining,
   nextDocNo,
   type Assessment,
   type HazardInfo,
@@ -16,6 +17,8 @@ import {
   type RiskItem,
   type StopWork,
   type Survey,
+  type Training,
+  type TrainingKind,
 } from "@/lib/types";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
 import type { Identity } from "@/lib/auth";
@@ -64,6 +67,12 @@ type Ctx = {
   createPriorityAction: () => PriorityAction;
   savePriorityAction: (v: PriorityAction) => Promise<void>;
   removePriorityAction: (id: string) => Promise<void>;
+  trainings: Training[];
+  createTraining: (kind: TrainingKind) => Training;
+  saveTraining: (v: Training) => Promise<void>;
+  removeTraining: (id: string) => Promise<void>;
+  /** 참석자 한 명의 서명만 바꾼다 — 게스트도 할 수 있는 유일한 쓰기다 */
+  signTraining: (id: string, attendeeId: string, image: string | null) => Promise<Training>;
 };
 
 /* ── 이관으로 묶인 항목 동기화 ────────────────────────────────
@@ -181,6 +190,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   const [surveys, setSurveys] = React.useState<Survey[]>([]);
   const [stopWorks, setStopWorks] = React.useState<StopWork[]>([]);
   const [priorityActions, setPriorityActions] = React.useState<PriorityAction[]>([]);
+  const [trainings, setTrainings] = React.useState<Training[]>([]);
   const [settings, setSettings] = React.useState<AppSettings>(DEFAULT_SETTINGS);
   const [lastBackup, setLastBackup] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -202,6 +212,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       setSurveys(await db.listSurveys());
       setStopWorks(await db.listStopWorks());
       setPriorityActions(await db.listPriorityActions());
+      setTrainings(await db.listTrainings());
       const s = await db.loadSettings();
       setSettings(s);
       setRiskThreshold(s.risk.threshold);
@@ -427,6 +438,34 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
     setPriorityActions((prev) => prev.filter((x) => x.id !== id));
   }, []);
 
+  const saveTraining = React.useCallback(async (v: Training) => {
+    await db.putTraining(v);
+    setTrainings((prev) => {
+      const next = prev.some((x) => x.id === v.id)
+        ? prev.map((x) => (x.id === v.id ? { ...v, updatedAt: Date.now() } : x))
+        : [{ ...v, updatedAt: Date.now() }, ...prev];
+      return [...next].sort((x, y) => y.updatedAt - x.updatedAt);
+    });
+  }, []);
+
+  /** 설문지·작업중지권과 같이 화면에서만 만들고 '등록'을 눌러야 서버에 남는다 */
+  const createTraining = React.useCallback(
+    (kind: TrainingKind) => emptyTraining(kind, settings.org.approver),
+    [settings.org.approver],
+  );
+
+  const removeTraining = React.useCallback(async (id: string) => {
+    await db.deleteTraining(id);
+    setTrainings((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
+  /** 서버가 서명 한 칸만 바꾼 문서를 돌려주므로 그대로 갈아 끼운다 */
+  const signTraining = React.useCallback(async (id: string, attendeeId: string, image: string | null) => {
+    const next = await db.signTraining(id, attendeeId, image);
+    setTrainings((prev) => prev.map((x) => (x.id === next.id ? next : x)));
+    return next; // 화면이 들고 있는 사본도 같이 맞출 수 있게 돌려준다
+  }, []);
+
   const updateSettings = React.useCallback(
     async (patch: Partial<AppSettings>) => {
       const next = { ...settings, ...patch, updatedAt: Date.now() };
@@ -488,6 +527,11 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       createPriorityAction,
       savePriorityAction,
       removePriorityAction,
+      trainings,
+      createTraining,
+      saveTraining,
+      removeTraining,
+      signTraining,
       settings,
       updateSettings,
       lastBackup,
@@ -529,6 +573,11 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       createPriorityAction,
       savePriorityAction,
       removePriorityAction,
+      trainings,
+      createTraining,
+      saveTraining,
+      removeTraining,
+      signTraining,
       settings,
       updateSettings,
       lastBackup,
