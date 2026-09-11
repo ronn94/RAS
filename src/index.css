@@ -861,6 +861,72 @@
   display: block;
 }
 
+/* ── 위험성평가 결과 공람표 (원본 SSI-602-10 · A4 세로 1장) ────
+   결재란·사진이 없고 제목 + 개요 5줄 + 게시문 + 명단(17줄 × 3세트 = 51칸)이 한 장이다. */
+.sheet-circular .print-page {
+  box-sizing: border-box;
+  width: 180mm;
+}
+.sheet-circular table {
+  margin-bottom: 3mm;
+}
+.sheet-circular :is(th, td) {
+  padding: 1mm 1.5mm;
+}
+.sheet-circular .sheet-title {
+  margin-bottom: 5mm;
+  text-align: center;
+  font-size: 20pt;
+  font-weight: 700;
+  letter-spacing: 0.5mm;
+}
+.sheet-circular .sheet-title .page-no {
+  font-size: 10pt;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #666;
+}
+.sheet-circular .meta td {
+  height: 8mm;
+}
+/* 최초·정기·수시 — 원본처럼 한 줄에 셋을 나란히 둔다 */
+.sheet-circular .kinds {
+  display: flex;
+  gap: 12mm;
+  padding-left: 4mm;
+}
+.sheet-circular .kind .box {
+  font-size: 11pt;
+  line-height: 1;
+}
+/* 게시 선언문 — 원본은 두 줄 높이의 한 칸이다 */
+.sheet-circular .notice td {
+  height: 14mm;
+  text-align: center;
+  white-space: pre-line;
+  line-height: 1.5;
+}
+.sheet-circular .roster {
+  table-layout: fixed;
+}
+.sheet-circular .roster :is(th, td) {
+  height: 8.5mm;
+}
+/* 순번은 미리 인쇄돼 있는 칸이라 좁고 옅게 */
+.sheet-circular .roster .no {
+  width: 9mm;
+  color: #444;
+}
+.sheet-circular .roster .sign-cell {
+  padding: 0.3mm;
+}
+.sheet-circular .roster .sign-cell img {
+  width: 100%;
+  height: 7.5mm;
+  object-fit: contain;
+  display: block;
+}
+
 /* ── 의견청취 설문지 (A4 세로 1장) ─────────────────────────── */
 .sheet-survey .print-page {
   box-sizing: border-box;

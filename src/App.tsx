@@ -24,7 +24,7 @@ const TITLES: Record<ViewKey, string> = {
   inspections: "순회점검",
   surveys: "설문지",
   stopworks: "작업중지권",
-  trainings: "회의·교육 실시서",
+  trainings: "실시서·공람표",
   settings: "설정",
   backup: "백업·복원",
 };

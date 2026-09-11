@@ -450,8 +450,8 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
 
   /** 설문지·작업중지권과 같이 화면에서만 만들고 '등록'을 눌러야 서버에 남는다 */
   const createTraining = React.useCallback(
-    (kind: TrainingKind) => emptyTraining(kind, settings.org.approver),
-    [settings.org.approver],
+    (kind: TrainingKind) => emptyTraining(kind, { approver: settings.org.approver, facility: settings.org.facility }),
+    [settings.org.approver, settings.org.facility],
   );
 
   const removeTraining = React.useCallback(async (id: string) => {

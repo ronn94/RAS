@@ -1,6 +1,9 @@
 /**
- * 회의·교육 실시서 상세 — 원본 서식 두 종류를 한 화면에서 다룬다.
- * 들어가는 칸이 서식마다 달라(회의내용·비고·사진 장수) kind로 갈라 그린다.
+ * 실시서·공람표 상세 — 원본 서식 세 종류를 한 화면에서 다룬다.
+ * 들어가는 칸이 서식마다 달라 kind로 갈라 그린다:
+ * - 사전 교육·회의 / 결과 교육: 회의내용·비고·사진 장수만 다르고 나머지는 같다
+ * - 공람표: 결재란·사진·교육내용이 아예 없고, 대신 평가 구분·평가기간·대상시설이 붙는다.
+ *   명단에도 소속 칸이 없다(원본 서식 그대로 순번·성명·서명 셋뿐).
  *
  * 다른 서식과 같은 규칙:
  * - 새 문서는 **등록을 눌러야** 서버에 남는다(자동 저장 안 함). 이미 등록된 건은 '저장'.
@@ -40,10 +43,14 @@ import { PhotoSlot, usePhotoUrl } from "@/components/photo";
 import { SignatureCanvas, signatureDataUrl } from "@/components/signature";
 import { TrainingSheet } from "@/print/TrainingSheet";
 import {
+  ASSESS_KINDS,
+  CIRCULAR_NOTICE,
   emptyTrainingAttendee,
+  isCircular,
   signedCount,
   TRAINING_PHOTO_LABELS,
   trainingMinutes,
+  type AssessKind,
   type Training,
   type TrainingAttendee,
 } from "@/lib/types";
@@ -71,18 +78,24 @@ export function TrainingDetail({
       다만 아직 등록되지 않은 문서에는 서명할 수 없다(서버에 참석자가 없다) */
   const canSign = !isNew && !readOnly;
   const isPre = draft.kind === "사전 교육·회의";
+  /** 공람표는 교육 서식이 아니다 — 결재란·사진·교육내용이 없고 평가 구분·기간·대상시설이 붙는다 */
+  const circular = isCircular(draft);
   const photoLabels = TRAINING_PHOTO_LABELS[draft.kind];
   const minutes = trainingMinutes(draft);
   const signed = signedCount(draft);
 
   const patch = (p: Partial<Training>) => setDraft((d) => ({ ...d, ...p }));
 
-  // 안내 문구도 서식에 맞춘다 — 결과 교육에는 '회의'라는 말이 나오지 않는다
-  const missing = [
-    !draft.date && (isPre ? "교육·회의일자" : "교육일자"),
-    !draft.place && (isPre ? "교육·회의장소" : "교육장소"),
-    !draft.instructor && "교육강사",
-  ].filter(Boolean) as string[];
+  // 안내 문구도 서식에 맞춘다 — 결과 교육에는 '회의'라는 말이, 공람표에는 '교육'이라는 말이 없다
+  const missing = (
+    circular
+      ? [!draft.date && "평가 시작일", !draft.facility && "대상시설", !draft.instructor && "평가자"]
+      : [
+          !draft.date && (isPre ? "교육·회의일자" : "교육일자"),
+          !draft.place && (isPre ? "교육·회의장소" : "교육장소"),
+          !draft.instructor && "교육강사",
+        ]
+  ).filter(Boolean) as string[];
 
   const submit = async () => {
     if (missing.length) return;
@@ -163,10 +176,11 @@ export function TrainingDetail({
           </Button>
           <div>
             <div className="font-heading text-base font-medium">
-              {isNew ? `새 ${draft.kind} 실시서` : `${draft.kind} 실시서`}
+              {circular ? (isNew ? "새 공람표" : "위험성평가 결과 공람표") : `${isNew ? "새 " : ""}${draft.kind} 실시서`}
             </div>
             <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-              {draft.date || "일자 미입력"} · {draft.place || "장소 미입력"}
+              {draft.date || "일자 미입력"} ·{" "}
+              {circular ? draft.facility || "대상시설 미입력" : draft.place || "장소 미입력"}
               {draft.attendees.length > 0 && (
                 <Badge variant="outline" className="font-normal">
                   서명 {signed}/{draft.attendees.length}
@@ -181,8 +195,8 @@ export function TrainingDetail({
             size="icon-lg"
             disabled={isNew}
             onClick={() => window.print()}
-            aria-label="실시서 인쇄"
-            title={isNew ? "등록한 뒤에 인쇄할 수 있습니다" : "실시서 인쇄 (본문 + 참석자 명단)"}
+            aria-label={circular ? "공람표 인쇄" : "실시서 인쇄"}
+            title={isNew ? "등록한 뒤에 인쇄할 수 있습니다" : circular ? "공람표 인쇄" : "실시서 인쇄 (본문 + 참석자 명단)"}
           >
             <Printer />
           </Button>
@@ -214,7 +228,97 @@ export function TrainingDetail({
         </div>
       )}
 
-      {/* 실시 개요 */}
+      {/* 개요 — 공람표는 서식이 아예 달라 통째로 갈라 그린다 */}
+      {circular ? (
+        <Card className="no-print shadow-xs">
+          <CardHeader>
+            <CardTitle>공람 개요</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>위험성평가 구분</Label>
+              {/* 원본은 최초·정기·수시 셋 중 하나에 표시한다 */}
+              <div className="flex flex-wrap gap-2">
+                {ASSESS_KINDS.map((k) => (
+                  <Button
+                    key={k}
+                    size="sm"
+                    variant={(draft.assessKind ?? "정기평가") === k ? "default" : "outline"}
+                    disabled={!canWrite}
+                    onClick={() => patch({ assessKind: k as AssessKind })}
+                  >
+                    {k}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>대상시설</Label>
+                <Input
+                  disabled={!canWrite}
+                  value={draft.facility ?? ""}
+                  onChange={(e) => patch({ facility: e.target.value })}
+                  placeholder="예: 기흥공공하수처리시설"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>평가자</Label>
+                <Input
+                  disabled={!canWrite}
+                  list="ras-staff"
+                  value={draft.instructor}
+                  onChange={(e) => patch({ instructor: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>대상인원</Label>
+                {/* 비워 두면 명단 인원 수가 그대로 쓰인다 */}
+                <Input
+                  type="number"
+                  min={0}
+                  disabled={!canWrite}
+                  value={draft.headcount ?? ""}
+                  onChange={(e) => patch({ headcount: e.target.value === "" ? null : Number(e.target.value) })}
+                  placeholder={`${draft.attendees.length}명 (명단 인원)`}
+                />
+              </div>
+              {/* 평가일시는 기간이다 — 원본이 '00월 00일 ~ 00월 00일' 형태다 */}
+              <div className="space-y-1.5">
+                <Label>평가 시작일</Label>
+                <Input
+                  type="date"
+                  disabled={!canWrite}
+                  value={draft.date}
+                  onChange={(e) => patch({ date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>평가 종료일</Label>
+                <Input
+                  type="date"
+                  disabled={!canWrite}
+                  value={draft.dateTo ?? ""}
+                  onChange={(e) => patch({ dateTo: e.target.value })}
+                />
+              </div>
+              <datalist id="ras-staff">
+                {settings.staff.map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
+            </div>
+            {/* 게시 선언문 — 법정 게시 문구라 고치지 않는다 */}
+            <div className="space-y-1.5">
+              <Label>게시 문구 (고정)</Label>
+              {/* 원본의 줄바꿈은 종이 칸 폭에 맞춘 것이라 화면에서는 그냥 흐르게 둔다(인쇄물은 그대로 지킨다) */}
+              <p className="rounded-xl bg-muted px-3 py-2.5 text-sm leading-relaxed text-muted-foreground">
+                {CIRCULAR_NOTICE.replace(/\n/g, " ")}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
       <Card className="no-print shadow-xs">
         <CardHeader>
           <CardTitle>{isPre ? "교육·회의 개요" : "교육 개요"}</CardTitle>
@@ -315,8 +419,10 @@ export function TrainingDetail({
           </div>
         </CardContent>
       </Card>
+      )}
 
-      {/* 교육·회의 내용 */}
+      {/* 교육·회의 내용 — 공람표에는 없다(게시 문구가 개요 카드 안에 있다) */}
+      {!circular && (
       <Card className="no-print shadow-xs">
         <CardHeader>
           <CardTitle>{isPre ? "교육 · 회의사항" : "교육내용"}</CardTitle>
@@ -361,8 +467,10 @@ export function TrainingDetail({
           )}
         </CardContent>
       </Card>
+      )}
 
-      {/* 사진 — 칸 수는 서식이 정한다(사전 2장 / 결과 1장) */}
+      {/* 사진 — 칸 수는 서식이 정한다(사전 2장 / 결과 1장). 공람표에는 사진 칸이 없다 */}
+      {photoLabels.length > 0 && (
       <Card className="no-print shadow-xs">
         <CardHeader>
           <CardTitle>{isPre ? "교육 · 회의 사진" : "교육 실시 사진"}</CardTitle>
@@ -385,14 +493,15 @@ export function TrainingDetail({
           ))}
         </CardContent>
       </Card>
+      )}
 
-      {/* 참석자 명단 */}
+      {/* 참석자 명단 (공람표에서는 공람 명단) */}
       <Card className="no-print shadow-xs">
         <CardHeader>
-          <CardTitle>참석자 명단</CardTitle>
+          <CardTitle>{circular ? "공람 명단" : "참석자 명단"}</CardTitle>
           <CardDescription>
             {canWrite
-              ? "설정의 직원 명단에서 참석한 사람을 체크하세요. 명단에 없는 분은 아래에서 직접 추가할 수 있습니다."
+              ? `설정의 직원 명단에서 ${circular ? "공람한" : "참석한"} 사람을 체크하세요. 명단에 없는 분은 아래에서 직접 추가할 수 있습니다.`
               : "본인 이름을 찾아 서명 칸을 눌러 주세요."}
           </CardDescription>
         </CardHeader>
@@ -433,11 +542,12 @@ export function TrainingDetail({
           {draft.attendees.length > 0 && (
             <TableWrap>
               {/* 좁은 화면에서 성명 칸이 눌려 한 글자만 보이는 것을 막는다 — 넘치면 가로로 넘긴다 */}
-              <Table className="min-w-[34rem]">
+              <Table className={circular ? "min-w-[24rem]" : "min-w-[34rem]"}>
                 <THead>
                   <TR>
-                    <TH className="w-10 text-center">No.</TH>
-                    <TH className="w-40">소속</TH>
+                    <TH className="w-10 text-center">순번</TH>
+                    {/* 공람표 원본에는 소속 칸이 없다 — 순번·성명·서명 셋뿐이다 */}
+                    {!circular && <TH className="w-40">소속</TH>}
                     <TH className="w-32">성명</TH>
                     <TH className="w-40 text-center">서명</TH>
                     {canWrite && <TH className="w-12" />}
@@ -447,15 +557,17 @@ export function TrainingDetail({
                   {draft.attendees.map((a, i) => (
                     <TR key={a.id}>
                       <TD className="text-center tabular-nums text-muted-foreground">{i + 1}</TD>
-                      <TD>
-                        <Input
-                          disabled={!canWrite}
-                          className="h-8"
-                          value={a.dept}
-                          onChange={(e) => patchAttendee(a.id, { dept: e.target.value })}
-                          placeholder="예: 운영팀"
-                        />
-                      </TD>
+                      {!circular && (
+                        <TD>
+                          <Input
+                            disabled={!canWrite}
+                            className="h-8"
+                            value={a.dept}
+                            onChange={(e) => patchAttendee(a.id, { dept: e.target.value })}
+                            placeholder="예: 운영팀"
+                          />
+                        </TD>
+                      )}
                       <TD>
                         <Input
                           disabled={!canWrite}
@@ -499,7 +611,9 @@ export function TrainingDetail({
 
           {canWrite && (
             <div className="flex items-center justify-center gap-2 border-t pt-3">
-              <span className="text-xs text-muted-foreground">명단에 없는 참석자(협력업체 등)를 직접 추가</span>
+              <span className="text-xs text-muted-foreground">
+                명단에 없는 {circular ? "인원" : "참석자(협력업체 등)"}를 직접 추가
+              </span>
               <Button
                 variant="ghost"
                 size="icon"

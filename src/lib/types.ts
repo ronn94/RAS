@@ -562,14 +562,29 @@ export function emptyPriorityAction(no = "", issuedBy = "", site = ""): Priority
    - 결과 교육 실시서(SSI-602-04): 교육내용만, 사진 1장
    나머지(결재란·일시·장소·강사·참석자 명단)는 두 서식이 똑같아 한 타입으로 묶었다. */
 
-export const TRAINING_KINDS = ["사전 교육·회의", "결과 교육"] as const;
+export const TRAINING_KINDS = ["사전 교육·회의", "결과 교육", "공람표"] as const;
 export type TrainingKind = (typeof TRAINING_KINDS)[number];
+
+/** 공람표(SSI-602-10)의 위험성평가 구분 — 원본에서 셋 중 하나에 표시한다 */
+export const ASSESS_KINDS = ["최초평가", "정기평가", "수시평가"] as const;
+export type AssessKind = (typeof ASSESS_KINDS)[number];
 
 /** 사진 칸 이름 — 서식마다 칸 수가 다르다(원본 그대로). 칸 수도 이 배열이 정한다 */
 export const TRAINING_PHOTO_LABELS: Record<TrainingKind, readonly string[]> = {
   "사전 교육·회의": ["교육·회의 사진 1", "교육·회의 사진 2"],
   "결과 교육": ["교육 실시 사진"],
+  "공람표": [], // 공람표에는 사진 칸이 없다
 };
+
+/** 공람표는 교육 서식이 아니다 — 칸 이름·검증·인쇄가 전부 갈린다 */
+export function isCircular(v: { kind: TrainingKind }): boolean {
+  return v.kind === "공람표";
+}
+
+/** 목록의 '구분' 칸 — 공람표는 어떤 평가의 공람인지까지 함께 보여준다 */
+export function trainingLabel(v: Training): string {
+  return isCircular(v) ? `공람표 · ${v.assessKind ?? "정기평가"}` : v.kind;
+}
 
 /**
  * 참석자 한 명. 서명은 **게스트가 직접 손으로 그린다** — 이미지 id만 남기고
@@ -598,7 +613,15 @@ export type Training = {
   note: string; // 비고 — '사전 교육·회의'에만 있는 칸이다
   photos: string[]; // 사진 id (칸 수는 TRAINING_PHOTO_LABELS가 정한다)
   attendees: TrainingAttendee[];
-  approver: { charge: string; review: string; approve: string }; // 결재란 (설정 기본값에서 채운다)
+  approver: { charge: string; review: string; approve: string }; // 결재란 (설정 기본값에서 채운다 — 공람표는 쓰지 않는다)
+  /* ── 아래 셋은 공람표(SSI-602-10) 전용이다 ──
+     공람표는 교육 서식과 서명 구조가 똑같아 같은 타입·같은 표에 담되,
+     서식이 다른 부분만 이 필드로 갈라 그린다.
+     날짜는 `date`가 평가 시작일, `dateTo`가 종료일이다(원본이 '00월 00일 ~ 00월 00일' 기간이다).
+     평가자는 `instructor`, 대상인원은 `headcount`를 그대로 쓴다 — 칸의 성격이 같다. */
+  assessKind?: AssessKind; // 위험성평가 구분 (최초·정기·수시)
+  dateTo?: string; // 평가 종료일 (YYYY-MM-DD)
+  facility?: string; // 대상시설
   /** 잠금 — 관리자가 걸면 게스트는 고치지도, **서명하지도** 못한다(워커가 다시 검사한다) */
   locked?: boolean;
   updatedAt: number;
@@ -624,6 +647,8 @@ export const TRAINING_EDU_TEXT: Record<TrainingKind, string> = {
       - 감소대책 이행 결과에 대한 FEED BACK 의견 청취
 
    ③ 「위험성평가」 결과 개선 예정 사항 공유`,
+  // 공람표에는 교육내용 칸이 없다 — 대신 고치지 않는 게시 선언문(CIRCULAR_NOTICE)이 들어간다
+  "공람표": "",
 };
 
 /** 회의내용 표준문구 — '사전 교육·회의'에만 있다 */
@@ -643,18 +668,27 @@ export const TRAINING_MEET_TEXT = `○ 위험성평가 대상 선정에 관한 �
   - 이행된 감소대책 유효성에 대한
     FEEDBACK 청취 방법 및 청취 안내`;
 
+/**
+ * 공람표의 게시 선언문 — 산업안전보건법에 따른 게시 문구라 **고치지 않는다**.
+ * 화면에는 읽기 전용으로 보여주고 인쇄물에 그대로 찍는다.
+ * 줄바꿈은 원본 서식(A8:I9, 두 줄 높이)을 그대로 따른다.
+ */
+export const CIRCULAR_NOTICE =
+  "◈ 당 사업장은 소속 구성원의 안전과 건강을 확보하고 무재해 사업장을 이룩하기\n위하여 산업안전보건법에 따른 「위험성평가」 실시를 완료하여 그 결과를 게시함";
+
 export function emptyTrainingAttendee(dept = "", name = ""): TrainingAttendee {
   return { id: crypto.randomUUID(), dept, name };
 }
 
 export function emptyTraining(
   kind: TrainingKind,
-  approver: { charge: string; review: string; approve: string } = { charge: "", review: "", approve: "" },
+  defaults: { approver?: { charge: string; review: string; approve: string }; facility?: string } = {},
 ): Training {
+  const today = new Date().toISOString().slice(0, 10);
   return {
     id: crypto.randomUUID(),
     kind,
-    date: new Date().toISOString().slice(0, 10),
+    date: today,
     startAt: "",
     endAt: "",
     place: "",
@@ -665,7 +699,11 @@ export function emptyTraining(
     note: "",
     photos: [],
     attendees: [],
-    approver: { ...approver },
+    // 공람표는 결재 문서가 아니라 게시물이라 원본에 결재란이 없다 — 빈 값으로 둔다
+    approver: { ...(kind === "공람표" ? { charge: "", review: "", approve: "" } : defaults.approver ?? { charge: "", review: "", approve: "" }) },
+    ...(kind === "공람표"
+      ? { assessKind: "정기평가" as AssessKind, dateTo: today, facility: defaults.facility ?? "" }
+      : {}),
     updatedAt: Date.now(),
   };
 }
