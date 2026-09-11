@@ -123,7 +123,7 @@ export const PLAN_TEMPLATE: PlanTemplateRow[] = [
     detail: "허용가능 수준 판단",
     target: "담 당 자",
     goal: "-",
-    auto: "위험성평가표 평가일시",
+    auto: "평가표 행의 개선일자",
   },
   {
     key: "measurePlan",
@@ -132,6 +132,7 @@ export const PLAN_TEMPLATE: PlanTemplateRow[] = [
     detail: "-",
     target: "담 당 자",
     goal: "-",
+    auto: "평가표 행의 개선일자",
   },
   {
     key: "measureDo",
@@ -159,7 +160,16 @@ export const PLAN_TEMPLATE: PlanTemplateRow[] = [
     goal: "-",
     auto: "실시서(결과 교육)·공람표 발행일",
   },
-  { key: "adhoc", group: "수시평가", step: "", wide: true, detail: "-", target: "-", goal: "-" },
+  {
+    key: "adhoc",
+    group: "수시평가",
+    step: "",
+    wide: true,
+    detail: "-",
+    target: "-",
+    goal: "-",
+    auto: "평가표 행의 개선일자",
+  },
   { key: "jobRisk", group: "작업위험성", step: "", wide: true, detail: "-", target: "-", goal: "-" },
 ];
 
@@ -221,8 +231,8 @@ export function copyPlanForYear(prev: AnnualPlan, year: number): AnnualPlan {
 
 /* ── 실적 자동 집계 ───────────────────────────────────────────
    이미 시스템에 쌓인 기록에서 "그 일을 실제로 한 달"을 뽑는다. 판단 근거가
-   분명한 7개 항목만 자동으로 채우고, 나머지는 사람이 손으로 표시한다
-   (근거가 애매한 것을 자동으로 찍으면 계획표가 사실과 달라진다). */
+   분명한 9개 항목만 자동으로 채우고, 나머지(실시공고·사업주/담당자/근로자 교육·
+   결과 기록·작업위험성)는 사람이 손으로 표시한다 — 시스템에 판단할 근거가 없다. */
 
 export type PlanSources = {
   assessments: Assessment[];
@@ -257,6 +267,11 @@ function collect(year: number, dates: (string | undefined)[]): AutoActual {
 }
 
 export function autoActual(year: number, src: PlanSources): Partial<Record<PlanItemKey, AutoActual>> {
+  /* 평가표 행의 **개선일자** — 실제로 개선이 끝난 달이다.
+     위험성 결정 → 감소대책 수립 → 이행 → 수시평가는 한 건의 개선에서 잇따라 일어나는
+     일이라, 넷 모두 이 날짜를 실적의 근거로 삼는다(같은 달에 같은 표시가 찍힌다). */
+  const improved = collect(year, src.assessments.flatMap((a) => a.rows.map((r) => r.improveDate)));
+
   return {
     eduMeeting: collect(
       year,
@@ -265,9 +280,10 @@ export function autoActual(year: number, src: PlanSources): Partial<Record<PlanI
     hazardInfo: collect(year, src.hazardInfos.map((h) => h.date)),
     inspection: collect(year, src.inspections.map((i) => i.date)),
     survey: collect(year, src.surveys.map((v) => v.date)),
-    decision: collect(year, src.assessments.map((a) => a.date)),
-    // 개선일자가 실제로 찍힌 행만 = 감소대책을 이행한 건이다
-    measureDo: collect(year, src.assessments.flatMap((a) => a.rows.map((r) => r.improveDate))),
+    decision: improved,
+    measurePlan: improved,
+    measureDo: improved,
+    adhoc: improved,
     share: collect(
       year,
       src.trainings.filter((t) => t.kind === "결과 교육" || t.kind === "공람표").map((t) => t.date),

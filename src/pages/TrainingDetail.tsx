@@ -672,9 +672,11 @@ function SignCell({
         type="button"
         disabled={disabled}
         onClick={onOpen}
+        onContextMenu={(e) => e.preventDefault()}
         title={disabled ? hint : "다시 서명"}
         className={cn(
-          "h-9 flex-1 overflow-hidden rounded-xl bg-input/40 ring-1 ring-foreground/5",
+          // no-callout: 받아 둔 서명을 길게 눌러도 '이미지 저장' 메뉴가 뜨지 않게 한다
+          "no-callout h-9 flex-1 overflow-hidden rounded-xl bg-input/40 ring-1 ring-foreground/5",
           disabled ? "cursor-default" : "cursor-pointer hover:bg-input/70",
         )}
       >
@@ -727,7 +729,7 @@ function SignDialog({
   };
 
   return (
-    <Dialog open={!!attendee} onClose={onClose} className="max-w-lg sm:max-w-lg">
+    <Dialog open={!!attendee} onClose={onClose} className="no-callout max-w-lg sm:max-w-lg">
       <DialogHeader>
         <DialogTitle>{attendee?.name || "참석자"} 서명</DialogTitle>
       </DialogHeader>

@@ -57,8 +57,10 @@ export function SignatureCanvas({ onReady }: { onReady: (canvas: HTMLCanvasEleme
   return (
     <canvas
       ref={ref}
-      className="w-full touch-none rounded-xl bg-input/40 ring-1 ring-foreground/10"
+      // no-callout: 꾹 누르고 그리는 동작이라 복사·붙여넣기 메뉴와 돋보기가 뜨면 획이 끊긴다
+      className="no-callout w-full touch-none rounded-xl bg-input/40 ring-1 ring-foreground/10"
       style={{ aspectRatio: `${W} / ${H}` }}
+      onContextMenu={(e) => e.preventDefault()}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
         drawing.current = true;
@@ -182,8 +184,10 @@ export function SignatureField({
         type="button"
         disabled={disabled}
         onClick={() => setOpen(true)}
+        onContextMenu={(e) => e.preventDefault()}
         className={cn(
-          "flex min-h-16 w-full flex-1 items-center justify-center overflow-hidden rounded-xl bg-input/50 ring-1 ring-foreground/5 transition-colors",
+          // no-callout: 저장된 서명을 길게 누르면 '이미지 저장' 메뉴가 뜨는 것을 막는다
+          "no-callout flex min-h-16 w-full flex-1 items-center justify-center overflow-hidden rounded-xl bg-input/50 ring-1 ring-foreground/5 transition-colors",
           disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-input/70",
         )}
       >
@@ -196,7 +200,8 @@ export function SignatureField({
         )}
       </button>
 
-      <Dialog open={open} onClose={() => setOpen(false)} className="max-w-lg sm:max-w-lg">
+      {/* 팝업 전체에 걸어 둔다 — 캔버스를 살짝 벗어나 눌러도 선택·돋보기가 뜨지 않게 */}
+      <Dialog open={open} onClose={() => setOpen(false)} className="no-callout max-w-lg sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{label} 서명</DialogTitle>
         </DialogHeader>

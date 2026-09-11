@@ -175,6 +175,28 @@
   display: none;
 }
 
+/* ── 손 서명 칸 ─────────────────────────────────────────────
+   서명은 화면을 **꾹 누른 채 그리는** 동작이라, 모바일 기본 동작과 정면으로 부딪힌다.
+   손가락을 대고 있으면 iOS·안드로이드가 복사·붙여넣기 메뉴와 돋보기(확대경)를 띄우고
+   그 순간 그리던 획이 끊긴다. 저장된 서명 이미지도 길게 누르면 '이미지 저장' 메뉴가 뜬다.
+   그래서 서명과 관련된 자리에서는 선택·콜아웃·탭 하이라이트를 전부 끈다.
+
+   touch-action(=Tailwind의 touch-none)은 스크롤·확대 제스처만 막고 이 메뉴들은 못 막으므로
+   둘을 함께 걸어야 한다. */
+.no-callout {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+/* 이미지는 드래그해서 끌어내는 동작도 막는다(길게 누르면 미리보기가 따라 나온다) */
+.no-callout img {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
+
 /* ── 인쇄(감소대책 사진대지 / 위험성평가표) ───────────────────────── */
 /* 화면에서는 보이지 않지만 레이아웃은 살아 있어야 한다
    (칸 너비 자동 축소가 실제 폭을 측정해야 하므로 display:none을 쓸 수 없다) */
