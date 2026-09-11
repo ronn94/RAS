@@ -878,8 +878,10 @@
 .sheet-annual :is(th, td) {
   padding: 0.4mm 0.8mm;
 }
+/* 결재란은 다른 인쇄물(위험성평가표·실시서·공람표)과 같은 높이로 맞춘다 —
+   라벨 8mm + 서명칸 12mm. 서류철에 나란히 꽂았을 때 결재 도장 자리가 들쭉날쭉하면 안 된다 */
 .sheet-annual .head :is(th, td) {
-  height: 6mm;
+  height: 8mm;
 }
 .sheet-annual .head-title {
   text-align: center;
@@ -887,16 +889,17 @@
   font-weight: 700;
 }
 .sheet-annual .head .sign {
-  height: 8mm;
+  height: 12mm;
 }
 .sheet-annual .vert {
   line-height: 1.1;
 }
-/* 본문 — 한 줄을 4.9mm로 못박아 32줄이 한 장에 들어가게 한다.
+/* 본문 — 한 줄을 4.6mm로 못박아 32줄이 한 장에 들어가게 한다.
+   결재란을 다른 인쇄물과 같은 높이(20mm)로 맞추면서 그만큼을 여기서 되찾았다.
    실측 높이가 A4 가로 본문(180mm)에 딱 붙으면 인쇄기 여백 오차로 두 장이 되므로
    몇 mm 여유를 남긴다 */
 .sheet-annual .plan :is(th, td) {
-  height: 4.9mm;
+  height: 4.6mm;
   vertical-align: middle;
 }
 .sheet-annual .plan th {
