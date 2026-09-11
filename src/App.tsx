@@ -9,6 +9,7 @@ import { InspectionsPage } from "@/pages/Inspections";
 import { SurveysPage } from "@/pages/Surveys";
 import { StopWorksPage } from "@/pages/StopWorks";
 import { TrainingsPage } from "@/pages/Trainings";
+import { AnnualPlanPage } from "@/pages/AnnualPlan";
 import { DashboardPage } from "@/pages/Dashboard";
 import { SettingsPage } from "@/pages/Settings";
 import { BackupPage } from "@/pages/Backup";
@@ -24,6 +25,7 @@ const TITLES: Record<ViewKey, string> = {
   inspections: "순회점검",
   surveys: "설문지",
   stopworks: "작업중지권",
+  annualplan: "연간계획",
   trainings: "실시서·공람표",
   settings: "설정",
   backup: "백업·복원",
@@ -108,6 +110,7 @@ function Router({ identity }: { identity: Identity }) {
       {activeView === "inspections" && <InspectionsPage openId={openId} onOpen={setOpenId} />}
       {activeView === "surveys" && <SurveysPage openId={openId} onOpen={setOpenId} />}
       {activeView === "stopworks" && <StopWorksPage openId={openId} onOpen={setOpenId} />}
+      {activeView === "annualplan" && <AnnualPlanPage />}
       {activeView === "trainings" && <TrainingsPage openId={openId} onOpen={setOpenId} />}
       {isAdmin && activeView === "settings" && <SettingsPage />}
       {isAdmin && activeView === "backup" && <BackupPage />}

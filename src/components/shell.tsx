@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   ListChecks,
   LogOut,
+  CalendarRange,
   GraduationCap,
   MessageSquareText,
   OctagonAlert,
@@ -26,6 +27,7 @@ export type ViewKey =
   | "inspections"
   | "surveys"
   | "stopworks"
+  | "annualplan"
   | "trainings"
   | "settings"
   | "backup";
@@ -62,7 +64,10 @@ const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
     // 실시한 교육·회의와 평가 결과 공람을 서식 그대로 남기는 자리 —
     // 다른 이력 서식(공고·연간계획표 등)이 늘어나면 여기에 붙인다
     label: "이력 관리",
-    items: [{ key: "trainings", title: "실시서·공람표", icon: <GraduationCap /> }],
+    items: [
+      { key: "annualplan", title: "연간계획", icon: <CalendarRange /> },
+      { key: "trainings", title: "실시서·공람표", icon: <GraduationCap /> },
+    ],
   },
 ];
 

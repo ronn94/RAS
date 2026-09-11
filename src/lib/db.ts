@@ -8,6 +8,7 @@
  * putPhoto(id, blob) 대신 uploadPhoto(blob) → id 형태다.
  */
 import type { Assessment, HazardInfo, Inspection, PriorityAction, StopWork, Survey, Training } from "./types";
+import type { AnnualPlan } from "./annualPlan";
 import { withDefaults, type AppSettings } from "./settings";
 
 /** 세션이 끊겼을 때(401) store.tsx가 로그인 화면으로 되돌릴 수 있도록 알린다.
@@ -81,6 +82,12 @@ export const deleteTraining = (id: string) => api(`/trainings/${id}`, { method: 
  */
 export const signTraining = (id: string, attendeeId: string, image: string | null) =>
   api<Training>(`/trainings/${id}/sign`, { method: "POST", body: JSON.stringify({ attendeeId, image }) });
+
+/* ── 이력 관리 · 연간계획표 ─────────────────────────────── */
+export const listAnnualPlans = () => api<AnnualPlan[]>("/annualplans");
+export const putAnnualPlan = (v: AnnualPlan) =>
+  api<AnnualPlan>(`/annualplans/${v.id}`, { method: "PUT", body: JSON.stringify(v) });
+export const deleteAnnualPlan = (id: string) => api(`/annualplans/${id}`, { method: "DELETE" });
 
 /* ── 푸시 알림 구독 ──────────────────────────────────────── */
 export const getPushVapidKey = () => api<{ publicKey: string }>("/push/vapid-key");

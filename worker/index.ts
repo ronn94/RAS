@@ -100,7 +100,7 @@ type NotifyOnCreate<T> = {
 
 /* ── 공용: JSON 문서 컬렉션(assessments / hazard_infos) ──────── */
 function collection<T extends { id: string } = Record<string, unknown> & { id: string }>(
-  table: "assessments" | "hazard_infos" | "inspections" | "surveys" | "stop_works" | "priority_actions" | "trainings",
+  table: "assessments" | "hazard_infos" | "inspections" | "surveys" | "stop_works" | "priority_actions" | "trainings" | "annual_plans",
   /** 이 컬렉션을 쓰기 위해 필요한 권한. 설문지는 전역 편집권한과 분리해 survey로 연다 */
   perms: { write: PermissionKey[]; remove: PermissionKey[] } = { write: ["edit"], remove: ["delete"] },
   notifyOnCreate?: NotifyOnCreate<T>,
@@ -290,6 +290,10 @@ app.route(
   }),
 );
 
+/* ── 이력 관리 · 연간계획표 ─────────────────────────────────
+   서명이 없어 특별 취급이 필요 없다 — 기본 권한(edit/delete)으로 그대로 연다 */
+app.route("/api/annualplans", collection("annual_plans"));
+
 /* ── 설정 (단일 레코드) ────────────────────────────────────── */
 app.get("/api/settings", async (c) => {
   const row = await c.env.ras_db
@@ -437,7 +441,7 @@ function toBase64(buf: ArrayBuffer): string {
 
 /* ── 전체 백업 · 복원 ───────────────────────────────────────── */
 app.get("/api/backup", adminOnly, async (c) => {
-  const [assessments, hazardInfos, inspections, surveys, stopWorks, priorityActions, trainings, settingsRow] =
+  const [assessments, hazardInfos, inspections, surveys, stopWorks, priorityActions, trainings, annualPlans, settingsRow] =
     await Promise.all([
       c.env.ras_db.prepare("SELECT data FROM assessments").all<{ data: string }>(),
       c.env.ras_db.prepare("SELECT data FROM hazard_infos").all<{ data: string }>(),
@@ -446,6 +450,7 @@ app.get("/api/backup", adminOnly, async (c) => {
       c.env.ras_db.prepare("SELECT data FROM stop_works").all<{ data: string }>(),
       c.env.ras_db.prepare("SELECT data FROM priority_actions").all<{ data: string }>(),
       c.env.ras_db.prepare("SELECT data FROM trainings").all<{ data: string }>(),
+      c.env.ras_db.prepare("SELECT data FROM annual_plans").all<{ data: string }>(),
       c.env.ras_db.prepare("SELECT data FROM settings WHERE id = 'app'").first<{ data: string }>(),
     ]);
 
@@ -501,6 +506,7 @@ app.get("/api/backup", adminOnly, async (c) => {
     stopWorks: stopWorks.results.map((r) => JSON.parse(r.data)),
     priorityActions: priorityActions.results.map((r) => JSON.parse(r.data)),
     trainings: trainings.results.map((r) => JSON.parse(r.data)),
+    annualPlans: annualPlans.results.map((r) => JSON.parse(r.data)),
     settings: settingsRow ? JSON.parse(settingsRow.data) : undefined,
     photos,
   });
@@ -515,11 +521,22 @@ app.post("/api/backup/restore", adminOnly, async (c) => {
     stopWorks?: { id: string; dept?: string; workName?: string }[];
     priorityActions?: { id: string; site?: string }[];
     trainings?: { id: string; kind?: string; place?: string }[];
+    annualPlans?: { id: string; year?: number }[];
     settings?: Record<string, unknown>;
     photos?: Record<string, string>;
   }>();
 
   const now = Date.now();
+
+  for (const v of data.annualPlans ?? []) {
+    await c.env.ras_db
+      .prepare(
+        `INSERT INTO annual_plans (id, data, facility, process, updated_at) VALUES (?1, ?2, ?3, '', ?4)
+         ON CONFLICT(id) DO UPDATE SET data = ?2, facility = ?3, updated_at = ?4`,
+      )
+      .bind(v.id, JSON.stringify(v), String(v.year ?? ""), now)
+      .run();
+  }
 
   for (const v of data.trainings ?? []) {
     await c.env.ras_db
@@ -632,6 +649,7 @@ app.post("/api/wipe", adminOnly, async (c) => {
     c.env.ras_db.prepare("DELETE FROM stop_works"),
     c.env.ras_db.prepare("DELETE FROM priority_actions"),
     c.env.ras_db.prepare("DELETE FROM trainings"),
+    c.env.ras_db.prepare("DELETE FROM annual_plans"),
     c.env.ras_db.prepare("DELETE FROM photo_meta"),
     c.env.ras_db.prepare("DELETE FROM push_subscriptions"),
   ]);

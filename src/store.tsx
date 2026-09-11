@@ -20,6 +20,7 @@ import {
   type Training,
   type TrainingKind,
 } from "@/lib/types";
+import { emptyAnnualPlan, copyPlanForYear, type AnnualPlan } from "@/lib/annualPlan";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
 import type { Identity } from "@/lib/auth";
 
@@ -73,6 +74,11 @@ type Ctx = {
   removeTraining: (id: string) => Promise<void>;
   /** 참석자 한 명의 서명만 바꾼다 — 게스트도 할 수 있는 유일한 쓰기다 */
   signTraining: (id: string, attendeeId: string, image: string | null) => Promise<Training>;
+  annualPlans: AnnualPlan[];
+  /** 그 해 계획표를 만든다 — 지난해 것이 있으면 계획·대상·목표를 그대로 가져온다 */
+  createAnnualPlan: (year: number) => AnnualPlan;
+  saveAnnualPlan: (v: AnnualPlan) => Promise<void>;
+  removeAnnualPlan: (id: string) => Promise<void>;
 };
 
 /* ── 이관으로 묶인 항목 동기화 ────────────────────────────────
@@ -191,6 +197,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   const [stopWorks, setStopWorks] = React.useState<StopWork[]>([]);
   const [priorityActions, setPriorityActions] = React.useState<PriorityAction[]>([]);
   const [trainings, setTrainings] = React.useState<Training[]>([]);
+  const [annualPlans, setAnnualPlans] = React.useState<AnnualPlan[]>([]);
   const [settings, setSettings] = React.useState<AppSettings>(DEFAULT_SETTINGS);
   const [lastBackup, setLastBackup] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -213,6 +220,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       setStopWorks(await db.listStopWorks());
       setPriorityActions(await db.listPriorityActions());
       setTrainings(await db.listTrainings());
+      setAnnualPlans(await db.listAnnualPlans());
       const s = await db.loadSettings();
       setSettings(s);
       setRiskThreshold(s.risk.threshold);
@@ -466,6 +474,30 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
     return next; // 화면이 들고 있는 사본도 같이 맞출 수 있게 돌려준다
   }, []);
 
+  const saveAnnualPlan = React.useCallback(async (v: AnnualPlan) => {
+    await db.putAnnualPlan(v);
+    setAnnualPlans((prev) => {
+      const next = prev.some((x) => x.id === v.id)
+        ? prev.map((x) => (x.id === v.id ? { ...v, updatedAt: Date.now() } : x))
+        : [{ ...v, updatedAt: Date.now() }, ...prev];
+      return [...next].sort((x, y) => y.year - x.year);
+    });
+  }, []);
+
+  /** 지난해 계획을 그대로 가져와 실적만 비운다 — 해마다 계획이 크게 바뀌지 않기 때문 */
+  const createAnnualPlan = React.useCallback(
+    (year: number) => {
+      const prev = [...annualPlans].filter((p) => p.year < year).sort((a, b) => b.year - a.year)[0];
+      return prev ? copyPlanForYear(prev, year) : emptyAnnualPlan(year, settings.org.approver);
+    },
+    [annualPlans, settings.org.approver],
+  );
+
+  const removeAnnualPlan = React.useCallback(async (id: string) => {
+    await db.deleteAnnualPlan(id);
+    setAnnualPlans((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
   const updateSettings = React.useCallback(
     async (patch: Partial<AppSettings>) => {
       const next = { ...settings, ...patch, updatedAt: Date.now() };
@@ -532,6 +564,10 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       saveTraining,
       removeTraining,
       signTraining,
+      annualPlans,
+      createAnnualPlan,
+      saveAnnualPlan,
+      removeAnnualPlan,
       settings,
       updateSettings,
       lastBackup,
@@ -578,6 +614,10 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       saveTraining,
       removeTraining,
       signTraining,
+      annualPlans,
+      createAnnualPlan,
+      saveAnnualPlan,
+      removeAnnualPlan,
       settings,
       updateSettings,
       lastBackup,

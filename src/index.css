@@ -861,6 +861,76 @@
   display: block;
 }
 
+/* ── 위험성평가 연간계획표 (원본 SSI-602-02 · A4 가로 1장) ──────
+   가로 22칸 × 세로 32줄(머리 2 + 15항목 × 2)을 한 장에 넣어야 해서
+   글자와 줄 높이를 아주 작게 잡는다. 계획은 ○, 실적은 ●로 구분한다. */
+.sheet-annual {
+  font-size: 7pt;
+  line-height: 1.15;
+}
+.sheet-annual .print-page {
+  box-sizing: border-box;
+  width: 267mm; /* A4 가로 297mm - 좌우 여백 15mm */
+}
+.sheet-annual table {
+  margin-bottom: 2.5mm;
+}
+.sheet-annual :is(th, td) {
+  padding: 0.4mm 0.8mm;
+}
+.sheet-annual .head :is(th, td) {
+  height: 6mm;
+}
+.sheet-annual .head-title {
+  text-align: center;
+  font-size: 15pt;
+  font-weight: 700;
+}
+.sheet-annual .head .sign {
+  height: 8mm;
+}
+.sheet-annual .vert {
+  line-height: 1.1;
+}
+/* 본문 — 한 줄을 4.9mm로 못박아 32줄이 한 장에 들어가게 한다.
+   실측 높이가 A4 가로 본문(180mm)에 딱 붙으면 인쇄기 여백 오차로 두 장이 되므로
+   몇 mm 여유를 남긴다 */
+.sheet-annual .plan :is(th, td) {
+  height: 4.9mm;
+  vertical-align: middle;
+}
+.sheet-annual .plan th {
+  font-size: 6.5pt;
+}
+.sheet-annual .plan .wrap {
+  white-space: pre-line;
+  word-break: break-word;
+  text-align: center;
+}
+.sheet-annual .plan .step {
+  font-size: 6.5pt;
+}
+/* 왼쪽 끝 '구분' 칸 — 원본처럼 세로쓰기로 표 전체를 묶는다 */
+.sheet-annual .plan .side {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 1mm;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.sheet-annual .plan .tag {
+  font-size: 6.5pt;
+  color: #333;
+}
+.sheet-annual .plan .mark {
+  text-align: center;
+  font-size: 8pt;
+  line-height: 1;
+}
+.sheet-annual .plan .rate {
+  font-weight: 700;
+}
+
 /* ── 위험성평가 결과 공람표 (원본 SSI-602-10 · A4 세로 1장) ────
    결재란·사진이 없고 제목 + 개요 5줄 + 게시문 + 명단(17줄 × 3세트 = 51칸)이 한 장이다. */
 .sheet-circular .print-page {
