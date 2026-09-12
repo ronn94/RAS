@@ -16,6 +16,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Eraser,
   Lock,
   PenLine,
@@ -144,6 +145,17 @@ export function JobAssessmentDetail({
 
   const addRow = (kind: JobRow["kind"]) =>
     setDraft((d) => ({ ...d, rows: [...d.rows, emptyJobRow(kind)] }));
+
+  /** 정기평가(AssessmentDetail)의 행 복제와 같은 방식 — 바로 아래에 사본을 끼워 넣는다 */
+  const duplicateRow = (id: string) =>
+    setDraft((d) => {
+      const i = d.rows.findIndex((r) => r.id === id);
+      if (i < 0) return d;
+      const copy: JobRow = { ...d.rows[i], id: crypto.randomUUID() };
+      const rows = [...d.rows];
+      rows.splice(i + 1, 0, copy);
+      return { ...d, rows };
+    });
 
   const moveRow = (id: string, dir: -1 | 1) =>
     setDraft((d) => {
@@ -326,11 +338,12 @@ export function JobAssessmentDetail({
             toggleIn={toggleIn}
             addRow={addRow}
             moveRow={moveRow}
+            duplicateRow={duplicateRow}
             setDraft={setDraft}
           />
         )}
         {step === 4 && <StepPreJob draft={draft} patch={patch} canWrite={canWrite} toggleIn={toggleIn} />}
-        {step === 5 && <StepReview draft={draft} patch={patch} canWrite={canWrite} threshold={threshold} />}
+        {step === 5 && <StepReview draft={draft} threshold={threshold} />}
       </div>
 
       {/* 단계 이동 */}
@@ -762,6 +775,7 @@ function StepMatrix({
   toggleIn,
   addRow,
   moveRow,
+  duplicateRow,
   setDraft,
 }: {
   draft: JobAssessment;
@@ -774,12 +788,14 @@ function StepMatrix({
   toggleIn: (list: string[], v: string) => string[];
   addRow: (kind: JobRow["kind"]) => void;
   moveRow: (id: string, dir: -1 | 1) => void;
+  duplicateRow: (id: string) => void;
   setDraft: React.Dispatch<React.SetStateAction<JobAssessment>>;
 }) {
   return (
     <div className="space-y-4">
       {/* 척도 안내 — 원본의 설명표를 그대로 옮겼다. 점수를 매기며 바로 옆에서 본다 */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_2fr]">
+      {/* 피해강도(4단계, 설명이 짧다)는 좁게, 사고빈도(5단계, 설명이 길다)는 넓게 — PC 화면 기준 비율 */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_3fr]">
         <Card className="shadow-xs">
           <CardHeader>
             <CardTitle className="text-sm">피해강도 추정</CardTitle>
@@ -831,17 +847,17 @@ function StepMatrix({
                   <TH className="w-44">위험분류</TH>
                   <TH className="w-40">위험요인</TH>
                   <TH className="w-64">현재 조치사항</TH>
-                  <TH className="w-16 text-center">강도</TH>
-                  <TH className="w-16 text-center">빈도</TH>
+                  <TH className="w-20 text-center">강도</TH>
+                  <TH className="w-20 text-center">빈도</TH>
                   <TH className="w-16 text-center">등급</TH>
                   <TH className="w-24 text-center">허용여부</TH>
                   <TH className="w-52">감소대책</TH>
-                  <TH className="w-16 text-center">조치후 강도</TH>
-                  <TH className="w-16 text-center">조치후 빈도</TH>
+                  <TH className="w-20 text-center">조치후 강도</TH>
+                  <TH className="w-20 text-center">조치후 빈도</TH>
                   <TH className="w-16 text-center">조치후 등급</TH>
                   <TH className="w-28">담당자</TH>
                   <TH className="w-36">종사자 의견</TH>
-                  {canWrite && <TH className="w-20" />}
+                  {canWrite && <TH className="w-28" />}
                 </TR>
               </THead>
               <TBody>
@@ -858,6 +874,7 @@ function StepMatrix({
                     changeCode={changeCode}
                     toggleIn={toggleIn}
                     moveRow={moveRow}
+                    duplicateRow={duplicateRow}
                     onRemove={() => setDraft((d) => ({ ...d, rows: d.rows.filter((x) => x.id !== r.id) }))}
                   />
                 ))}
@@ -881,6 +898,7 @@ function MatrixRow({
   changeCode,
   toggleIn,
   moveRow,
+  duplicateRow,
   onRemove,
 }: {
   row: JobRow;
@@ -893,6 +911,7 @@ function MatrixRow({
   changeCode: (id: string, code: string) => void;
   toggleIn: (list: string[], v: string) => string[];
   moveRow: (id: string, dir: -1 | 1) => void;
+  duplicateRow: (id: string) => void;
   onRemove: () => void;
 }) {
   const risk = riskOf(row.p, row.s);
@@ -943,7 +962,9 @@ function MatrixRow({
             placeholder="근로자 피드백"
           />
         </TD>
-        {canWrite && <RowTools id={row.id} moveRow={moveRow} onRemove={onRemove} />}
+        {canWrite && (
+          <RowTools id={row.id} moveRow={moveRow} onDuplicate={() => duplicateRow(row.id)} onRemove={onRemove} />
+        )}
       </TR>
     );
   }
@@ -1151,7 +1172,9 @@ function MatrixRow({
           placeholder="근로자 피드백"
         />
       </TD>
-      {canWrite && <RowTools id={row.id} moveRow={moveRow} onRemove={onRemove} />}
+      {canWrite && (
+        <RowTools id={row.id} moveRow={moveRow} onDuplicate={() => duplicateRow(row.id)} onRemove={onRemove} />
+      )}
     </TR>
   );
 }
@@ -1160,10 +1183,12 @@ function MatrixRow({
 function RowTools({
   id,
   moveRow,
+  onDuplicate,
   onRemove,
 }: {
   id: string;
   moveRow: (id: string, dir: -1 | 1) => void;
+  onDuplicate: () => void;
   onRemove: () => void;
 }) {
   return (
@@ -1173,6 +1198,9 @@ function RowTools({
       </Button>
       <Button variant="ghost" size="icon-xs" onClick={() => moveRow(id, 1)} aria-label="아래로">
         ▼
+      </Button>
+      <Button variant="ghost" size="icon-xs" onClick={onDuplicate} aria-label="복제">
+        <Copy className="size-3" />
       </Button>
       <Button
         variant="ghost"
@@ -1204,7 +1232,7 @@ function ScoreSelect({
 }) {
   return (
     <Select
-      className="h-8 w-full text-xs"
+      className="h-8 w-full px-1.5 text-xs"
       disabled={disabled}
       title={hint}
       value={value === null ? "" : String(value)}
@@ -1257,16 +1285,11 @@ function StepPreJob({
 /* ── 5단계: 확인·인쇄 ───────────────────────────────────── */
 function StepReview({
   draft,
-  patch,
-  canWrite,
   threshold,
 }: {
   draft: JobAssessment;
-  patch: (p: Partial<JobAssessment>) => void;
-  canWrite: boolean;
   threshold: number;
 }) {
-  const { settings } = useStore();
   const rows = scoredRows(draft);
   const over = rows.filter((r) => r.p && r.s && r.p * r.s >= threshold);
   const noMeasure = over.filter((r) => !r.measure.trim());
@@ -1293,33 +1316,6 @@ function StepReview({
               </span>
             </p>
           )}
-        </CardContent>
-      </Card>
-
-      <Card className="shadow-xs">
-        <CardHeader>
-          <CardTitle>결재란</CardTitle>
-          <CardDescription>인쇄물 상단에 들어갑니다. 비워 두면 설정의 기본값이 쓰입니다.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {(
-            [
-              ["charge", "담당"],
-              ["review", "검토"],
-              ["approve", "승인"],
-            ] as const
-          ).map(([key, label]) => (
-            <div key={key} className="space-y-1.5">
-              <Label>{label}</Label>
-              <Input
-                disabled={!canWrite}
-                list="ras-staff"
-                value={draft.approver[key]}
-                onChange={(e) => patch({ approver: { ...draft.approver, [key]: e.target.value } })}
-                placeholder={settings.org.approver[key] || "-"}
-              />
-            </div>
-          ))}
         </CardContent>
       </Card>
     </div>

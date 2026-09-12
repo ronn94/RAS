@@ -29,7 +29,6 @@ const PAGE_CONTENT_MM = 180;
 const SAFETY_MM = 3;
 const PX_PER_MM = 96 / 25.4;
 
-/** 1쪽에만 싣는 개요·작업전준비·참여자 서명 구간 */
 /** 참여자 한 명을 이름 + (있으면) 손 서명 이미지로 그린다 — 서명표를 따로 두지 않고
  * 개요표의 참여자 칸에 바로 붙인다. '미정' 자리는 인쇄 후 수기로 적을 수 있게 밑줄만 남긴다. */
 function Attendee({ p }: { p: JobParticipant }) {
@@ -42,6 +41,7 @@ function Attendee({ p }: { p: JobParticipant }) {
   );
 }
 
+/** 1쪽에만 싣는 개요·작업전준비·참여자 서명 구간 */
 function OverviewSections({ v }: { v: JobAssessment }) {
   const internal = v.participants.filter((p) => !p.external);
   const external = v.participants.filter((p) => p.external);
@@ -188,23 +188,30 @@ export function JobAssessmentSheet({ job: v }: { job: JobAssessment }) {
   const threshold = settings.risk.threshold;
 
   const measureRef = React.useRef<HTMLDivElement>(null);
+  const finalRef = React.useRef<HTMLDivElement>(null);
   const [pages, setPages] = React.useState<JobRow[][] | null>(null);
+  /** 화면 밖에서 어림잡은 예측(1단계)과 실제로 나뉜 결과(2단계)가 미세하게 어긋날 수 있다
+   * — 예: 쪽 제목에 "(1/2)" 표시가 더 붙거나 실측 시점의 DOM 구조가 살짝 달라서, 한 쪽이
+   * 다 채우지 못할 여백을 남긴 채 다음 쪽으로 일찍 넘어가는 경우가 있었다. 그래서 실제로
+   * 그려진 결과를 한 번 더 실측해 어긋남이 있으면 바로잡는다(수렴할 때까지, 최대 3회). */
+  const verifyCount = React.useRef(0);
+  const [verified, setVerified] = React.useState(false);
 
   // 내용이 바뀌면 다시 재야 한다(줄바꿈이 달라지면 행 높이도 달라진다)
   const signature = JSON.stringify(v.rows);
   React.useLayoutEffect(() => {
     setPages(null);
+    setVerified(false);
+    verifyCount.current = 0;
   }, [signature]);
 
-  React.useLayoutEffect(() => {
-    if (pages !== null) return;
-    const el = measureRef.current;
-    if (!el) return;
-
+  /** el 안의 제목·개요·표머리·행 높이를 실측해 쪽을 나눈다 — 1단계(예측)와 3단계(검증)가 함께 쓴다 */
+  const computeChunks = (el: HTMLElement, rowsPerTr: JobRow[]): JobRow[][] => {
     const height = (node: Element | null) => node?.getBoundingClientRect().height ?? 0;
     // 제목은 모든 쪽에 반복해서 찍히므로 매 쪽 예산에서 빼야 한다(빠뜨리면 1쪽이 넘친다)
     const titleHeight = height(el.querySelector(".sheet-title"));
-    const overviewHeight = titleHeight + height(el.querySelector(".overview")) + height(el.querySelector(".matrix thead"));
+    const overviewHeight =
+      titleHeight + height(el.querySelector(".overview")) + height(el.querySelector(".matrix thead"));
     const continuedHeight = titleHeight + height(el.querySelector(".matrix thead"));
     const budget = (PAGE_CONTENT_MM - SAFETY_MM) * PX_PER_MM;
 
@@ -222,13 +229,41 @@ export function JobAssessmentSheet({ job: v }: { job: JobAssessment }) {
         used = 0;
         available = budget - continuedHeight; // 2쪽부터는 표 머리만 반복한다
       }
-      current.push(v.rows[i]);
+      current.push(rowsPerTr[i]);
       used += h;
     });
     if (current.length > 0) chunks.push(current);
+    return chunks.length > 0 ? chunks : [[]];
+  };
 
-    setPages(chunks.length > 0 ? chunks : [[]]);
+  // 1단계: 화면 밖 예측 — 아직 몇 쪽인지 모르니 "(N/M)" 표시 없는 기본 모양으로 잰다
+  React.useLayoutEffect(() => {
+    if (pages !== null) return;
+    const el = measureRef.current;
+    if (!el) return;
+    setPages(computeChunks(el, v.rows));
   }, [pages, signature, v.rows]);
+
+  // 3단계: 실제로 그려진 쪽(제목의 "(N/M)" 표시까지 반영된 진짜 모양)을 다시 실측해
+  // 예측과 어긋난 부분(빈 공간 남기고 일찍 넘어감 · 넘쳐서 잘림)을 바로잡는다
+  React.useLayoutEffect(() => {
+    if (pages === null || verified) return;
+    const el = finalRef.current;
+    if (!el) return;
+    if (verifyCount.current >= 3) {
+      setVerified(true);
+      return;
+    }
+    verifyCount.current += 1;
+    const recomputed = computeChunks(el, v.rows);
+    const same =
+      recomputed.length === pages.length && recomputed.every((chunk, i) => chunk.length === pages[i].length);
+    if (same) {
+      setVerified(true);
+    } else {
+      setPages(recomputed);
+    }
+  }, [pages, verified, v.rows]);
 
   // 1단계: 화면 밖에서 전체 행을 한 번에 그려 높이를 잰다(사용자에게는 안 보인다)
   if (pages === null) {
@@ -255,7 +290,7 @@ export function JobAssessmentSheet({ job: v }: { job: JobAssessment }) {
   }, []);
 
   return (
-    <div className="print-root sheet sheet-job">
+    <div className="print-root sheet sheet-job" ref={finalRef}>
       <style>{"@page{size:A4 landscape;margin:15mm}"}</style>
       {pages.map((pageRows, p) => (
         <div className="print-page" key={p}>
