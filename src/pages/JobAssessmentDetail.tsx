@@ -112,7 +112,7 @@ export function JobAssessmentDetail({
 
   const missing = [
     !draft.mainCategory && "대분류",
-    !draft.content && "내용",
+    !draft.content && "작업내용",
     !draft.date && "평가일자",
     !draft.team && "구분",
     !draft.evaluator && "평가자",
@@ -522,7 +522,7 @@ function StepBasic({
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr]">
             <div className="space-y-1.5">
-              <Label>내용</Label>
+              <Label>작업내용</Label>
               <Input
                 disabled={!canWrite}
                 value={draft.content}
@@ -1376,7 +1376,7 @@ type Blank = { label: string; step: number };
 function findBlanks(draft: JobAssessment, threshold: number): Blank[] {
   const blanks: Blank[] = [];
   if (!draft.mainCategory) blanks.push({ label: "대분류가 비어 있습니다", step: 1 });
-  if (!draft.content) blanks.push({ label: "상세 내용이 비어 있습니다", step: 1 });
+  if (!draft.content) blanks.push({ label: "작업내용이 비어 있습니다", step: 1 });
   if (!draft.date) blanks.push({ label: "평가일자가 비어 있습니다", step: 2 });
   if (!draft.team) blanks.push({ label: "구분이 비어 있습니다", step: 2 });
   if (!draft.evaluator) blanks.push({ label: "위험성 평가자가 비어 있습니다", step: 2 });

@@ -984,7 +984,8 @@
 .sheet-job .prejob .box {
   font-size: 9pt;
 }
-/* 참여자 이름 옆에 손 서명을 바로 붙인다 — 서명은 받은 사람만, 못 받았으면 이름만 남는다 */
+/* 참여자 이름 옆에 손 서명을 바로 붙인다 — 서명을 받았으면 그림, 못 받았으면 빈 칸을
+   남겨 인쇄 후 수기로 받을 수 있게 한다 */
 .sheet-job .attendees .who {
   display: inline-flex;
   align-items: center;
@@ -998,14 +999,13 @@
   object-fit: contain;
   vertical-align: middle;
 }
+.sheet-job .attendees .who-sign.blank {
+  width: 10mm;
+  border-bottom: 0.5pt solid #999;
+}
 /* 세부내역 */
 .sheet-job .matrix {
   table-layout: fixed;
-}
-/* 행 내용이 길어도 페이지 경계에서 중간이 잘리지 않게 — 실측 분할과 함께 이중으로 막는다 */
-.sheet-job .matrix tbody tr {
-  break-inside: avoid;
-  page-break-inside: avoid;
 }
 .sheet-job .matrix :is(th, td) {
   vertical-align: top;

@@ -29,14 +29,19 @@ const PAGE_CONTENT_MM = 180;
 const SAFETY_MM = 3;
 const PX_PER_MM = 96 / 25.4;
 
-/** 참여자 한 명을 이름 + (있으면) 손 서명 이미지로 그린다 — 서명표를 따로 두지 않고
- * 개요표의 참여자 칸에 바로 붙인다. '미정' 자리는 인쇄 후 수기로 적을 수 있게 밑줄만 남긴다. */
+/** 참여자 한 명을 이름 + 손 서명으로 그린다 — 서명표를 따로 두지 않고 개요표의 참여자
+ * 칸에 바로 붙인다. 아직 서명을 못 받았으면 빈 칸을 남겨 인쇄 후 수기로 받을 수 있게 한다.
+ * '미정' 자리는 이름 대신 밑줄만 남긴다. */
 function Attendee({ p }: { p: JobParticipant }) {
   if (p.undecided) return <span className="who">________</span>;
   return (
     <span className="who">
       {p.name || "-"}
-      {p.sign && <img className="who-sign" src={photoUrl(p.sign)} alt="" />}
+      {p.sign ? (
+        <img className="who-sign" src={photoUrl(p.sign)} alt="" />
+      ) : (
+        <span className="who-sign blank" />
+      )}
     </span>
   );
 }

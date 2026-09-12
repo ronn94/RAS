@@ -19,6 +19,7 @@ import {
   DialogTitle,
   EmptyState,
   Input,
+  Select,
   Table,
   TBody,
   TD,
@@ -74,6 +75,11 @@ export function JobAssessmentsPage({
   const [q, setQ] = React.useState("");
   /** 부서 구분 필터 — 다시 누르면 전체로 돌아간다 */
   const [fTeam, setFTeam] = React.useState("");
+  /** 연도 구분 — 작업중지권처럼 상단 드롭다운으로 해를 고른다(기본은 전체) */
+  const years = [...new Set(jobAssessments.map((v) => (v.date || "").slice(0, 4)).filter(Boolean))].sort((a, b) =>
+    b.localeCompare(a),
+  );
+  const [fYear, setFYear] = React.useState("");
   /** 행을 클릭하면(openId) 완성본을, '수정'을 누르면(editId) 작성화면을 연다 — 서로 다른 상태다 */
   const [editId, setEditId] = React.useState<string | null>(null);
 
@@ -119,6 +125,7 @@ export function JobAssessmentsPage({
   const sorted = [...jobAssessments]
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
     .filter((v) => {
+      if (fYear && !(v.date || "").startsWith(fYear)) return false;
       if (fTeam && v.team !== fTeam) return false;
       if (!query) return true;
       return [v.mainCategory, v.subCategory, v.detailCategory, v.content, v.evaluator].some((t) =>
@@ -133,13 +140,25 @@ export function JobAssessmentsPage({
           작업 한 건을 시작하기 전에 그 작업의 단계별 위험을 훑고 기록합니다. 참여자는 게스트로 들어와 직접 서명할 수
           있습니다.
         </p>
-        <Button
-          disabled={!canJobAssessment}
-          onClick={() => setDraft(createJobAssessment())}
-          title={canJobAssessment ? "새 작업 위험성평가를 등록합니다" : "등록 권한이 없습니다 (설정 → 게스트 권한)"}
-        >
-          <Plus className="size-3.5" /> 등록
-        </Button>
+        <div className="flex items-center gap-2">
+          {years.length > 0 && (
+            <Select className="h-9" value={fYear} onChange={(e) => setFYear(e.target.value)}>
+              <option value="">연도 전체</option>
+              {years.map((y) => (
+                <option key={y} value={y}>
+                  {y}년
+                </option>
+              ))}
+            </Select>
+          )}
+          <Button
+            disabled={!canJobAssessment}
+            onClick={() => setDraft(createJobAssessment())}
+            title={canJobAssessment ? "새 작업 위험성평가를 등록합니다" : "등록 권한이 없습니다 (설정 → 게스트 권한)"}
+          >
+            <Plus className="size-3.5" /> 등록
+          </Button>
+        </div>
       </div>
 
       {jobAssessments.length > 0 && (
@@ -191,7 +210,7 @@ export function JobAssessmentsPage({
                     <TH className="w-28">평가일자</TH>
                     <TH className="w-20">구분</TH>
                     <TH className="w-44">분류</TH>
-                    <TH>내용</TH>
+                    <TH>작업내용</TH>
                     <TH className="w-28 text-center">JRA</TH>
                     <TH className="w-24">평가자</TH>
                     <TH className="w-20 text-center">항목</TH>
