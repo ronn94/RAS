@@ -100,29 +100,48 @@ function OverviewSections({ v }: { v: JobAssessment }) {
         </tbody>
       </table>
 
-      {/* 서명을 받았으면 그림으로 찍히고, 못 받았으면 빈 칸으로 남아 인쇄 후 수기로 받는다 */}
+      {/* 서명을 받았으면 그림으로 찍히고, 못 받았으면 빈 칸으로 남아 인쇄 후 수기로 받는다.
+          내부·외부는 섞이면 누가 우리 직원이고 누가 용역업체인지 헷갈리므로 줄을 나눈다.
+          인원이 몇 명이든 6칸을 고정해 표 모양이 항상 같다 */}
       <table className="signs">
         <tbody>
-          <tr>
-            <td className="lbl">참여자 서명</td>
-            {v.participants.slice(0, 6).map((pt) => (
-              <td key={pt.id} className="sign-cell">
-                <div className="who">{nameOf(pt)}</div>
-                {pt.sign ? <img src={photoUrl(pt.sign)} alt="" /> : <div className="blank" />}
-              </td>
-            ))}
-            {Array.from({ length: Math.max(0, 6 - v.participants.length) }, (_, i) => (
-              <td key={`pad-${i}`} className="sign-cell">
-                <div className="who">&nbsp;</div>
-                <div className="blank" />
-              </td>
-            ))}
-          </tr>
+          <SignRow label="내부 참여자 서명" list={internal} nameOf={nameOf} />
+          <SignRow label="외부 참여자 서명" list={external} nameOf={nameOf} />
         </tbody>
       </table>
 
       <div className="sec">3. 위험성평가 세부내역</div>
     </>
+  );
+}
+
+const SIGN_COLS = 6;
+
+function SignRow({
+  label,
+  list,
+  nameOf,
+}: {
+  label: string;
+  list: JobParticipant[];
+  nameOf: (p: JobParticipant) => string;
+}) {
+  return (
+    <tr>
+      <td className="lbl">{label}</td>
+      {list.slice(0, SIGN_COLS).map((pt) => (
+        <td key={pt.id} className="sign-cell">
+          <div className="who">{nameOf(pt)}</div>
+          {pt.sign ? <img src={photoUrl(pt.sign)} alt="" /> : <div className="blank" />}
+        </td>
+      ))}
+      {Array.from({ length: Math.max(0, SIGN_COLS - list.length) }, (_, i) => (
+        <td key={`pad-${i}`} className="sign-cell">
+          <div className="who">&nbsp;</div>
+          <div className="blank" />
+        </td>
+      ))}
+    </tr>
   );
 }
 
@@ -139,23 +158,26 @@ function MatrixTable({
 }) {
   return (
     <table className="matrix">
+      {/* 원래 폭 합계(295mm)가 인쇄 가능 폭(267mm)보다 28mm 넓어 오른쪽이 페이지 밖으로
+          넘쳤다 — 개요·준비사항 표(267mm에 꽉 참)와 나란히 보면 그쪽이 좁아 보이는
+          원인이었다. 전체를 같은 비율(267/295)로 줄여 267mm에 맞췄다 */}
       <colgroup>
-        <col style={{ width: "7mm" }} />
-        <col style={{ width: "26mm" }} />
-        <col style={{ width: "24mm" }} />
-        <col style={{ width: "22mm" }} />
-        <col style={{ width: "28mm" }} />
-        <col style={{ width: "48mm" }} />
-        <col style={{ width: "8mm" }} />
-        <col style={{ width: "8mm" }} />
-        <col style={{ width: "8mm" }} />
-        <col style={{ width: "14mm" }} />
-        <col style={{ width: "40mm" }} />
-        <col style={{ width: "8mm" }} />
-        <col style={{ width: "8mm" }} />
-        <col style={{ width: "8mm" }} />
-        <col style={{ width: "14mm" }} />
-        <col style={{ width: "24mm" }} />
+        <col style={{ width: "6.3mm" }} />
+        <col style={{ width: "23.5mm" }} />
+        <col style={{ width: "21.7mm" }} />
+        <col style={{ width: "19.9mm" }} />
+        <col style={{ width: "25.3mm" }} />
+        <col style={{ width: "43.8mm" }} />
+        <col style={{ width: "7.2mm" }} />
+        <col style={{ width: "7.2mm" }} />
+        <col style={{ width: "7.2mm" }} />
+        <col style={{ width: "12.7mm" }} />
+        <col style={{ width: "36.2mm" }} />
+        <col style={{ width: "7.2mm" }} />
+        <col style={{ width: "7.2mm" }} />
+        <col style={{ width: "7.2mm" }} />
+        <col style={{ width: "12.7mm" }} />
+        <col style={{ width: "21.7mm" }} />
       </colgroup>
       <thead>
         <tr>
@@ -298,7 +320,8 @@ function MatrixRow({
         <td className="num">{no}</td>
         <td className="strong">작업 완료</td>
         <td colSpan={8} />
-        <td className="wrap">
+        {/* '현재 조치사항' 칸과 같은 tiny 크기로 통일한다 — 원래 이 칸만 커서 튀어 보였다 */}
+        <td className="wrap tiny">
           {FINISH_ITEMS.map((item) => (
             <span key={item} className="chk">
               {row.finishItems.includes(item) ? "■" : "□"} {item}

@@ -86,6 +86,8 @@ type Ctx = {
   removeJobAssessment: (id: string) => Promise<void>;
   /** 참여자 한 명의 서명만 바꾼다 — 게스트도 할 수 있는 유일한 쓰기다 */
   signJobAssessment: (id: string, participantId: string, image: string | null) => Promise<JobAssessment>;
+  /** 게스트가 작업평가를 등록·수정·서명할 수 있는가 (관리자는 항상 true) */
+  canJobAssessment: boolean;
 };
 
 /* ── 이관으로 묶인 항목 동기화 ────────────────────────────────
@@ -557,6 +559,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
     isAdmin || settings.permissions.photo || settings.permissions.survey || settings.permissions.stopwork;
   const canSurvey = isAdmin || settings.permissions.survey;
   const canStopWork = isAdmin || settings.permissions.stopwork;
+  const canJobAssessment = isAdmin || settings.permissions.jobAssessment;
 
   const value = React.useMemo(
     () => ({
@@ -609,6 +612,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       saveJobAssessment,
       removeJobAssessment,
       signJobAssessment,
+      canJobAssessment,
       settings,
       updateSettings,
       lastBackup,
@@ -664,6 +668,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       saveJobAssessment,
       removeJobAssessment,
       signJobAssessment,
+      canJobAssessment,
       settings,
       updateSettings,
       lastBackup,

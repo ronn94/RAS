@@ -56,7 +56,7 @@ async function loadPermissions(db: D1Database): Promise<Record<string, boolean>>
   return { ...DEFAULT_SETTINGS.permissions, ...(parsed?.permissions ?? {}) };
 }
 
-type PermissionKey = "edit" | "delete" | "photo" | "survey" | "stopwork";
+type PermissionKey = "edit" | "delete" | "photo" | "survey" | "stopwork" | "jobAssessment";
 
 /** 나열한 권한 중 **하나라도** 켜져 있으면 통과한다 */
 function requirePermission(...keys: PermissionKey[]): MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> {
@@ -296,9 +296,11 @@ app.route(
 app.route("/api/annualplans", collection("annual_plans"));
 
 /* ── 작업 위험성평가 ─────────────────────────────────────────
-   실시서와 같은 규칙이다 — 발행·수정은 관리자 몫이지만 **참여자 서명만은** 게스트가
-   로그인만 하면 남길 수 있고, 문서 전체를 덮어쓰는 PUT이 아니라 전용 경로로만 받는다. */
-app.post("/api/jobassessments/:id/sign", async (c) => {
+   실시서와 달리 **등록·수정·서명 전부** 게스트에게 열려 있다(전용 권한 jobAssessment,
+   기본 켜짐) — 이 문서는 애초에 작업 현장에서 근로자가 직접 쓰고 관리하는 것이 목적이다.
+   그래도 서명은 문서 전체를 덮어쓰는 PUT이 아니라 전용 경로로만 받는다 — 관리자가
+   본문을 고치는 동안 온 서명이 저장 한 번에 날아가지 않게 하려는 것이다. */
+app.post("/api/jobassessments/:id/sign", requirePermission("jobAssessment"), async (c) => {
   const id = c.req.param("id");
   const { participantId, image } = await c.req.json<{ participantId: string; image: string | null }>();
 
@@ -348,7 +350,9 @@ app.post("/api/jobassessments/:id/sign", async (c) => {
 
 app.route(
   "/api/jobassessments",
-  collection<JobAssessment>("job_assessments", undefined, undefined, (incoming, stored) => {
+  // 작업평가는 게스트가 직접 등록·수정하는 문서라 전용 권한(jobAssessment)으로 연다 —
+  // 설문지·작업중지권과 같은 방식이다(관리자의 일반 edit/delete와 분리)
+  collection<JobAssessment>("job_assessments", { write: ["jobAssessment"], remove: ["jobAssessment"] }, undefined, (incoming, stored) => {
     // 관리자가 문서를 열어 둔 사이에 받은 서명을 저장 한 번으로 날리지 않게 지킨다
     const signs = new Map(((stored.participants as JobParticipant[] | undefined) ?? []).map((p) => [p.id, p]));
     const participants = ((incoming.participants as JobParticipant[] | undefined) ?? []).map((p) => {

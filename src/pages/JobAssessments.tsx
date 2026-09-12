@@ -7,7 +7,7 @@
  * '등록'을 누르면 5단계로 나뉜 작성 화면이 열린다(JobAssessmentDetail).
  */
 import * as React from "react";
-import { ClipboardPen, Lock, LockOpen, Plus, Trash2, Users } from "lucide-react";
+import { ClipboardPen, Lock, LockOpen, Pencil, Plus, Trash2, Users } from "lucide-react";
 import {
   Badge,
   Button,
@@ -29,6 +29,7 @@ import {
   TableWrap,
 } from "@/components/ui";
 import { JobAssessmentDetail } from "@/pages/JobAssessmentDetail";
+import { JobAssessmentPreview } from "@/pages/JobAssessmentPreview";
 import {
   jraGrade,
   jraLabel,
@@ -63,8 +64,7 @@ export function JobAssessmentsPage({
     settings,
     loading,
     identity,
-    canEdit,
-    canDelete,
+    canJobAssessment,
     createJobAssessment,
     saveJobAssessment,
     removeJobAssessment,
@@ -74,6 +74,8 @@ export function JobAssessmentsPage({
   const [deleteTarget, setDeleteTarget] = React.useState<JobAssessment | null>(null);
   const [q, setQ] = React.useState("");
   const [fType, setFType] = React.useState("");
+  /** 행을 클릭하면(openId) 완성본을, '수정'을 누르면(editId) 작성화면을 연다 — 서로 다른 상태다 */
+  const [editId, setEditId] = React.useState<string | null>(null);
 
   if (draft) {
     return (
@@ -88,8 +90,30 @@ export function JobAssessmentsPage({
     );
   }
 
+  const editing = jobAssessments.find((v) => v.id === editId) ?? null;
+  if (editId && editing) {
+    return (
+      <JobAssessmentDetail
+        job={editing}
+        onDone={(saved) => {
+          setEditId(null);
+          if (saved) onOpen(editing.id); // 저장하면 미리보기로 돌아가 바뀐 내용을 바로 확인한다
+        }}
+      />
+    );
+  }
+
   const current = jobAssessments.find((v) => v.id === openId) ?? null;
-  if (openId && current) return <JobAssessmentDetail job={current} onDone={() => onOpen(null)} />;
+  if (openId && current) {
+    return (
+      <JobAssessmentPreview
+        job={current}
+        canEdit={canJobAssessment}
+        onBack={() => onOpen(null)}
+        onEdit={() => setEditId(current.id)}
+      />
+    );
+  }
 
   const query = q.trim().toLowerCase();
   const sorted = [...jobAssessments]
@@ -110,9 +134,9 @@ export function JobAssessmentsPage({
           있습니다.
         </p>
         <Button
-          disabled={!canEdit}
+          disabled={!canJobAssessment}
           onClick={() => setDraft(createJobAssessment())}
-          title={canEdit ? "새 작업 위험성평가를 등록합니다" : "등록은 관리자만 할 수 있습니다"}
+          title={canJobAssessment ? "새 작업 위험성평가를 등록합니다" : "등록 권한이 없습니다 (설정 → 게스트 권한)"}
         >
           <Plus className="size-3.5" /> 등록
         </Button>
@@ -143,7 +167,7 @@ export function JobAssessmentsPage({
             <EmptyState>불러오는 중…</EmptyState>
           ) : jobAssessments.length === 0 ? (
             <EmptyState icon={<ClipboardPen className="size-6 text-muted-foreground" />}>
-              {canEdit ? "등록된 작업평가가 없습니다. ‘등록’으로 시작하세요." : "등록된 작업평가가 없습니다."}
+              {canJobAssessment ? "등록된 작업평가가 없습니다. ‘등록’으로 시작하세요." : "등록된 작업평가가 없습니다."}
             </EmptyState>
           ) : sorted.length === 0 ? (
             <EmptyState icon={<ClipboardPen className="size-6 text-muted-foreground" />}>
@@ -217,6 +241,22 @@ export function JobAssessmentsPage({
                           <Button
                             variant="ghost"
                             size="icon-sm"
+                            disabled={!canJobAssessment || (v.locked && !isAdmin)}
+                            onClick={() => setEditId(v.id)}
+                            aria-label="수정"
+                            title={
+                              !canJobAssessment
+                                ? "수정 권한이 없습니다 (설정 → 게스트 권한)"
+                                : v.locked && !isAdmin
+                                  ? "관리자가 잠근 문서입니다"
+                                  : "작성화면에서 고칩니다"
+                            }
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
                             disabled={!isAdmin}
                             className={v.locked ? "text-foreground" : "text-muted-foreground"}
                             onClick={() => void saveJobAssessment({ ...v, locked: !v.locked })}
@@ -236,7 +276,7 @@ export function JobAssessmentsPage({
                           <Button
                             variant="ghost"
                             size="icon-sm"
-                            disabled={!canDelete || (v.locked && !isAdmin)}
+                            disabled={!canJobAssessment || (v.locked && !isAdmin)}
                             className="text-destructive hover:text-destructive"
                             onClick={() => setDeleteTarget(v)}
                             aria-label="삭제"

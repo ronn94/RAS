@@ -88,7 +88,7 @@ export function JobAssessmentDetail({
   isNew?: boolean;
   onDone: (saved: boolean) => void;
 }) {
-  const { saveJobAssessment, signJobAssessment, settings, identity, canEdit } = useStore();
+  const { saveJobAssessment, signJobAssessment, settings, identity, canJobAssessment } = useStore();
   const [draft, setDraft] = React.useState<JobAssessment>(job);
   const [step, setStep] = React.useState(1);
   const [saving, setSaving] = React.useState(false);
@@ -96,9 +96,10 @@ export function JobAssessmentDetail({
 
   const isAdmin = identity.role === "admin";
   const readOnly = !!draft.locked && !isAdmin;
-  const canWrite = canEdit && !readOnly;
-  /** 서명은 편집 권한과 무관하다 — 다만 아직 등록되지 않은 문서에는 서명할 수 없다 */
-  const canSign = !isNew && !readOnly;
+  const canWrite = canJobAssessment && !readOnly;
+  /** 서명도 같은 권한(jobAssessment)을 본다 — 서버의 서명 전용 경로도 이 권한을 요구한다.
+      다만 아직 등록되지 않은 문서에는 서명할 수 없다(서버에 참여자가 없다) */
+  const canSign = canJobAssessment && !isNew && !readOnly;
   const threshold = settings.risk.threshold;
   const codes = React.useMemo(() => allTypes(settings), [settings]);
 
@@ -235,9 +236,10 @@ export function JobAssessmentDetail({
         </div>
       )}
 
-      {!canEdit && !readOnly && (
+      {!canJobAssessment && !readOnly && (
         <div className="no-print rounded-2xl bg-muted px-4 py-2.5 text-sm text-muted-foreground">
-          내용은 관리자가 작성합니다. <strong>참여자</strong> 단계에서 본인 이름을 찾아 서명해 주세요.
+          관리자가 게스트의 작업평가 권한을 껐습니다(설정 → 게스트 권한). 내용은 볼 수 있지만 고치거나
+          서명할 수 없습니다.
         </div>
       )}
 

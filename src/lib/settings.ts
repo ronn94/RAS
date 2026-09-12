@@ -17,7 +17,15 @@ export type AppSettings = {
   /** 로컬 프로필 — 사이드바 표시·인쇄물 기본값에만 쓰인다 */
   profile: { name: string; role: string };
   /** 게스트 계정이 쓸 수 있는 기능. 관리 기능(설정 변경·백업·초기화)은 항상 막혀 있어 여기 없다 */
-  permissions: { edit: boolean; delete: boolean; photo: boolean; survey: boolean; stopwork: boolean };
+  permissions: {
+    edit: boolean;
+    delete: boolean;
+    photo: boolean;
+    survey: boolean;
+    stopwork: boolean;
+    /** 작업평가는 게스트가 직접 등록·수정·서명까지 다루는 문서라 전용 권한으로 뗀다 */
+    jobAssessment: boolean;
+  };
   /**
    * 푸시 알림 종류별 on/off — 관리자 전용 기능이라 계정 하나에 공통으로 적용된다(기기별이 아니다).
    * 실제로 이 기기가 알림을 받을지는 별도로 이 기기에서 구독해야 한다(설정 → 알림).
@@ -56,9 +64,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
     approver: { charge: "", review: "", approve: "" },
   },
   profile: { name: "관리자", role: "안전관리자" },
-  // 설문지·작업중지권은 근로자에게 직접 받는 것이 목적이라 기본으로 켜 둔다
+  // 설문지·작업중지권·작업평가는 근로자에게 직접 받는 것이 목적이라 기본으로 켜 둔다
   // (작업중지권은 근로자의 법정 권리라 막아 두면 제도 자체가 굴러가지 않는다)
-  permissions: { edit: false, delete: false, photo: false, survey: true, stopwork: true },
+  permissions: { edit: false, delete: false, photo: false, survey: true, stopwork: true, jobAssessment: true },
   // 전부 기본 켜짐 — 관리자가 필요 없는 종류만 끈다
   notifications: { dueDate: true, stopworkStale: true, newSurvey: true, newStopwork: true },
   processes: [],

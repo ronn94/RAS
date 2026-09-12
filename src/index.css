@@ -208,6 +208,32 @@
     pointer-events: none;
     opacity: 0;
   }
+  /* '완성본 미리보기' 화면 — 인쇄 서식을 화면에 실제로 보여준다.
+     .screen-preview .print-root가 .print-root보다 선택자가 더 구체적이라
+     위의 숨김 규칙을 자연히 이긴다(순서·!important 없이도 이긴다). */
+  .screen-preview .print-root {
+    position: static;
+    left: auto;
+    opacity: 1;
+    pointer-events: auto;
+    /* .sheet 클래스가 이 요소에 흰 배경을 주는데, 그걸 그대로 두면 쪽 사이 회색
+       여백까지 하얗게 덮여 카드처럼 안 보인다 — 배경은 낱장(.print-page)에만 준다 */
+    background: transparent;
+  }
+  /* 종이 폭(A4 가로/세로)이 화면보다 넓을 수 있어 가로 스크롤을 허용하고,
+     각 쪽을 카드처럼 띄워 인쇄될 페이지 경계를 눈으로 알아볼 수 있게 한다 */
+  .screen-preview {
+    overflow-x: auto;
+    padding: 6mm 0;
+    background: var(--muted);
+  }
+  .screen-preview .print-page {
+    background: #fff;
+    margin: 0 auto 6mm;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.12),
+      0 0 0 1px rgba(0, 0, 0, 0.06);
+  }
 }
 @media print {
   html,
