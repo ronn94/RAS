@@ -883,9 +883,12 @@
   display: block;
 }
 
-/* ── 작업 위험성평가 (원본 프로그램 ver.3.3 · A4 가로) ──────────
-   세부내역이 16칸이라 가로로 찍는다. 구성은 원본과 같이 개요·작업전준비·세부내역 3단이고
-   다른 인쇄물과 맞추려고 결재란을 더했다. */
+/* ── 작업 위험성평가 (A4 가로) ────────────────────────────────
+   세부내역이 16칸이라 가로로 찍는다. 구성은 개요·작업전준비·세부내역 3단이고,
+   결재란 없이 제목만 둔다(작업평가는 평가자·승인자 (인) 칸으로 책임 소재를 남긴다).
+   세부내역 페이지 나누기는 위험성평가표(AssessmentSheet)와 같은 실측 방식이다 —
+   행마다 조치사항·감소대책 줄바꿈이 달라 높이가 들쭉날쭉해서, 고정 행수로 자르면
+   한 쪽이 넘쳐 내용이 잘려 보인다. */
 .sheet-job {
   font-size: 7.5pt;
   line-height: 1.2;
@@ -900,19 +903,13 @@
 .sheet-job :is(th, td) {
   padding: 0.6mm 1mm;
 }
-/* 결재란은 다른 인쇄물과 같은 높이 — 라벨 8mm + 서명칸 12mm */
-.sheet-job .head :is(th, td) {
-  height: 8mm;
-}
-.sheet-job .head .sign {
-  height: 12mm;
-}
-.sheet-job .head-title {
+.sheet-job .sheet-title {
+  margin-bottom: 3mm;
   text-align: center;
   font-size: 16pt;
   font-weight: 700;
 }
-.sheet-job .head-title .eval-type {
+.sheet-job .sheet-title .eval-type {
   margin-left: 4mm;
   border: 0.75pt solid #000;
   padding: 0.6mm 2mm;
@@ -920,13 +917,10 @@
   font-weight: 700;
   vertical-align: middle;
 }
-.sheet-job .head-title .page-no {
+.sheet-job .sheet-title .page-no {
   font-size: 9pt;
   font-weight: 400;
   color: #666;
-}
-.sheet-job .vert {
-  line-height: 1.1;
 }
 /* 단 제목 */
 .sheet-job .sec {

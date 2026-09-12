@@ -1,12 +1,15 @@
 /**
- * 작업 위험성평가 인쇄 서식 — 원본 프로그램의 출력물을 A4 **가로**로 재현한다.
+ * 작업 위험성평가 인쇄 서식 — A4 가로.
  *
- * 세부내역 표가 16칸이라 세로로는 글자가 읽을 수 없을 만큼 작아진다. 구성은 원본과 같이
- * ①개요 및 일반정보 ②작업 전 준비사항 ③위험성평가 세부내역 3단이고, 다른 인쇄물과
- * 맞추려고 상단에 결재란(담당·검토·승인)을 더했다.
+ * RAS의 다른 인쇄 서식과 같은 어휘를 쓴다: 결재란 없이 큰 제목 하나,
+ * 구간은 번호(1./2./3.)로 나누고, 체크리스트는 ■(켬)/□(끔) 기호로 표시한다.
  *
- * 세부내역이 길면 쪽을 이어 붙인다 — 이어지는 쪽에는 표 머리만 다시 얹는다.
+ * 세부내역 표는 위험성평가표(AssessmentSheet)와 같은 방식으로 페이지를 나눈다 —
+ * 고정 행수가 아니라 **화면 밖에서 한 번 그려 실제 행 높이를 잰 뒤** 그 값으로
+ * 나눈다. 행마다 조치사항·감소대책 줄바꿈이 달라 높이가 들쭉날쭉하기 때문에,
+ * 고정 행수로 자르면 한 쪽이 넘쳐 내용이 잘려 보인다.
  */
+import * as React from "react";
 import { photoUrl } from "@/lib/db";
 import { codeLabel } from "@/lib/settings";
 import { riskOf } from "@/lib/risk";
@@ -15,208 +18,262 @@ import {
   jraLabel,
   PRE_JOB_ITEMS,
   type JobAssessment,
+  type JobParticipant,
   type JobRow,
 } from "@/lib/jobAssessment";
 import { useStore } from "@/store";
 
-/** 한 쪽에 싣는 세부내역 줄 수 — 줄마다 높이가 달라 넉넉히 잡았다 */
-const ROWS_PER_PAGE = 12;
+/** A4 가로 297mm − 상하 여백 15mm×2 */
+const PAGE_CONTENT_MM = 180;
+/** 반올림 오차로 한 줄이 넘치는 것을 막는 여유 */
+const SAFETY_MM = 3;
+const PX_PER_MM = 96 / 25.4;
+
+/** 1쪽에만 싣는 개요·작업전준비·참여자 서명 구간 */
+function OverviewSections({ v }: { v: JobAssessment }) {
+  const internal = v.participants.filter((p) => !p.external);
+  const external = v.participants.filter((p) => p.external);
+  const nameOf = (p: JobParticipant) => (p.undecided ? "(미정)" : p.name || "-");
+
+  return (
+    <>
+      <div className="sec">1. 개요 및 일반정보</div>
+      <table className="meta">
+        <colgroup>
+          <col style={{ width: "22mm" }} />
+          <col />
+          <col style={{ width: "22mm" }} />
+          <col />
+          <col style={{ width: "22mm" }} />
+          <col />
+        </colgroup>
+        <tbody>
+          <tr>
+            <td className="lbl">대분류</td>
+            <td>{v.mainCategory}</td>
+            <td className="lbl">중분류</td>
+            <td>{v.subCategory}</td>
+            <td className="lbl">세분류</td>
+            <td>{v.detailCategory}</td>
+          </tr>
+          <tr>
+            <td className="lbl">상세내용</td>
+            <td colSpan={3}>{v.content}</td>
+            <td className="lbl">JRA 등급</td>
+            <td className="num strong">{jraLabel(v)}</td>
+          </tr>
+          <tr>
+            <td className="lbl">평가일자</td>
+            <td className="num">{v.date}</td>
+            <td className="lbl">평가자</td>
+            <td className="seal">{v.evaluator}</td>
+            <td className="lbl">승인자</td>
+            <td className="seal">{v.approvedBy}</td>
+          </tr>
+          <tr>
+            <td className="lbl">내부 참여자</td>
+            <td colSpan={5} className="wrap">
+              {internal.length ? internal.map(nameOf).join(" · ") : "-"}
+            </td>
+          </tr>
+          <tr>
+            <td className="lbl">외부 참여자</td>
+            <td colSpan={5} className="wrap">
+              {external.length ? external.map(nameOf).join(" · ") : "-"}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div className="sec">2. 작업 전 준비사항</div>
+      <table className="prejob">
+        <tbody>
+          {[0, 1, 2].map((r) => (
+            <tr key={r}>
+              {PRE_JOB_ITEMS.slice(r * 3, r * 3 + 3).map((item) => (
+                <td key={item}>
+                  <span className="box">{v.preJobs.includes(item) ? "■" : "□"}</span> {item}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* 서명을 받았으면 그림으로 찍히고, 못 받았으면 빈 칸으로 남아 인쇄 후 수기로 받는다 */}
+      <table className="signs">
+        <tbody>
+          <tr>
+            <td className="lbl">참여자 서명</td>
+            {v.participants.slice(0, 6).map((pt) => (
+              <td key={pt.id} className="sign-cell">
+                <div className="who">{nameOf(pt)}</div>
+                {pt.sign ? <img src={photoUrl(pt.sign)} alt="" /> : <div className="blank" />}
+              </td>
+            ))}
+            {Array.from({ length: Math.max(0, 6 - v.participants.length) }, (_, i) => (
+              <td key={`pad-${i}`} className="sign-cell">
+                <div className="who">&nbsp;</div>
+                <div className="blank" />
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+
+      <div className="sec">3. 위험성평가 세부내역</div>
+    </>
+  );
+}
+
+function MatrixTable({
+  rows,
+  startNo,
+  threshold,
+  settings,
+}: {
+  rows: JobRow[];
+  startNo: number;
+  threshold: number;
+  settings: ReturnType<typeof useStore>["settings"];
+}) {
+  return (
+    <table className="matrix">
+      <colgroup>
+        <col style={{ width: "7mm" }} />
+        <col style={{ width: "26mm" }} />
+        <col style={{ width: "24mm" }} />
+        <col style={{ width: "22mm" }} />
+        <col style={{ width: "28mm" }} />
+        <col style={{ width: "48mm" }} />
+        <col style={{ width: "8mm" }} />
+        <col style={{ width: "8mm" }} />
+        <col style={{ width: "8mm" }} />
+        <col style={{ width: "14mm" }} />
+        <col style={{ width: "40mm" }} />
+        <col style={{ width: "8mm" }} />
+        <col style={{ width: "8mm" }} />
+        <col style={{ width: "8mm" }} />
+        <col style={{ width: "14mm" }} />
+        <col style={{ width: "24mm" }} />
+      </colgroup>
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>공정/순서</th>
+          <th>보호구</th>
+          <th>위험분류</th>
+          <th>위험요인</th>
+          <th>현재 조치사항</th>
+          <th>강도</th>
+          <th>빈도</th>
+          <th>등급</th>
+          <th>허용여부</th>
+          <th>위험감소대책</th>
+          <th>조치후 강도</th>
+          <th>조치후 빈도</th>
+          <th>조치후 등급</th>
+          <th>담당자</th>
+          <th>종사자의견</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <MatrixRow key={r.id} row={r} no={startNo + i} threshold={threshold} settings={settings} />
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 export function JobAssessmentSheet({ job: v }: { job: JobAssessment }) {
   const { settings } = useStore();
-  const approver = {
-    charge: v.approver.charge || settings.org.approver.charge,
-    review: v.approver.review || settings.org.approver.review,
-    approve: v.approver.approve || settings.org.approver.approve,
-  };
   const threshold = settings.risk.threshold;
 
-  const internal = v.participants.filter((p) => !p.external);
-  const external = v.participants.filter((p) => p.external);
-  const nameOf = (p: (typeof v.participants)[number]) => (p.undecided ? "(미정)" : p.name || "-");
+  const measureRef = React.useRef<HTMLDivElement>(null);
+  const [pages, setPages] = React.useState<JobRow[][] | null>(null);
 
-  const pageCount = Math.max(1, Math.ceil(v.rows.length / ROWS_PER_PAGE));
-  const pages = Array.from({ length: pageCount }, (_, i) => v.rows.slice(i * ROWS_PER_PAGE, (i + 1) * ROWS_PER_PAGE));
+  // 내용이 바뀌면 다시 재야 한다(줄바꿈이 달라지면 행 높이도 달라진다)
+  const signature = JSON.stringify(v.rows);
+  React.useLayoutEffect(() => {
+    setPages(null);
+  }, [signature]);
+
+  React.useLayoutEffect(() => {
+    if (pages !== null) return;
+    const el = measureRef.current;
+    if (!el) return;
+
+    const height = (node: Element | null) => node?.getBoundingClientRect().height ?? 0;
+    // 제목은 모든 쪽에 반복해서 찍히므로 매 쪽 예산에서 빼야 한다(빠뜨리면 1쪽이 넘친다)
+    const titleHeight = height(el.querySelector(".sheet-title"));
+    const overviewHeight = titleHeight + height(el.querySelector(".overview")) + height(el.querySelector(".matrix thead"));
+    const continuedHeight = titleHeight + height(el.querySelector(".matrix thead"));
+    const budget = (PAGE_CONTENT_MM - SAFETY_MM) * PX_PER_MM;
+
+    const trs = [...el.querySelectorAll<HTMLTableRowElement>(".matrix tbody tr")];
+    const chunks: JobRow[][] = [];
+    let current: JobRow[] = [];
+    let used = 0;
+    let available = budget - overviewHeight; // 1쪽은 개요·준비사항·서명란까지 얹혀 있다
+
+    trs.forEach((tr, i) => {
+      const h = tr.getBoundingClientRect().height;
+      if (current.length > 0 && used + h > available) {
+        chunks.push(current);
+        current = [];
+        used = 0;
+        available = budget - continuedHeight; // 2쪽부터는 표 머리만 반복한다
+      }
+      current.push(v.rows[i]);
+      used += h;
+    });
+    if (current.length > 0) chunks.push(current);
+
+    setPages(chunks.length > 0 ? chunks : [[]]);
+  }, [pages, signature, v.rows]);
+
+  // 1단계: 화면 밖에서 전체 행을 한 번에 그려 높이를 잰다(사용자에게는 안 보인다)
+  if (pages === null) {
+    return (
+      <div className="print-root sheet sheet-job" ref={measureRef} aria-hidden>
+        <div className="print-page">
+          <div className="sheet-title">
+            작업 위험성평가
+            <span className="eval-type">{v.evalType}</span>
+          </div>
+          <div className="overview">
+            <OverviewSections v={v} />
+          </div>
+          <MatrixTable rows={v.rows} startNo={1} threshold={threshold} settings={settings} />
+        </div>
+      </div>
+    );
+  }
+
+  // 2단계: 잰 높이대로 나눈 페이지를 그린다. No.는 페이지가 넘어가도 이어진다.
+  const startNos = pages.reduce<number[]>((acc, _page, i) => {
+    acc.push(i === 0 ? 1 : acc[i - 1] + pages[i - 1].length);
+    return acc;
+  }, []);
 
   return (
     <div className="print-root sheet sheet-job">
       <style>{"@page{size:A4 landscape;margin:15mm}"}</style>
-      {pages.map((slice, p) => (
+      {pages.map((pageRows, p) => (
         <div className="print-page" key={p}>
-          {/* 제목 + 결재란 */}
-          <table className="head">
-            <colgroup>
-              <col />
-              <col style={{ width: "9mm" }} />
-              <col style={{ width: "24mm" }} />
-              <col style={{ width: "24mm" }} />
-              <col style={{ width: "24mm" }} />
-            </colgroup>
-            <tbody>
-              <tr>
-                <td className="head-title" rowSpan={2}>
-                  작업 위험성평가
-                  <span className="eval-type">{v.evalType}</span>
-                  {pageCount > 1 ? <span className="page-no"> ({p + 1}/{pageCount})</span> : null}
-                </td>
-                <td className="lbl vert" rowSpan={2}>
-                  결<br />재
-                </td>
-                <th>담 당</th>
-                <th>검 토</th>
-                <th>승 인</th>
-              </tr>
-              <tr>
-                <td className="sign">{approver.charge}</td>
-                <td className="sign">{approver.review}</td>
-                <td className="sign">{approver.approve}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          {/* 머리 정보는 첫 쪽에만 — 이어지는 쪽은 세부내역만 싣는다 */}
-          {p === 0 && (
-            <>
-              <div className="sec">1. 개요 및 일반정보</div>
-              <table className="meta">
-                <colgroup>
-                  <col style={{ width: "22mm" }} />
-                  <col />
-                  <col style={{ width: "22mm" }} />
-                  <col />
-                  <col style={{ width: "22mm" }} />
-                  <col />
-                </colgroup>
-                <tbody>
-                  <tr>
-                    <td className="lbl">대분류</td>
-                    <td>{v.mainCategory}</td>
-                    <td className="lbl">중분류</td>
-                    <td>{v.subCategory}</td>
-                    <td className="lbl">세분류</td>
-                    <td>{v.detailCategory}</td>
-                  </tr>
-                  <tr>
-                    <td className="lbl">상세내용</td>
-                    <td colSpan={3}>{v.content}</td>
-                    <td className="lbl">JRA 등급</td>
-                    <td className="num strong">{jraLabel(v)}</td>
-                  </tr>
-                  <tr>
-                    <td className="lbl">평가일자</td>
-                    <td className="num">{v.date}</td>
-                    <td className="lbl">평가자</td>
-                    <td className="seal">{v.evaluator}</td>
-                    <td className="lbl">승인자</td>
-                    <td className="seal">{v.approvedBy}</td>
-                  </tr>
-                  <tr>
-                    <td className="lbl">내부 참여자</td>
-                    <td colSpan={5} className="wrap">
-                      {internal.length ? internal.map(nameOf).join(" · ") : "-"}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="lbl">외부 참여자</td>
-                    <td colSpan={5} className="wrap">
-                      {external.length ? external.map(nameOf).join(" · ") : "-"}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-
-              <div className="sec">2. 작업 전 준비사항</div>
-              <table className="prejob">
-                <tbody>
-                  {[0, 1, 2].map((r) => (
-                    <tr key={r}>
-                      {PRE_JOB_ITEMS.slice(r * 3, r * 3 + 3).map((item) => (
-                        <td key={item}>
-                          <span className="box">{v.preJobs.includes(item) ? "■" : "□"}</span> {item}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {/* 서명을 받았으면 참여자 서명표를 함께 싣는다(받지 않았으면 빈 칸으로 수기) */}
-              <table className="signs">
-                <tbody>
-                  <tr>
-                    <td className="lbl">참여자 서명</td>
-                    {v.participants.slice(0, 6).map((pt) => (
-                      <td key={pt.id} className="sign-cell">
-                        <div className="who">{nameOf(pt)}</div>
-                        {pt.sign ? <img src={photoUrl(pt.sign)} alt="" /> : <div className="blank" />}
-                      </td>
-                    ))}
-                    {/* 여섯 칸을 채워 표 모양을 고정한다 */}
-                    {Array.from({ length: Math.max(0, 6 - v.participants.length) }, (_, i) => (
-                      <td key={`pad-${i}`} className="sign-cell">
-                        <div className="who">&nbsp;</div>
-                        <div className="blank" />
-                      </td>
-                    ))}
-                  </tr>
-                </tbody>
-              </table>
-
-              <div className="sec">3. 위험성평가 세부내역</div>
-            </>
-          )}
-
-          <table className="matrix">
-            <colgroup>
-              <col style={{ width: "7mm" }} />
-              <col style={{ width: "26mm" }} />
-              <col style={{ width: "24mm" }} />
-              <col style={{ width: "22mm" }} />
-              <col style={{ width: "28mm" }} />
-              <col style={{ width: "48mm" }} />
-              <col style={{ width: "8mm" }} />
-              <col style={{ width: "8mm" }} />
-              <col style={{ width: "8mm" }} />
-              <col style={{ width: "14mm" }} />
-              <col style={{ width: "40mm" }} />
-              <col style={{ width: "8mm" }} />
-              <col style={{ width: "8mm" }} />
-              <col style={{ width: "8mm" }} />
-              <col style={{ width: "14mm" }} />
-              <col style={{ width: "24mm" }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>No</th>
-                <th>공정/순서</th>
-                <th>보호구</th>
-                <th>위험분류</th>
-                <th>위험요인</th>
-                <th>현재 조치사항</th>
-                <th>강도</th>
-                <th>빈도</th>
-                <th>등급</th>
-                <th>허용여부</th>
-                <th>위험감소대책</th>
-                <th>조치후 강도</th>
-                <th>조치후 빈도</th>
-                <th>조치후 등급</th>
-                <th>담당자</th>
-                <th>종사자의견</th>
-              </tr>
-            </thead>
-            <tbody>
-              {slice.map((r, i) => (
-                <MatrixRow
-                  key={r.id}
-                  row={r}
-                  no={p * ROWS_PER_PAGE + i + 1}
-                  threshold={threshold}
-                  settings={settings}
-                />
-              ))}
-            </tbody>
-          </table>
+          <div className="sheet-title">
+            작업 위험성평가
+            <span className="eval-type">{v.evalType}</span>
+            {pages.length > 1 ? (
+              <span className="page-no">
+                {" "}
+                ({p + 1}/{pages.length})
+              </span>
+            ) : null}
+          </div>
+          {p === 0 && <OverviewSections v={v} />}
+          <MatrixTable rows={pageRows} startNo={startNos[p]} threshold={threshold} settings={settings} />
         </div>
       ))}
     </div>
