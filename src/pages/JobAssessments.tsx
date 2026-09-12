@@ -35,13 +35,9 @@ import {
   jraLabel,
   jraScore,
   JOB_TEAMS,
-  overLimitCount,
-  scoredRows,
   signedParticipants,
-  topRisk,
   type JobAssessment,
 } from "@/lib/jobAssessment";
-import { riskBadgeClass } from "@/lib/risk";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
 
@@ -61,7 +57,6 @@ export function JobAssessmentsPage({
 }) {
   const {
     jobAssessments,
-    settings,
     loading,
     identity,
     canJobAssessment,
@@ -211,14 +206,10 @@ export function JobAssessmentsPage({
                   <TR>
                     <TH className="w-24">평가일자</TH>
                     <TH className="w-16">구분</TH>
-                    <TH className="w-24">분류</TH>
+                    <TH className="w-24 text-center">분류</TH>
                     <TH>작업내용</TH>
                     <TH className="w-24 text-center">JRA</TH>
                     <TH className="w-20">평가자</TH>
-                    {/* 태블릿 화면에서는 스크롤 없이 다 보이도록 우선순위가 낮은 둘은 숨긴다 —
-                        항목 수·최고위험은 행을 열면 바로 보인다 */}
-                    <TH className="hidden w-16 text-center xl:table-cell">항목</TH>
-                    <TH className="hidden w-20 text-center xl:table-cell">최고위험</TH>
                     <TH className="w-20 text-center">서명</TH>
                     <TH className="w-16 text-center">상태</TH>
                     {/* 잠금 + 삭제 두 버튼이 들어간다 */}
@@ -228,19 +219,16 @@ export function JobAssessmentsPage({
                 <TBody>
                   {sorted.map((v) => {
                     const grade = jraGrade(jraScore(v));
-                    const top = topRisk(v);
-                    const over = overLimitCount(v, settings.risk.threshold);
-                    const rows = scoredRows(v).length;
                     const signed = signedParticipants(v);
                     return (
                       <TR key={v.id} className="cursor-pointer" onClick={() => onOpen(v.id)}>
                         <TD className="tabular-nums font-medium">{v.date || "-"}</TD>
                         <TD className="text-muted-foreground">{v.team || "-"}</TD>
-                        <TD className="whitespace-normal align-top text-muted-foreground">
-                          <div className="flex flex-col leading-tight">
-                            <span>{v.mainCategory || "-"}</span>
-                            <span>{v.subCategory || "-"}</span>
-                            <span>{v.detailCategory || "-"}</span>
+                        <TD className="align-top text-center text-muted-foreground">
+                          <div className="flex flex-col items-center leading-tight">
+                            <span className="whitespace-nowrap">{v.mainCategory || "-"}</span>
+                            <span className="whitespace-nowrap">{v.subCategory || "-"}</span>
+                            <span className="whitespace-nowrap">{v.detailCategory || "-"}</span>
                           </div>
                         </TD>
                         <TD className="whitespace-normal">{v.content || "-"}</TD>
@@ -250,20 +238,6 @@ export function JobAssessmentsPage({
                           </Badge>
                         </TD>
                         <TD>{v.evaluator || "-"}</TD>
-                        <TD className="hidden text-center tabular-nums text-muted-foreground xl:table-cell">
-                          {rows || "-"}
-                        </TD>
-                        <TD className="hidden text-center xl:table-cell">
-                          {top === null ? (
-                            <span className="text-muted-foreground">-</span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1">
-                              <Badge className={riskBadgeClass(top)}>{top}</Badge>
-                              {/* 허용 불가능(기준점 이상) 건수는 목록에서 바로 보여야 한다 */}
-                              {over > 0 && <span className="text-xs text-destructive">{over}건</span>}
-                            </span>
-                          )}
-                        </TD>
                         <TD className="text-center">
                           {v.participants.length === 0 ? (
                             <span className="text-muted-foreground">-</span>
