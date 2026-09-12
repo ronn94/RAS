@@ -59,6 +59,7 @@ import {
   FINISH_ITEMS,
   FREQUENCY_GUIDE,
   JOB_EVAL_TYPES,
+  JOB_TEAMS,
   JRA_FREQUENCY,
   JRA_INTENSITY,
   JRA_PROBABILITY,
@@ -109,6 +110,7 @@ export function JobAssessmentDetail({
     !draft.mainCategory && "대분류",
     !draft.content && "내용",
     !draft.date && "평가일자",
+    !draft.team && "구분",
     !draft.evaluator && "평가자",
   ].filter(Boolean) as string[];
 
@@ -165,6 +167,25 @@ export function JobAssessmentDetail({
         return d;
       }
       return { ...d, participants: d.participants.filter((p) => p.id !== found.id) };
+    });
+
+  /** '전체 선택'은 아직 안 담긴 직원만 채워 넣고, '전체 해제'는 서명 받은 사람이 있으면 물어본다 */
+  const selectAllStaff = () =>
+    setDraft((d) => {
+      const already = new Set(d.participants.filter((p) => !p.external).map((p) => p.name.trim()));
+      const added = staff.filter((n) => !already.has(n)).map((n) => emptyJobParticipant(false, n));
+      return added.length ? { ...d, participants: [...d.participants, ...added] } : d;
+    });
+
+  const deselectAllStaff = () =>
+    setDraft((d) => {
+      const internalStaff = d.participants.filter((p) => !p.external && staff.includes(p.name.trim()));
+      const signedCount = internalStaff.filter((p) => p.sign).length;
+      if (signedCount > 0 && !confirm(`이미 서명한 내부 참여자 ${signedCount}명도 함께 빠집니다. 계속할까요?`)) {
+        return d;
+      }
+      const removeIds = new Set(internalStaff.map((p) => p.id));
+      return { ...d, participants: d.participants.filter((p) => !removeIds.has(p.id)) };
     });
 
   const patchParticipant = (id: string, p: Partial<JobParticipant>) =>
@@ -285,6 +306,8 @@ export function JobAssessmentDetail({
             staff={staff}
             internalNames={internalNames}
             toggleStaff={toggleStaff}
+            selectAllStaff={selectAllStaff}
+            deselectAllStaff={deselectAllStaff}
             patchParticipant={patchParticipant}
             setDraft={setDraft}
             onSign={setSignTarget}
@@ -505,6 +528,8 @@ function StepParticipants({
   staff,
   internalNames,
   toggleStaff,
+  selectAllStaff,
+  deselectAllStaff,
   patchParticipant,
   setDraft,
   onSign,
@@ -518,6 +543,8 @@ function StepParticipants({
   staff: string[];
   internalNames: Set<string>;
   toggleStaff: (name: string) => void;
+  selectAllStaff: () => void;
+  deselectAllStaff: () => void;
   patchParticipant: (id: string, p: Partial<JobParticipant>) => void;
   setDraft: React.Dispatch<React.SetStateAction<JobAssessment>>;
   onSign: (p: JobParticipant) => void;
@@ -532,7 +559,7 @@ function StepParticipants({
         <CardHeader>
           <CardTitle>평가 정보</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <div className="space-y-1.5">
             <Label>평가일자</Label>
             <Input
@@ -541,6 +568,17 @@ function StepParticipants({
               value={draft.date}
               onChange={(e) => patch({ date: e.target.value })}
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label>구분</Label>
+            <Select disabled={!canWrite} value={draft.team} onChange={(e) => patch({ team: e.target.value })}>
+              <option value="">선택</option>
+              {JOB_TEAMS.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label>위험성 평가자</Label>
@@ -585,7 +623,17 @@ function StepParticipants({
               </p>
             ) : (
               <div className="space-y-2">
-                <Label>내부 참여자 (우리 직원)</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>내부 참여자 (우리 직원)</Label>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" onClick={selectAllStaff}>
+                      전체 선택
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={deselectAllStaff}>
+                      전체 해제
+                    </Button>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-1 sm:grid-cols-4 lg:grid-cols-6">
                   {staff.map((name) => (
                     <label

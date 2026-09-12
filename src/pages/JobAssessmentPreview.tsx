@@ -8,7 +8,7 @@
  */
 import { ArrowLeft, Pencil, Printer } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
-import { JobAssessmentSheet } from "@/print/JobAssessmentSheet";
+import { JobAssessmentContinuousSheet, JobAssessmentSheet } from "@/print/JobAssessmentSheet";
 import { jraGrade, jraLabel, jraScore, signedParticipants, type JobAssessment } from "@/lib/jobAssessment";
 import { cn } from "@/lib/utils";
 
@@ -71,12 +71,17 @@ export function JobAssessmentPreview({
         </div>
       </div>
 
-      {/* 아래는 인쇄 서식 그대로다 — 화면에서 보이는 것이 실제로 찍힐 내용이다.
-          주의: 여기에 no-print를 붙이면 안 된다 — 안에 진짜 .print-root가 있어서,
-          그러면 인쇄할 때 이 블록 전체가 함께 사라진다(실제로 겪은 실수) */}
-      <div className="screen-preview rounded-2xl">
-        <JobAssessmentSheet job={job} />
+      {/* 화면 미리보기는 페이지를 나누지 않고 한 장처럼 이어서 보여준다 — 실제 인쇄(A4
+          여러 장)와는 모양이 다를 수 있다. 이 블록은 진짜 .print-root가 아니라서
+          no-print를 붙여도 인쇄 내용에는 영향이 없다(오히려 화면 전용 프리뷰가 그대로
+          찍히는 걸 막아 준다) */}
+      <div className="screen-preview rounded-2xl no-print">
+        <JobAssessmentContinuousSheet job={job} />
       </div>
+
+      {/* 실제 인쇄물은 이쪽이다 — 기본적으로 화면에는 숨겨져 있고(.print-root 규칙)
+          인쇄할 때만 A4 여러 장으로 나뉘어 찍힌다. */}
+      <JobAssessmentSheet job={job} />
     </div>
   );
 }

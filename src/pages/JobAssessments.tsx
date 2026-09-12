@@ -179,6 +179,7 @@ export function JobAssessmentsPage({
                 <THead>
                   <TR>
                     <TH className="w-28">평가일자</TH>
+                    <TH className="w-20">구분</TH>
                     <TH className="w-44">분류</TH>
                     <TH>내용</TH>
                     <TH className="w-28 text-center">JRA</TH>
@@ -200,6 +201,7 @@ export function JobAssessmentsPage({
                     return (
                       <TR key={v.id} className="cursor-pointer" onClick={() => onOpen(v.id)}>
                         <TD className="tabular-nums font-medium">{v.date || "-"}</TD>
+                        <TD className="text-muted-foreground">{v.team || "-"}</TD>
                         <TD className="text-muted-foreground">
                           {[v.mainCategory, v.subCategory, v.detailCategory].filter(Boolean).join(" · ") || "-"}
                         </TD>

@@ -30,10 +30,21 @@ const SAFETY_MM = 3;
 const PX_PER_MM = 96 / 25.4;
 
 /** 1쪽에만 싣는 개요·작업전준비·참여자 서명 구간 */
+/** 참여자 한 명을 이름 + (있으면) 손 서명 이미지로 그린다 — 서명표를 따로 두지 않고
+ * 개요표의 참여자 칸에 바로 붙인다. '미정' 자리는 인쇄 후 수기로 적을 수 있게 밑줄만 남긴다. */
+function Attendee({ p }: { p: JobParticipant }) {
+  if (p.undecided) return <span className="who">________</span>;
+  return (
+    <span className="who">
+      {p.name || "-"}
+      {p.sign && <img className="who-sign" src={photoUrl(p.sign)} alt="" />}
+    </span>
+  );
+}
+
 function OverviewSections({ v }: { v: JobAssessment }) {
   const internal = v.participants.filter((p) => !p.external);
   const external = v.participants.filter((p) => p.external);
-  const nameOf = (p: JobParticipant) => (p.undecided ? "(미정)" : p.name || "-");
 
   return (
     <>
@@ -72,14 +83,18 @@ function OverviewSections({ v }: { v: JobAssessment }) {
           </tr>
           <tr>
             <td className="lbl">내부 참여자</td>
-            <td colSpan={5} className="wrap">
-              {internal.length ? internal.map(nameOf).join(" · ") : "-"}
+            <td colSpan={5} className="wrap attendees">
+              {internal.length
+                ? internal.map((p) => <Attendee key={p.id} p={p} />)
+                : "-"}
             </td>
           </tr>
           <tr>
             <td className="lbl">외부 참여자</td>
-            <td colSpan={5} className="wrap">
-              {external.length ? external.map(nameOf).join(" · ") : "-"}
+            <td colSpan={5} className="wrap attendees">
+              {external.length
+                ? external.map((p) => <Attendee key={p.id} p={p} />)
+                : "-"}
             </td>
           </tr>
         </tbody>
@@ -100,48 +115,8 @@ function OverviewSections({ v }: { v: JobAssessment }) {
         </tbody>
       </table>
 
-      {/* 서명을 받았으면 그림으로 찍히고, 못 받았으면 빈 칸으로 남아 인쇄 후 수기로 받는다.
-          내부·외부는 섞이면 누가 우리 직원이고 누가 용역업체인지 헷갈리므로 줄을 나눈다.
-          인원이 몇 명이든 6칸을 고정해 표 모양이 항상 같다 */}
-      <table className="signs">
-        <tbody>
-          <SignRow label="내부 참여자 서명" list={internal} nameOf={nameOf} />
-          <SignRow label="외부 참여자 서명" list={external} nameOf={nameOf} />
-        </tbody>
-      </table>
-
       <div className="sec">3. 위험성평가 세부내역</div>
     </>
-  );
-}
-
-const SIGN_COLS = 6;
-
-function SignRow({
-  label,
-  list,
-  nameOf,
-}: {
-  label: string;
-  list: JobParticipant[];
-  nameOf: (p: JobParticipant) => string;
-}) {
-  return (
-    <tr>
-      <td className="lbl">{label}</td>
-      {list.slice(0, SIGN_COLS).map((pt) => (
-        <td key={pt.id} className="sign-cell">
-          <div className="who">{nameOf(pt)}</div>
-          {pt.sign ? <img src={photoUrl(pt.sign)} alt="" /> : <div className="blank" />}
-        </td>
-      ))}
-      {Array.from({ length: Math.max(0, SIGN_COLS - list.length) }, (_, i) => (
-        <td key={`pad-${i}`} className="sign-cell">
-          <div className="who">&nbsp;</div>
-          <div className="blank" />
-        </td>
-      ))}
-    </tr>
   );
 }
 
@@ -298,6 +273,28 @@ export function JobAssessmentSheet({ job: v }: { job: JobAssessment }) {
           <MatrixTable rows={pageRows} startNo={startNos[p]} threshold={threshold} settings={settings} />
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * 완성본 미리보기 화면용 — 실제 인쇄(A4 여러 장)와 달리 페이지를 나누지 않고
+ * 표 전체를 한 화면에 이어서 보여준다. .print-root가 아니어서 인쇄 시에는 찍히지
+ * 않는다(실제 인쇄물은 JobAssessmentSheet가 따로 담당한다).
+ */
+export function JobAssessmentContinuousSheet({ job: v }: { job: JobAssessment }) {
+  const { settings } = useStore();
+  const threshold = settings.risk.threshold;
+  return (
+    <div className="sheet sheet-job">
+      <div className="print-page">
+        <div className="sheet-title">
+          작업 위험성평가
+          <span className="eval-type">{v.evalType}</span>
+        </div>
+        <OverviewSections v={v} />
+        <MatrixTable rows={v.rows} startNo={1} threshold={threshold} settings={settings} />
+      </div>
     </div>
   );
 }

@@ -14,6 +14,10 @@
 export const JOB_EVAL_TYPES = ["작업평가", "정기평가", "수시평가", "최초평가"] as const;
 export type JobEvalType = (typeof JOB_EVAL_TYPES)[number];
 
+/** 평가를 수행하는 부서 — 목록 화면에서 필터·구분용으로 쓴다(인쇄물에는 안 싣는다) */
+export const JOB_TEAMS = ["기계팀", "전기팀", "공정팀", "실험실"] as const;
+export type JobTeam = (typeof JOB_TEAMS)[number];
+
 /* ── JRA 등급 — 작업 자체의 위험도를 셋으로 가늠한다 ────────── */
 export const JRA_INTENSITY = [
   { value: 0, label: "0점 · 병원치료가 필요 없음" },
@@ -325,6 +329,7 @@ export type JobAssessment = {
   jraP: number;
   /* 2단계 — 참여자 */
   date: string; // 평가일자 (YYYY-MM-DD)
+  team: string; // 구분(수행 부서) — 목록 화면용, 인쇄물에는 없음
   evaluator: string; // 위험성 평가자
   approvedBy: string; // 승인자(사업소장) — 개요표의 (인) 칸
   participants: JobParticipant[];
@@ -380,6 +385,7 @@ export function emptyJobAssessment(defaults: {
     jraF: 1,
     jraP: -1,
     date: new Date().toISOString().slice(0, 10),
+    team: "",
     evaluator: "",
     approvedBy: "",
     participants: [],

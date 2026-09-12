@@ -981,33 +981,31 @@
   height: 6.5mm;
   width: 33.33%;
 }
-.sheet-job .prejob .box,
-.sheet-job .signs .box {
+.sheet-job .prejob .box {
   font-size: 9pt;
 }
-/* 참여자 서명표 — 받아 둔 서명이 있으면 찍고 없으면 빈 칸으로 둬 수기로 받는다 */
-.sheet-job .signs .sign-cell {
-  width: 14%;
-  text-align: center;
-  vertical-align: top;
-  padding: 0.5mm;
+/* 참여자 이름 옆에 손 서명을 바로 붙인다 — 서명은 받은 사람만, 못 받았으면 이름만 남는다 */
+.sheet-job .attendees .who {
+  display: inline-flex;
+  align-items: center;
+  gap: 1mm;
+  margin-right: 3mm;
 }
-.sheet-job .signs .who {
-  font-size: 6.5pt;
-  color: #333;
-}
-.sheet-job .signs img {
-  width: 100%;
-  height: 9mm;
+.sheet-job .attendees .who-sign {
+  height: 1em;
+  width: auto;
+  max-width: 12mm;
   object-fit: contain;
-  display: block;
-}
-.sheet-job .signs .blank {
-  height: 9mm;
+  vertical-align: middle;
 }
 /* 세부내역 */
 .sheet-job .matrix {
   table-layout: fixed;
+}
+/* 행 내용이 길어도 페이지 경계에서 중간이 잘리지 않게 — 실측 분할과 함께 이중으로 막는다 */
+.sheet-job .matrix tbody tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 .sheet-job .matrix :is(th, td) {
   vertical-align: top;
