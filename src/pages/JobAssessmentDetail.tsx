@@ -55,7 +55,6 @@ import { SignatureCanvas, signatureDataUrl } from "@/components/signature";
 import { usePhotoUrl } from "@/components/photo";
 import { JobAssessmentSheet } from "@/print/JobAssessmentSheet";
 import {
-  ACTIONS_BY_CODE,
   emptyJobParticipant,
   emptyJobRow,
   FINISH_ITEMS,
@@ -75,7 +74,7 @@ import {
   type JobParticipant,
   type JobRow,
 } from "@/lib/jobAssessment";
-import { allTypes, codeLabel } from "@/lib/settings";
+import { actionsForCode, allTypes, codeLabel } from "@/lib/settings";
 import { riskBadgeClass, riskOf } from "@/lib/risk";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
@@ -173,7 +172,7 @@ export function JobAssessmentDetail({
 
   /** 위험코드를 바꾸면 그 코드의 조치사항 후보를 **전부 켠 상태**로 갈아 끼운다(원본과 같다) */
   const changeCode = (id: string, code: string) =>
-    patchRow(id, { hazardCode: code, actions: [...(ACTIONS_BY_CODE[code] ?? [])] });
+    patchRow(id, { hazardCode: code, actions: [...actionsForCode(settings, code)] });
 
   const toggleIn = (list: string[], value: string) =>
     list.includes(value) ? list.filter((x) => x !== value) : [...list, value];
@@ -1003,7 +1002,7 @@ function MatrixRow({
 }) {
   const risk = riskOf(row.p, row.s);
   const post = riskOf(row.p2, row.s2);
-  const candidates = ACTIONS_BY_CODE[row.hazardCode] ?? [];
+  const candidates = actionsForCode(settings, row.hazardCode);
   /** 감소대책을 적기 전에는 조치 후 점수를 매길 수 없다 — 원본과 같은 규칙 */
   const canScorePost = row.measure.trim().length > 0;
 

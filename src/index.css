@@ -965,8 +965,9 @@
 }
 .sheet-job .sealed .seal-sign {
   float: right;
-  height: 1em;
-  max-width: 16mm;
+  /* 칸 높이(7mm)에서 위아래 여백(0.8mm×2)과 반올림 여유를 뺀 만큼 — 행 높이를 밀어내지 않는 한도 안에서 최대로 키운다 */
+  height: 5.2mm;
+  max-width: 26mm;
   object-fit: contain;
 }
 .sheet-job .strong {
@@ -999,14 +1000,16 @@
   margin-right: 3mm;
 }
 .sheet-job .attendees .who-sign {
-  height: 1em;
+  /* 참여자가 많으면 이름이 여러 줄로 줄바꿈되므로, 그 줄 높이(line-height 1.2 기준)를
+     넘기지 않는 선에서 최대로 키운다 — 그래야 줄 수와 무관하게 행이 늘어나지 않는다 */
+  height: 3mm;
   width: auto;
-  max-width: 12mm;
+  max-width: 20mm;
   object-fit: contain;
   vertical-align: middle;
 }
 .sheet-job .attendees .who-sign.blank {
-  width: 10mm;
+  width: 14mm;
   border-bottom: 0.5pt solid #999;
 }
 /* 세부내역 */

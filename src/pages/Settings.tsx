@@ -217,6 +217,15 @@ function ScaleEditor({ value, onChange }: { value: ScaleLabel[]; onChange: (v: S
 function FactorEditor({ value, onChange }: { value: HazardFactor[]; onChange: (v: HazardFactor[]) => void }) {
   const patchFactor = (i: number, p: Partial<HazardFactor>) =>
     onChange(value.map((f, idx) => (idx === i ? { ...f, ...p } : f)));
+  /** '조치사항' 펼침 상태 — 유형마다 몇 개씩 있어 기본은 접어 둔다 */
+  const [openActions, setOpenActions] = React.useState<Set<string>>(new Set());
+  const toggleActions = (key: string) =>
+    setOpenActions((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   return (
     <div className="space-y-3">
@@ -249,42 +258,71 @@ function FactorEditor({ value, onChange }: { value: HazardFactor[]; onChange: (v
           </div>
 
           <div className="mt-2 space-y-1.5 pl-4">
-            {f.types.map((t, j) => (
-              <div key={j} className="flex items-center gap-2">
-                <Input
-                  className="w-20 text-center"
-                  value={t.code}
-                  onChange={(e) =>
-                    patchFactor(i, { types: f.types.map((x, k) => (k === j ? { ...x, code: e.target.value } : x)) })
-                  }
-                  aria-label="유해위험유형 번호"
-                />
-                <Input
-                  className="max-w-md"
-                  value={t.label}
-                  onChange={(e) =>
-                    patchFactor(i, { types: f.types.map((x, k) => (k === j ? { ...x, label: e.target.value } : x)) })
-                  }
-                  aria-label="유해위험유형 이름"
-                  placeholder="예: 부딪힘"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => patchFactor(i, { types: f.types.filter((_, k) => k !== j) })}
-                  aria-label={`${t.code} 유형 삭제`}
-                >
-                  <X className="size-3.5" />
-                </Button>
-              </div>
-            ))}
+            {f.types.map((t, j) => {
+              const key = `${i}-${j}`;
+              const open = openActions.has(key);
+              return (
+                <div key={j}>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      className="w-20 text-center"
+                      value={t.code}
+                      onChange={(e) =>
+                        patchFactor(i, {
+                          types: f.types.map((x, k) => (k === j ? { ...x, code: e.target.value } : x)),
+                        })
+                      }
+                      aria-label="유해위험유형 번호"
+                    />
+                    <Input
+                      className="max-w-md"
+                      value={t.label}
+                      onChange={(e) =>
+                        patchFactor(i, {
+                          types: f.types.map((x, k) => (k === j ? { ...x, label: e.target.value } : x)),
+                        })
+                      }
+                      aria-label="유해위험유형 이름"
+                      placeholder="예: 부딪힘"
+                    />
+                    <Button variant="ghost" size="sm" className="text-xs" onClick={() => toggleActions(key)}>
+                      조치사항 {t.actions.length}개 {open ? "숨기기" : "펼치기"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="ml-auto text-destructive hover:text-destructive"
+                      onClick={() => patchFactor(i, { types: f.types.filter((_, k) => k !== j) })}
+                      aria-label={`${t.code} 유형 삭제`}
+                    >
+                      <X className="size-3.5" />
+                    </Button>
+                  </div>
+                  {open && (
+                    <div className="mt-1.5 mb-1 rounded-xl bg-background p-2.5 pl-6">
+                      <p className="mb-1.5 text-xs text-muted-foreground">
+                        작업평가에서 이 위험분류를 고르면 후보로 뜨는 '현재 조치사항' 항목입니다.
+                      </p>
+                      <ListEditor
+                        value={t.actions}
+                        onChange={(v) =>
+                          patchFactor(i, { types: f.types.map((x, k) => (k === j ? { ...x, actions: v } : x)) })
+                        }
+                        placeholder="예: 비상정지(버튼, 와이어 등) 확인"
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             <Button
               variant="outline"
               size="sm"
               onClick={() =>
                 // 새 번호는 "요인번호.다음순번"으로 미리 채워 준다
-                patchFactor(i, { types: [...f.types, { code: `${f.no}.${f.types.length + 1}`, label: "" }] })
+                patchFactor(i, {
+                  types: [...f.types, { code: `${f.no}.${f.types.length + 1}`, label: "", actions: [] }],
+                })
               }
             >
               <Plus /> 유형 추가

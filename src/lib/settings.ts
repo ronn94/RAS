@@ -106,8 +106,17 @@ export const DEFAULT_SETTINGS: AppSettings = {
  * 코드가 없는 요인구분으로 살려 둔다 — 이미 그 값을 쓰는 행이 있을 수 있어서다.
  */
 function migrateFactors(saved: Partial<AppSettings> & { hazardClasses?: string[] }): HazardFactor[] {
+  // 예전 설정에는 유형에 '현재 조치사항' 후보(actions)가 없었다. 그때 저장된 유형은
+  // actions가 통째로 undefined이므로, 같은 번호의 원본 후보 목록으로 한 번만 채워 준다
+  // (관리자가 이미 손으로 비워 뒀다면 []이지 undefined가 아니므로 그대로 존중한다).
+  const baseActions = new Map<string, string[]>();
+  for (const f of DEFAULT_SETTINGS.hazardFactors) for (const t of f.types) baseActions.set(t.code, t.actions);
+
   if (saved.hazardFactors?.length) {
-    return saved.hazardFactors.map((f) => ({ ...f, types: (f.types ?? []).map((t) => ({ ...t })) }));
+    return saved.hazardFactors.map((f) => ({
+      ...f,
+      types: (f.types ?? []).map((t) => ({ ...t, actions: t.actions ?? baseActions.get(t.code) ?? [] })),
+    }));
   }
   const base = DEFAULT_SETTINGS.hazardFactors.map((f) => ({ ...f, types: f.types.map((t) => ({ ...t })) }));
   const known = new Set(base.map((f) => f.name));
@@ -169,6 +178,16 @@ export function classOfCode(settings: AppSettings, code: string): string {
 /** 분류표의 모든 유해위험유형을 한 줄로 편다(순회점검처럼 분류 칸이 없는 서식용) */
 export function allTypes(settings: AppSettings) {
   return settings.hazardFactors.flatMap((f) => f.types.map((t) => ({ ...t, className: f.name })));
+}
+
+/** 위험코드를 고르면 뜨는 '현재 조치사항' 후보(작업평가). 못 찾으면 빈 배열 */
+export function actionsForCode(settings: AppSettings, code: string): string[] {
+  if (!code) return [];
+  for (const f of settings.hazardFactors) {
+    const t = f.types.find((x) => x.code === code);
+    if (t) return t.actions;
+  }
+  return [];
 }
 
 /**
