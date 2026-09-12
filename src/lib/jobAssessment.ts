@@ -332,6 +332,12 @@ export type JobAssessment = {
   team: string; // 구분(수행 부서) — 목록 화면용, 인쇄물에는 없음
   evaluator: string; // 위험성 평가자
   approvedBy: string; // 승인자(사업소장) — 개요표의 (인) 칸
+  /** 평가자·승인자 손서명 — 참여자와 달리 명단이 아니라 이름 한 칸이라 문서에 직접 붙인다.
+   * 인쇄물의 '(인)' 자리에 찍힌다(없으면 그대로 '(인)' 글자가 남는다) */
+  evaluatorSign?: string;
+  evaluatorSignedAt?: number;
+  approvedBySign?: string;
+  approvedBySignedAt?: number;
   participants: JobParticipant[];
   /* 3~4단계 */
   rows: JobRow[];
@@ -415,3 +421,28 @@ export function overLimitCount(v: JobAssessment, threshold: number): number {
 
 /** 서명을 받은 참여자 수 */
 export const signedParticipants = (v: JobAssessment) => v.participants.filter((x) => x.sign).length;
+
+/** '미정' 자리는 아직 이름이 없어 서명 자체가 불가능하므로 완료 여부를 따질 때는 뺀다 */
+const signable = (list: JobParticipant[]) => list.filter((p) => !p.undecided);
+
+/** 그 구분(내부·외부)에 서명 가능한 사람이 없거나(=0명이거나 전부 미정), 있다면 전원 서명했는가 */
+export function sectionAllSigned(list: JobParticipant[]): boolean {
+  const s = signable(list);
+  return s.length === 0 || s.every((p) => !!p.sign);
+}
+
+/** 그 구분에 서명 가능한 사람이 없거나, 있다면 최소 1명이라도 서명했는가 */
+export function sectionAnySigned(list: JobParticipant[]): boolean {
+  const s = signable(list);
+  return s.length === 0 || s.some((p) => !!p.sign);
+}
+
+/** 승인자 서명을 열어도 되는가 — 평가자·내부·외부 참여자가 설정된 규칙만큼 서명했는지 본다 */
+export function approverSignEnabled(v: JobAssessment, requireAll: boolean): boolean {
+  if (!v.evaluatorSign) return false;
+  const internal = v.participants.filter((p) => !p.external);
+  const external = v.participants.filter((p) => p.external);
+  return requireAll
+    ? sectionAllSigned(internal) && sectionAllSigned(external)
+    : sectionAnySigned(internal) && sectionAnySigned(external);
+}

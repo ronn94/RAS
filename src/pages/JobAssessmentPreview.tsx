@@ -6,11 +6,14 @@
  * 곧장 작성화면(5단계 마법사)을 여는 대신, 완성본을 먼저 보여주고 고칠 게 있으면
  * '수정' 버튼으로 넘어간다 — 실수로 값을 건드릴 걱정 없이 훑어볼 수 있다.
  */
-import { ArrowLeft, Pencil, Printer } from "lucide-react";
+import * as React from "react";
+import { ArrowLeft, Pencil, Printer, Signature } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { JobAssessmentContinuousSheet, JobAssessmentSheet } from "@/print/JobAssessmentSheet";
+import { JobAssessmentSignPopup } from "@/pages/JobAssessmentSignPopup";
 import { jraGrade, jraLabel, jraScore, signedParticipants, type JobAssessment } from "@/lib/jobAssessment";
 import { cn } from "@/lib/utils";
+import { useStore } from "@/store";
 
 const JRA_TONE: Record<string, string> = {
   "A(고위험)": "bg-destructive/10 text-destructive",
@@ -30,8 +33,11 @@ export function JobAssessmentPreview({
   onBack: () => void;
   onEdit: () => void;
 }) {
+  const { settings, signJobAssessment, identity } = useStore();
   const grade = jraGrade(jraScore(job));
   const signed = signedParticipants(job);
+  const [signOpen, setSignOpen] = React.useState(false);
+  const canSign = canEdit && (!job.locked || identity.role === "admin");
 
   return (
     <div className="space-y-4">
@@ -57,6 +63,13 @@ export function JobAssessmentPreview({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={() => setSignOpen(true)}
+            disabled={!canSign}
+            title={canSign ? "평가자·참여자·승인자 서명을 받습니다" : "서명 권한이 없거나 잠긴 문서입니다"}
+          >
+            <Signature className="size-3.5" /> 서명하기
+          </Button>
           <Button variant="outline" size="icon-lg" onClick={() => window.print()} aria-label="인쇄" title="인쇄">
             <Printer />
           </Button>
@@ -70,6 +83,14 @@ export function JobAssessmentPreview({
           </Button>
         </div>
       </div>
+
+      <JobAssessmentSignPopup
+        job={job}
+        open={signOpen}
+        onClose={() => setSignOpen(false)}
+        approverRequireAll={settings.jobAssessment.approverRequireAll}
+        onSign={(target, image) => signJobAssessment(job.id, target, image).then(() => undefined)}
+      />
 
       {/* 화면 미리보기는 페이지를 나누지 않고 한 장처럼 이어서 보여준다 — 실제 인쇄(A4
           여러 장)와는 모양이 다를 수 있다. 이 블록은 진짜 .print-root가 아니라서

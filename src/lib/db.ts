@@ -96,11 +96,12 @@ export const putJobAssessment = (v: JobAssessment) =>
   api<JobAssessment>(`/jobassessments/${v.id}`, { method: "PUT", body: JSON.stringify(v) });
 export const deleteJobAssessment = (id: string) => api(`/jobassessments/${id}`, { method: "DELETE" });
 
-/** 참여자 한 명의 서명만 남긴다 — 실시서와 같은 규칙(게스트도 쓸 수 있는 유일한 쓰기) */
-export const signJobAssessment = (id: string, participantId: string, image: string | null) =>
+/** 서명 하나만 남긴다 — 실시서와 같은 규칙(게스트도 쓸 수 있는 유일한 쓰기).
+ * target은 참여자 id, 또는 평가자·승인자를 가리키는 "evaluator"/"approver" */
+export const signJobAssessment = (id: string, target: string, image: string | null) =>
   api<JobAssessment>(`/jobassessments/${id}/sign`, {
     method: "POST",
-    body: JSON.stringify({ participantId, image }),
+    body: JSON.stringify({ target, image }),
   });
 
 /* ── 푸시 알림 구독 ──────────────────────────────────────── */

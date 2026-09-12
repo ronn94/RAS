@@ -642,6 +642,31 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* 작업평가 서명 규칙 */}
+      <Card className="shadow-xs">
+        <CardHeader>
+          <CardTitle>작업평가 서명</CardTitle>
+          <CardDescription>승인자 서명을 언제 열어 둘지 정합니다.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <label className="flex items-center gap-2.5 rounded-xl bg-muted/40 px-3 py-2.5">
+            <Checkbox
+              checked={settings.jobAssessment.approverRequireAll}
+              onChange={(e) =>
+                void patch({ jobAssessment: { ...settings.jobAssessment, approverRequireAll: e.target.checked } })
+              }
+            />
+            <span>
+              <span className="block text-sm font-medium">평가자·내부·외부 참여자 전원 서명 후 승인자 서명 활성화</span>
+              <span className="block text-xs text-muted-foreground">
+                끄면 각 구분(평가자·내부·외부)에서 최소 1명만 서명해도 승인자 서명이 열립니다(구분에 아무도 없으면
+                자동 통과).
+              </span>
+            </span>
+          </label>
+        </CardContent>
+      </Card>
+
       <SurveyBackfillCard />
     </div>
   );

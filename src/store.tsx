@@ -85,7 +85,7 @@ type Ctx = {
   saveJobAssessment: (v: JobAssessment) => Promise<void>;
   removeJobAssessment: (id: string) => Promise<void>;
   /** 참여자 한 명의 서명만 바꾼다 — 게스트도 할 수 있는 유일한 쓰기다 */
-  signJobAssessment: (id: string, participantId: string, image: string | null) => Promise<JobAssessment>;
+  signJobAssessment: (id: string, target: string, image: string | null) => Promise<JobAssessment>;
   /** 게스트가 작업평가를 등록·수정·서명할 수 있는가 (관리자는 항상 true) */
   canJobAssessment: boolean;
 };
@@ -530,8 +530,8 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
     setJobAssessments((prev) => prev.filter((x) => x.id !== id));
   }, []);
 
-  const signJobAssessment = React.useCallback(async (id: string, participantId: string, image: string | null) => {
-    const next = await db.signJobAssessment(id, participantId, image);
+  const signJobAssessment = React.useCallback(async (id: string, target: string, image: string | null) => {
+    const next = await db.signJobAssessment(id, target, image);
     setJobAssessments((prev) => prev.map((x) => (x.id === next.id ? next : x)));
     return next;
   }, []);

@@ -302,7 +302,8 @@ app.route("/api/annualplans", collection("annual_plans"));
    본문을 고치는 동안 온 서명이 저장 한 번에 날아가지 않게 하려는 것이다. */
 app.post("/api/jobassessments/:id/sign", requirePermission("jobAssessment"), async (c) => {
   const id = c.req.param("id");
-  const { participantId, image } = await c.req.json<{ participantId: string; image: string | null }>();
+  // target: 참여자 id, 또는 평가자·승인자를 가리키는 "evaluator"/"approver"
+  const { target, image } = await c.req.json<{ target: string; image: string | null }>();
 
   const row = await c.env.ras_db
     .prepare("SELECT data FROM job_assessments WHERE id = ?1")
@@ -313,10 +314,32 @@ app.post("/api/jobassessments/:id/sign", requirePermission("jobAssessment"), asy
   if (doc.locked && c.get("role") === "guest") {
     return c.json({ error: "잠긴 문서에는 서명할 수 없습니다." }, 403);
   }
-  const target = doc.participants.find((p) => p.id === participantId);
-  if (!target) return c.json({ error: "참여자를 찾을 수 없습니다." }, 404);
 
-  const previous = target.sign;
+  // 평가자·승인자는 명단이 아니라 문서에 바로 붙은 칸 하나라 참여자와 다른 자리에 쓴다
+  let previous: string | undefined;
+  let apply: (signId: string | undefined, signedAt: number | undefined) => void;
+  if (target === "evaluator") {
+    previous = doc.evaluatorSign;
+    apply = (signId, signedAt) => {
+      doc.evaluatorSign = signId;
+      doc.evaluatorSignedAt = signedAt;
+    };
+  } else if (target === "approver") {
+    previous = doc.approvedBySign;
+    apply = (signId, signedAt) => {
+      doc.approvedBySign = signId;
+      doc.approvedBySignedAt = signedAt;
+    };
+  } else {
+    const p = doc.participants.find((p) => p.id === target);
+    if (!p) return c.json({ error: "참여자를 찾을 수 없습니다." }, 404);
+    previous = p.sign;
+    apply = (signId, signedAt) => {
+      p.sign = signId;
+      p.signedAt = signedAt;
+    };
+  }
+
   if (image) {
     const comma = image.indexOf(",");
     const contentType = image.slice(0, comma).match(/^data:([^;]+)/)?.[1] ?? "image/png";
@@ -329,11 +352,9 @@ app.post("/api/jobassessments/:id/sign", requirePermission("jobAssessment"), asy
       .prepare("INSERT INTO photo_meta (id, size, content_type, created_at) VALUES (?1, ?2, ?3, ?4)")
       .bind(signId, bytes.byteLength, contentType, Date.now())
       .run();
-    target.sign = signId;
-    target.signedAt = Date.now();
+    apply(signId, Date.now());
   } else {
-    delete target.sign;
-    delete target.signedAt;
+    apply(undefined, undefined);
   }
   if (previous) {
     await c.env.ras_photos.delete(previous);
@@ -359,7 +380,17 @@ app.route(
       const kept = signs.get(p.id);
       return p.sign || !kept?.sign ? p : { ...p, sign: kept.sign, signedAt: kept.signedAt };
     });
-    return { ...incoming, participants };
+    const next = { ...incoming, participants } as JobAssessment;
+    // 평가자·승인자 서명도 같은 이유로 지킨다
+    if (!next.evaluatorSign && (stored as JobAssessment).evaluatorSign) {
+      next.evaluatorSign = (stored as JobAssessment).evaluatorSign;
+      next.evaluatorSignedAt = (stored as JobAssessment).evaluatorSignedAt;
+    }
+    if (!next.approvedBySign && (stored as JobAssessment).approvedBySign) {
+      next.approvedBySign = (stored as JobAssessment).approvedBySign;
+      next.approvedBySignedAt = (stored as JobAssessment).approvedBySignedAt;
+    }
+    return next;
   }),
 );
 

@@ -152,11 +152,13 @@ export function JobAssessmentsPage({
             </Select>
           )}
           <Button
+            size="icon"
+            aria-label="등록"
             disabled={!canJobAssessment}
             onClick={() => setDraft(createJobAssessment())}
             title={canJobAssessment ? "새 작업 위험성평가를 등록합니다" : "등록 권한이 없습니다 (설정 → 게스트 권한)"}
           >
-            <Plus className="size-3.5" /> 등록
+            <Plus className="size-3.5" />
           </Button>
         </div>
       </div>

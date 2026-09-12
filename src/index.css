@@ -957,11 +957,17 @@
 .sheet-job .meta td {
   height: 7mm;
 }
-/* 평가자·승인자 칸은 오른쪽에 (인) 자리를 남긴다 */
+/* 평가자·승인자 칸은 오른쪽에 (인) 자리를 남긴다 — 서명을 받으면 그 자리에 손서명이 들어간다 */
 .sheet-job .seal::after {
   content: "(인)";
   float: right;
   font-weight: 700;
+}
+.sheet-job .sealed .seal-sign {
+  float: right;
+  height: 1em;
+  max-width: 16mm;
+  object-fit: contain;
 }
 .sheet-job .strong {
   font-weight: 700;

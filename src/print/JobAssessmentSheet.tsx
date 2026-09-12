@@ -82,9 +82,15 @@ function OverviewSections({ v }: { v: JobAssessment }) {
             <td className="lbl">평가일자</td>
             <td className="num">{v.date}</td>
             <td className="lbl">평가자</td>
-            <td className="seal">{v.evaluator}</td>
+            <td className={v.evaluatorSign ? "sealed" : "seal"}>
+              {v.evaluator}
+              {v.evaluatorSign && <img className="seal-sign" src={photoUrl(v.evaluatorSign)} alt="" />}
+            </td>
             <td className="lbl">승인자</td>
-            <td className="seal">{v.approvedBy}</td>
+            <td className={v.approvedBySign ? "sealed" : "seal"}>
+              {v.approvedBy}
+              {v.approvedBySign && <img className="seal-sign" src={photoUrl(v.approvedBySign)} alt="" />}
+            </td>
           </tr>
           <tr>
             <td className="lbl">내부 참여자</td>

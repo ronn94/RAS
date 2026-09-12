@@ -53,6 +53,12 @@ export type AppSettings = {
     likelihood: ScaleLabel[]; // 가능성 척도
     severity: ScaleLabel[]; // 중대성 척도
   };
+  /** 작업평가 서명 규칙 */
+  jobAssessment: {
+    /** true(기본) — 평가자·내부 참여자·외부 참여자 전원이 서명해야 승인자 서명이 열린다.
+     * false — 각 구분(평가자·내부·외부)에서 최소 1명만 서명하면 열린다(구분에 아무도 없으면 자동 통과). */
+    approverRequireAll: boolean;
+  };
   updatedAt: number;
 };
 
@@ -90,6 +96,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
       { value: 4, label: "사망" },
     ],
   },
+  jobAssessment: { approverRequireAll: true },
   updatedAt: 0,
 };
 
@@ -125,6 +132,9 @@ export function withDefaults(saved: Partial<AppSettings> | undefined | null): Ap
       threshold: saved.risk?.threshold ?? DEFAULT_SETTINGS.risk.threshold,
       likelihood: saved.risk?.likelihood?.length ? saved.risk.likelihood : DEFAULT_SETTINGS.risk.likelihood,
       severity: saved.risk?.severity?.length ? saved.risk.severity : DEFAULT_SETTINGS.risk.severity,
+    },
+    jobAssessment: {
+      approverRequireAll: saved.jobAssessment?.approverRequireAll ?? DEFAULT_SETTINGS.jobAssessment.approverRequireAll,
     },
     updatedAt: saved.updatedAt ?? 0,
   };
