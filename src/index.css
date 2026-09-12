@@ -957,14 +957,19 @@
 .sheet-job .meta td {
   height: 7mm;
 }
-/* 평가자·승인자 칸은 오른쪽에 (인) 자리를 남긴다 — 서명을 받으면 그 자리에 손서명이 들어간다 */
-.sheet-job .seal::after {
-  content: "(인)";
-  float: right;
+/* 평가자·승인자 칸 — 이름과 '(인)' 자리(또는 손서명)를 한 줄에 두고, flex로 세로
+   가운데를 맞춘다. float를 쓰면 서명 이미지가 위쪽으로 붙어 이름과 어긋나 보였다 */
+.sheet-job .seal-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1mm;
+  width: 100%;
+}
+.sheet-job .seal-mark {
   font-weight: 700;
 }
-.sheet-job .sealed .seal-sign {
-  float: right;
+.sheet-job .seal-sign {
   /* 칸 높이(7mm)에서 위아래 여백(0.8mm×2)과 반올림 여유를 뺀 만큼 — 행 높이를 밀어내지 않는 한도 안에서 최대로 키운다 */
   height: 5.2mm;
   max-width: 26mm;

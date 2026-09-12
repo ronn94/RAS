@@ -46,6 +46,17 @@ function Attendee({ p }: { p: JobParticipant }) {
   );
 }
 
+/** 평가자·승인자 칸 — 이름과 '(인)' 자리(서명 없으면 글자, 있으면 손서명)를 한 줄에
+ * flex로 같이 두고 칸 세로 가운데에 맞춘다(칸 자체는 vertical-align:middle이 맡는다) */
+function SealName({ name, sign }: { name: string; sign?: string }) {
+  return (
+    <span className="seal-inner">
+      <span>{name}</span>
+      {sign ? <img className="seal-sign" src={photoUrl(sign)} alt="" /> : <span className="seal-mark">(인)</span>}
+    </span>
+  );
+}
+
 /** 1쪽에만 싣는 개요·작업전준비·참여자 서명 구간 */
 function OverviewSections({ v }: { v: JobAssessment }) {
   const internal = v.participants.filter((p) => !p.external);
@@ -82,14 +93,12 @@ function OverviewSections({ v }: { v: JobAssessment }) {
             <td className="lbl">평가일자</td>
             <td className="num">{v.date}</td>
             <td className="lbl">평가자</td>
-            <td className={v.evaluatorSign ? "sealed" : "seal"}>
-              {v.evaluator}
-              {v.evaluatorSign && <img className="seal-sign" src={photoUrl(v.evaluatorSign)} alt="" />}
+            <td className="seal">
+              <SealName name={v.evaluator} sign={v.evaluatorSign} />
             </td>
             <td className="lbl">승인자</td>
-            <td className={v.approvedBySign ? "sealed" : "seal"}>
-              {v.approvedBy}
-              {v.approvedBySign && <img className="seal-sign" src={photoUrl(v.approvedBySign)} alt="" />}
+            <td className="seal">
+              <SealName name={v.approvedBy} sign={v.approvedBySign} />
             </td>
           </tr>
           <tr>

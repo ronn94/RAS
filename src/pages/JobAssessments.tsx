@@ -206,20 +206,23 @@ export function JobAssessmentsPage({
             </EmptyState>
           ) : (
             <TableWrap>
-              <Table className="min-w-[64rem] [&_:is(th,td)]:px-4">
+              <Table className="min-w-[40rem] [&_:is(th,td)]:px-2">
                 <THead>
                   <TR>
-                    <TH className="w-28">평가일자</TH>
-                    <TH className="w-20">구분</TH>
-                    <TH className="w-44">분류</TH>
+                    <TH className="w-24">평가일자</TH>
+                    <TH className="w-16">구분</TH>
+                    <TH className="w-24">분류</TH>
                     <TH>작업내용</TH>
-                    <TH className="w-28 text-center">JRA</TH>
-                    <TH className="w-24">평가자</TH>
-                    <TH className="w-20 text-center">항목</TH>
-                    <TH className="w-24 text-center">최고위험</TH>
-                    <TH className="w-24 text-center">서명</TH>
+                    <TH className="w-24 text-center">JRA</TH>
+                    <TH className="w-20">평가자</TH>
+                    {/* 태블릿 화면에서는 스크롤 없이 다 보이도록 우선순위가 낮은 둘은 숨긴다 —
+                        항목 수·최고위험은 행을 열면 바로 보인다 */}
+                    <TH className="hidden w-16 text-center xl:table-cell">항목</TH>
+                    <TH className="hidden w-20 text-center xl:table-cell">최고위험</TH>
+                    <TH className="w-20 text-center">서명</TH>
+                    <TH className="w-16 text-center">상태</TH>
                     {/* 잠금 + 삭제 두 버튼이 들어간다 */}
-                    <TH className="w-24" />
+                    <TH className="w-20" />
                   </TR>
                 </THead>
                 <TBody>
@@ -233,18 +236,24 @@ export function JobAssessmentsPage({
                       <TR key={v.id} className="cursor-pointer" onClick={() => onOpen(v.id)}>
                         <TD className="tabular-nums font-medium">{v.date || "-"}</TD>
                         <TD className="text-muted-foreground">{v.team || "-"}</TD>
-                        <TD className="text-muted-foreground">
-                          {[v.mainCategory, v.subCategory, v.detailCategory].filter(Boolean).join(" · ") || "-"}
+                        <TD className="whitespace-normal align-top text-muted-foreground">
+                          <div className="flex flex-col leading-tight">
+                            <span>{v.mainCategory || "-"}</span>
+                            <span>{v.subCategory || "-"}</span>
+                            <span>{v.detailCategory || "-"}</span>
+                          </div>
                         </TD>
-                        <TD className="max-w-md truncate whitespace-normal">{v.content || "-"}</TD>
+                        <TD className="whitespace-normal">{v.content || "-"}</TD>
                         <TD className="text-center">
                           <Badge variant="outline" className={cn("font-normal", JRA_TONE[grade])}>
                             {jraLabel(v)}
                           </Badge>
                         </TD>
                         <TD>{v.evaluator || "-"}</TD>
-                        <TD className="text-center tabular-nums text-muted-foreground">{rows || "-"}</TD>
-                        <TD className="text-center">
+                        <TD className="hidden text-center tabular-nums text-muted-foreground xl:table-cell">
+                          {rows || "-"}
+                        </TD>
+                        <TD className="hidden text-center xl:table-cell">
                           {top === null ? (
                             <span className="text-muted-foreground">-</span>
                           ) : (
@@ -268,6 +277,15 @@ export function JobAssessmentsPage({
                               <Users className="size-3.5" />
                               {signed}/{v.participants.length}
                             </span>
+                          )}
+                        </TD>
+                        <TD className="text-center">
+                          {v.approvedBySign ? (
+                            <Badge className="bg-series-1/10 font-normal text-series-1">승인</Badge>
+                          ) : (
+                            <Badge variant="outline" className="font-normal text-muted-foreground">
+                              대기
+                            </Badge>
                           )}
                         </TD>
                         <TD className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
