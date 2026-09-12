@@ -19,7 +19,6 @@ import {
   DialogTitle,
   EmptyState,
   Input,
-  Select,
   Table,
   TBody,
   TD,
@@ -34,7 +33,7 @@ import {
   jraGrade,
   jraLabel,
   jraScore,
-  JOB_EVAL_TYPES,
+  JOB_TEAMS,
   overLimitCount,
   scoredRows,
   signedParticipants,
@@ -73,7 +72,8 @@ export function JobAssessmentsPage({
   const [draft, setDraft] = React.useState<JobAssessment | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<JobAssessment | null>(null);
   const [q, setQ] = React.useState("");
-  const [fType, setFType] = React.useState("");
+  /** 부서 구분 필터 — 다시 누르면 전체로 돌아간다 */
+  const [fTeam, setFTeam] = React.useState("");
   /** 행을 클릭하면(openId) 완성본을, '수정'을 누르면(editId) 작성화면을 연다 — 서로 다른 상태다 */
   const [editId, setEditId] = React.useState<string | null>(null);
 
@@ -119,7 +119,7 @@ export function JobAssessmentsPage({
   const sorted = [...jobAssessments]
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
     .filter((v) => {
-      if (fType && v.evalType !== fType) return false;
+      if (fTeam && v.team !== fTeam) return false;
       if (!query) return true;
       return [v.mainCategory, v.subCategory, v.detailCategory, v.content, v.evaluator].some((t) =>
         (t || "").toLowerCase().includes(query),
@@ -144,20 +144,30 @@ export function JobAssessmentsPage({
 
       {jobAssessments.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
+          {/* 부서 구분 토글 — 다시 누르면 선택이 풀리고 전체를 본다 */}
+          <div className="flex flex-wrap gap-1">
+            {JOB_TEAMS.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setFTeam((cur) => (cur === t ? "" : t))}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                  fTeam === t
+                    ? "border-transparent bg-primary text-primary-foreground"
+                    : "border-border text-muted-foreground hover:bg-muted",
+                )}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
           <Input
             className="h-9 max-w-sm"
             placeholder="분류·내용·평가자 검색…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
-          <Select className="h-9" value={fType} onChange={(e) => setFType(e.target.value)}>
-            <option value="">평가구분 전체</option>
-            {JOB_EVAL_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </Select>
         </div>
       )}
 

@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Copy,
   Eraser,
+  FileDown,
   Lock,
   PenLine,
   Plus,
@@ -90,11 +91,13 @@ export function JobAssessmentDetail({
   isNew?: boolean;
   onDone: (saved: boolean) => void;
 }) {
-  const { saveJobAssessment, signJobAssessment, settings, identity, canJobAssessment } = useStore();
+  const { saveJobAssessment, signJobAssessment, settings, identity, canJobAssessment, jobAssessments } = useStore();
   const [draft, setDraft] = React.useState<JobAssessment>(job);
   const [step, setStep] = React.useState(1);
   const [saving, setSaving] = React.useState(false);
   const [signTarget, setSignTarget] = React.useState<JobParticipant | null>(null);
+  const [loadOpen, setLoadOpen] = React.useState(false);
+  const [loadQuery, setLoadQuery] = React.useState("");
 
   const isAdmin = identity.role === "admin";
   const readOnly = !!draft.locked && !isAdmin;
@@ -114,6 +117,38 @@ export function JobAssessmentDetail({
     !draft.team && "구분",
     !draft.evaluator && "평가자",
   ].filter(Boolean) as string[];
+
+  /** 이전에 등록된 문서의 분류·작업전준비·세부내역 행을 그대로 가져와 새 문서의 출발점으로 삼는다.
+   * 참여자·평가일자처럼 이 문서만의 값은 건드리지 않는다 */
+  const loadFrom = (src: JobAssessment) => {
+    setDraft((d) => ({
+      ...d,
+      mainCategory: src.mainCategory,
+      subCategory: src.subCategory,
+      detailCategory: src.detailCategory,
+      content: src.content,
+      evalType: src.evalType,
+      jraI: src.jraI,
+      jraF: src.jraF,
+      jraP: src.jraP,
+      preJobs: [...src.preJobs],
+      rows: src.rows.map((r) => ({ ...r, id: crypto.randomUUID() })),
+    }));
+    setLoadOpen(false);
+    setLoadQuery("");
+  };
+
+  const loadQ = loadQuery.trim().toLowerCase();
+  const loadCandidates = jobAssessments
+    .filter((v) => v.id !== draft.id)
+    .filter((v) =>
+      !loadQ
+        ? true
+        : [v.mainCategory, v.subCategory, v.detailCategory, v.content, v.evaluator].some((t) =>
+            (t || "").toLowerCase().includes(loadQ),
+          ),
+    )
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
   const submit = async () => {
     if (missing.length) return;
@@ -237,6 +272,11 @@ export function JobAssessmentDetail({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {isNew && canWrite && (
+            <Button variant="outline" onClick={() => setLoadOpen(true)}>
+              <FileDown className="size-3.5" /> 불러오기
+            </Button>
+          )}
           <Button
             variant="outline"
             size="icon-lg"
@@ -343,7 +383,7 @@ export function JobAssessmentDetail({
           />
         )}
         {step === 4 && <StepPreJob draft={draft} patch={patch} canWrite={canWrite} toggleIn={toggleIn} />}
-        {step === 5 && <StepReview draft={draft} threshold={threshold} />}
+        {step === 5 && <StepReview draft={draft} threshold={threshold} onJump={setStep} />}
       </div>
 
       {/* 단계 이동 */}
@@ -362,6 +402,48 @@ export function JobAssessmentDetail({
           다음 <ChevronRight className="size-3.5" />
         </Button>
       </div>
+
+      <Dialog open={loadOpen} onClose={() => setLoadOpen(false)}>
+        <DialogHeader>
+          <DialogTitle>등록된 작업평가에서 불러오기</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          분류·작업 전 준비·위험성평가 세부내역을 그대로 가져옵니다. 참여자·평가일자는 그대로 둡니다.
+        </p>
+        <Input
+          className="mt-2"
+          placeholder="분류·내용·평가자 검색…"
+          value={loadQuery}
+          onChange={(e) => setLoadQuery(e.target.value)}
+        />
+        <div className="mt-2 max-h-80 space-y-1 overflow-auto">
+          {loadCandidates.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">불러올 문서가 없습니다.</p>
+          ) : (
+            loadCandidates.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => loadFrom(v)}
+                className="flex w-full flex-col gap-0.5 rounded-xl px-3 py-2 text-left text-sm hover:bg-muted"
+              >
+                <span className="font-medium">
+                  {[v.mainCategory, v.subCategory, v.detailCategory].filter(Boolean).join(" · ") || "분류 미입력"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {v.date || "일자 미입력"} · {v.evaluator || "평가자 미입력"} · {v.content || "내용 없음"} · 행{" "}
+                  {v.rows.length}개
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setLoadOpen(false)}>
+            취소
+          </Button>
+        </DialogFooter>
+      </Dialog>
 
       <SignDialog
         participant={signTarget}
@@ -584,7 +666,12 @@ function StepParticipants({
           </div>
           <div className="space-y-1.5">
             <Label>구분</Label>
-            <Select disabled={!canWrite} value={draft.team} onChange={(e) => patch({ team: e.target.value })}>
+            <Select
+              className="w-full"
+              disabled={!canWrite}
+              value={draft.team}
+              onChange={(e) => patch({ team: e.target.value })}
+            >
               <option value="">선택</option>
               {JOB_TEAMS.map((t) => (
                 <option key={t} value={t}>
@@ -1283,16 +1370,48 @@ function StepPreJob({
 }
 
 /* ── 5단계: 확인·인쇄 ───────────────────────────────────── */
+/** 등록 전에 놓치기 쉬운 빈칸 — 누르면 해당 값을 채우는 단계로 곧장 넘어간다 */
+type Blank = { label: string; step: number };
+
+function findBlanks(draft: JobAssessment, threshold: number): Blank[] {
+  const blanks: Blank[] = [];
+  if (!draft.mainCategory) blanks.push({ label: "대분류가 비어 있습니다", step: 1 });
+  if (!draft.content) blanks.push({ label: "상세 내용이 비어 있습니다", step: 1 });
+  if (!draft.date) blanks.push({ label: "평가일자가 비어 있습니다", step: 2 });
+  if (!draft.team) blanks.push({ label: "구분이 비어 있습니다", step: 2 });
+  if (!draft.evaluator) blanks.push({ label: "위험성 평가자가 비어 있습니다", step: 2 });
+
+  draft.rows.forEach((r, i) => {
+    if (r.kind !== "normal") return;
+    const no = i + 1;
+    if (!r.stepName.trim()) blanks.push({ label: `${no}번 행 — 공정/작업순서 미입력`, step: 3 });
+    if (!r.hazardCode) blanks.push({ label: `${no}번 행 — 위험분류 미선택`, step: 3 });
+    if (!r.factor.trim()) blanks.push({ label: `${no}번 행 — 위험요인 미입력`, step: 3 });
+    if (r.actions.length + r.customActions.filter(Boolean).length === 0) {
+      blanks.push({ label: `${no}번 행 — 현재 조치사항 미입력`, step: 3 });
+    }
+    if (r.s === null || r.p === null) blanks.push({ label: `${no}번 행 — 강도·빈도 점수 미입력`, step: 3 });
+    const risk = riskOf(r.p, r.s);
+    if (risk !== null && risk >= threshold && !r.measure.trim()) {
+      blanks.push({ label: `${no}번 행 — 허용 불가능인데 위험감소대책 미입력`, step: 3 });
+    }
+  });
+
+  return blanks;
+}
+
 function StepReview({
   draft,
   threshold,
+  onJump,
 }: {
   draft: JobAssessment;
   threshold: number;
+  onJump: (step: number) => void;
 }) {
   const rows = scoredRows(draft);
   const over = rows.filter((r) => r.p && r.s && r.p * r.s >= threshold);
-  const noMeasure = over.filter((r) => !r.measure.trim());
+  const blanks = findBlanks(draft, threshold);
 
   return (
     <div className="space-y-4">
@@ -1307,16 +1426,34 @@ function StepReview({
             <strong className={over.length ? "text-destructive" : undefined}>{over.length}건</strong> · 참여자{" "}
             <strong>{draft.participants.length}명</strong> · 작업 전 준비 <strong>{draft.preJobs.length}항목</strong>
           </p>
-          {noMeasure.length > 0 && (
-            <p className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2 text-destructive">
-              <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-              <span>
-                허용 불가능인데 감소대책이 비어 있는 항목이 {noMeasure.length}건 있습니다 (
-                {noMeasure.map((r) => r.stepName || "이름 없는 작업").join(", ")}). 3단계에서 채워 주세요.
-              </span>
-            </p>
-          )}
         </CardContent>
+      </Card>
+
+      <Card className="shadow-xs">
+        <CardHeader>
+          <CardTitle>빈칸 점검</CardTitle>
+          <CardDescription>
+            {blanks.length > 0
+              ? "눌러서 바로 채우러 갑니다."
+              : "확인된 빈칸이 없습니다."}
+          </CardDescription>
+        </CardHeader>
+        {blanks.length > 0 && (
+          <CardContent className="space-y-1">
+            {blanks.map((b, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onJump(b.step)}
+                className="flex w-full items-center gap-2 rounded-xl bg-destructive/10 px-3 py-2 text-left text-sm text-destructive transition-colors hover:bg-destructive/15"
+              >
+                <TriangleAlert className="size-3.5 shrink-0" />
+                <span className="flex-1">{b.label}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">{b.step}단계로 이동 →</span>
+              </button>
+            ))}
+          </CardContent>
+        )}
       </Card>
     </div>
   );
