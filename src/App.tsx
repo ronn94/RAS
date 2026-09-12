@@ -2,7 +2,7 @@ import * as React from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui";
 import { Shell, type ViewKey } from "@/components/shell";
-import { AssessmentsPage } from "@/pages/Assessments";
+import { AssessmentTabs } from "@/pages/AssessmentTabs";
 import { HighRiskPage } from "@/pages/HighRisk";
 import { HazardInfoPage } from "@/pages/HazardInfo";
 import { InspectionsPage } from "@/pages/Inspections";
@@ -104,7 +104,7 @@ function Router({ identity }: { identity: Identity }) {
           }}
         />
       )}
-      {activeView === "assessments" && <AssessmentsPage openId={openId} onOpen={setOpenId} />}
+      {activeView === "assessments" && <AssessmentTabs openId={openId} onOpen={setOpenId} />}
       {activeView === "highrisk" && <HighRiskPage />}
       {activeView === "hazardinfo" && <HazardInfoPage openId={openId} onOpen={setOpenId} />}
       {activeView === "inspections" && <InspectionsPage openId={openId} onOpen={setOpenId} />}

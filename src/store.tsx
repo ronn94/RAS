@@ -21,6 +21,7 @@ import {
   type TrainingKind,
 } from "@/lib/types";
 import { emptyAnnualPlan, copyPlanForYear, type AnnualPlan } from "@/lib/annualPlan";
+import { emptyJobAssessment, type JobAssessment } from "@/lib/jobAssessment";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
 import type { Identity } from "@/lib/auth";
 
@@ -79,6 +80,12 @@ type Ctx = {
   createAnnualPlan: (year: number) => AnnualPlan;
   saveAnnualPlan: (v: AnnualPlan) => Promise<void>;
   removeAnnualPlan: (id: string) => Promise<void>;
+  jobAssessments: JobAssessment[];
+  createJobAssessment: () => JobAssessment;
+  saveJobAssessment: (v: JobAssessment) => Promise<void>;
+  removeJobAssessment: (id: string) => Promise<void>;
+  /** 참여자 한 명의 서명만 바꾼다 — 게스트도 할 수 있는 유일한 쓰기다 */
+  signJobAssessment: (id: string, participantId: string, image: string | null) => Promise<JobAssessment>;
 };
 
 /* ── 이관으로 묶인 항목 동기화 ────────────────────────────────
@@ -198,6 +205,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   const [priorityActions, setPriorityActions] = React.useState<PriorityAction[]>([]);
   const [trainings, setTrainings] = React.useState<Training[]>([]);
   const [annualPlans, setAnnualPlans] = React.useState<AnnualPlan[]>([]);
+  const [jobAssessments, setJobAssessments] = React.useState<JobAssessment[]>([]);
   const [settings, setSettings] = React.useState<AppSettings>(DEFAULT_SETTINGS);
   const [lastBackup, setLastBackup] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -221,6 +229,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       setPriorityActions(await db.listPriorityActions());
       setTrainings(await db.listTrainings());
       setAnnualPlans(await db.listAnnualPlans());
+      setJobAssessments(await db.listJobAssessments());
       const s = await db.loadSettings();
       setSettings(s);
       setRiskThreshold(s.risk.threshold);
@@ -498,6 +507,33 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
     setAnnualPlans((prev) => prev.filter((x) => x.id !== id));
   }, []);
 
+  const saveJobAssessment = React.useCallback(async (v: JobAssessment) => {
+    await db.putJobAssessment(v);
+    setJobAssessments((prev) => {
+      const next = prev.some((x) => x.id === v.id)
+        ? prev.map((x) => (x.id === v.id ? { ...v, updatedAt: Date.now() } : x))
+        : [{ ...v, updatedAt: Date.now() }, ...prev];
+      return [...next].sort((x, y) => y.updatedAt - x.updatedAt);
+    });
+  }, []);
+
+  /** 다른 서식과 같이 화면에서만 만들고 '등록'을 눌러야 서버에 남는다 */
+  const createJobAssessment = React.useCallback(
+    () => emptyJobAssessment({ approver: settings.org.approver, process: settings.processes[0] }),
+    [settings.org.approver, settings.processes],
+  );
+
+  const removeJobAssessment = React.useCallback(async (id: string) => {
+    await db.deleteJobAssessment(id);
+    setJobAssessments((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
+  const signJobAssessment = React.useCallback(async (id: string, participantId: string, image: string | null) => {
+    const next = await db.signJobAssessment(id, participantId, image);
+    setJobAssessments((prev) => prev.map((x) => (x.id === next.id ? next : x)));
+    return next;
+  }, []);
+
   const updateSettings = React.useCallback(
     async (patch: Partial<AppSettings>) => {
       const next = { ...settings, ...patch, updatedAt: Date.now() };
@@ -568,6 +604,11 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       createAnnualPlan,
       saveAnnualPlan,
       removeAnnualPlan,
+      jobAssessments,
+      createJobAssessment,
+      saveJobAssessment,
+      removeJobAssessment,
+      signJobAssessment,
       settings,
       updateSettings,
       lastBackup,
@@ -618,6 +659,11 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       createAnnualPlan,
       saveAnnualPlan,
       removeAnnualPlan,
+      jobAssessments,
+      createJobAssessment,
+      saveJobAssessment,
+      removeJobAssessment,
+      signJobAssessment,
       settings,
       updateSettings,
       lastBackup,

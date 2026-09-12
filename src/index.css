@@ -883,6 +883,134 @@
   display: block;
 }
 
+/* ── 작업 위험성평가 (원본 프로그램 ver.3.3 · A4 가로) ──────────
+   세부내역이 16칸이라 가로로 찍는다. 구성은 원본과 같이 개요·작업전준비·세부내역 3단이고
+   다른 인쇄물과 맞추려고 결재란을 더했다. */
+.sheet-job {
+  font-size: 7.5pt;
+  line-height: 1.2;
+}
+.sheet-job .print-page {
+  box-sizing: border-box;
+  width: 267mm; /* A4 가로 297mm - 좌우 여백 15mm */
+}
+.sheet-job table {
+  margin-bottom: 2.5mm;
+}
+.sheet-job :is(th, td) {
+  padding: 0.6mm 1mm;
+}
+/* 결재란은 다른 인쇄물과 같은 높이 — 라벨 8mm + 서명칸 12mm */
+.sheet-job .head :is(th, td) {
+  height: 8mm;
+}
+.sheet-job .head .sign {
+  height: 12mm;
+}
+.sheet-job .head-title {
+  text-align: center;
+  font-size: 16pt;
+  font-weight: 700;
+}
+.sheet-job .head-title .eval-type {
+  margin-left: 4mm;
+  border: 0.75pt solid #000;
+  padding: 0.6mm 2mm;
+  font-size: 9pt;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.sheet-job .head-title .page-no {
+  font-size: 9pt;
+  font-weight: 400;
+  color: #666;
+}
+.sheet-job .vert {
+  line-height: 1.1;
+}
+/* 단 제목 */
+.sheet-job .sec {
+  margin: 3mm 0 1.5mm;
+  font-size: 10pt;
+  font-weight: 700;
+}
+.sheet-job .meta td {
+  height: 7mm;
+}
+/* 평가자·승인자 칸은 오른쪽에 (인) 자리를 남긴다 */
+.sheet-job .seal::after {
+  content: "(인)";
+  float: right;
+  font-weight: 700;
+}
+.sheet-job .strong {
+  font-weight: 700;
+}
+.sheet-job .wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.sheet-job .tiny {
+  font-size: 6.5pt;
+}
+/* 체크 항목은 줄바꿈으로 이어 붙인다(칸 안에서 목록처럼 보이게) */
+.sheet-job .chk {
+  display: block;
+}
+.sheet-job .prejob td {
+  height: 6.5mm;
+  width: 33.33%;
+}
+.sheet-job .prejob .box,
+.sheet-job .signs .box {
+  font-size: 9pt;
+}
+/* 참여자 서명표 — 받아 둔 서명이 있으면 찍고 없으면 빈 칸으로 둬 수기로 받는다 */
+.sheet-job .signs .sign-cell {
+  width: 14%;
+  text-align: center;
+  vertical-align: top;
+  padding: 0.5mm;
+}
+.sheet-job .signs .who {
+  font-size: 6.5pt;
+  color: #333;
+}
+.sheet-job .signs img {
+  width: 100%;
+  height: 9mm;
+  object-fit: contain;
+  display: block;
+}
+.sheet-job .signs .blank {
+  height: 9mm;
+}
+/* 세부내역 */
+.sheet-job .matrix {
+  table-layout: fixed;
+}
+.sheet-job .matrix :is(th, td) {
+  vertical-align: top;
+}
+.sheet-job .matrix th {
+  font-size: 6.5pt;
+  text-align: center;
+  vertical-align: middle;
+}
+.sheet-job .matrix td {
+  height: 9mm;
+}
+.sheet-job .matrix .deny {
+  color: #c00;
+  font-weight: 700;
+}
+.sheet-job .matrix .allow {
+  color: #060;
+}
+.sheet-job .matrix .finish td {
+  background: #f0f0f0;
+}
+
 /* ── 위험성평가 연간계획표 (원본 SSI-602-02 · A4 가로 1장) ──────
    가로 22칸 × 세로 32줄(머리 2 + 15항목 × 2)을 한 장에 넣어야 해서
    글자와 줄 높이를 아주 작게 잡는다. 계획은 ○, 실적은 ●로 구분한다. */

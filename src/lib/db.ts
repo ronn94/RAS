@@ -9,6 +9,7 @@
  */
 import type { Assessment, HazardInfo, Inspection, PriorityAction, StopWork, Survey, Training } from "./types";
 import type { AnnualPlan } from "./annualPlan";
+import type { JobAssessment } from "./jobAssessment";
 import { withDefaults, type AppSettings } from "./settings";
 
 /** 세션이 끊겼을 때(401) store.tsx가 로그인 화면으로 되돌릴 수 있도록 알린다.
@@ -89,6 +90,19 @@ export const putAnnualPlan = (v: AnnualPlan) =>
   api<AnnualPlan>(`/annualplans/${v.id}`, { method: "PUT", body: JSON.stringify(v) });
 export const deleteAnnualPlan = (id: string) => api(`/annualplans/${id}`, { method: "DELETE" });
 
+/* ── 작업 위험성평가 ───────────────────────────────────── */
+export const listJobAssessments = () => api<JobAssessment[]>("/jobassessments");
+export const putJobAssessment = (v: JobAssessment) =>
+  api<JobAssessment>(`/jobassessments/${v.id}`, { method: "PUT", body: JSON.stringify(v) });
+export const deleteJobAssessment = (id: string) => api(`/jobassessments/${id}`, { method: "DELETE" });
+
+/** 참여자 한 명의 서명만 남긴다 — 실시서와 같은 규칙(게스트도 쓸 수 있는 유일한 쓰기) */
+export const signJobAssessment = (id: string, participantId: string, image: string | null) =>
+  api<JobAssessment>(`/jobassessments/${id}/sign`, {
+    method: "POST",
+    body: JSON.stringify({ participantId, image }),
+  });
+
 /* ── 푸시 알림 구독 ──────────────────────────────────────── */
 export const getPushVapidKey = () => api<{ publicKey: string }>("/push/vapid-key");
 export const putPushSubscription = (sub: PushSubscriptionJSON) =>
@@ -157,13 +171,14 @@ export async function storageUsage() {
 
 /* ── 고아 사진 정리 ─────────────────────────────────────── */
 export async function cleanupOrphanPhotos(): Promise<number> {
-  const [assessments, inspections, surveys, stopWorks, priorityActions, trainings] = await Promise.all([
+  const [assessments, inspections, surveys, stopWorks, priorityActions, trainings, jobAssessments] = await Promise.all([
     listAssessments(),
     listInspections(),
     listSurveys(),
     listStopWorks(),
     listPriorityActions(),
     listTrainings(),
+    listJobAssessments(),
   ]);
   const used: string[] = [];
   for (const a of assessments) {
@@ -191,6 +206,10 @@ export async function cleanupOrphanPhotos(): Promise<number> {
   for (const v of trainings) {
     used.push(...v.photos);
     for (const a of v.attendees) if (a.sign) used.push(a.sign);
+  }
+  // 작업평가도 참여자 서명이 사람 수만큼 있다
+  for (const v of jobAssessments) {
+    for (const p of v.participants) if (p.sign) used.push(p.sign);
   }
   const { removed } = await api<{ removed: number }>("/photos/cleanup", {
     method: "POST",
