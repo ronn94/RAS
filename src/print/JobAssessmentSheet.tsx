@@ -213,11 +213,11 @@ export function JobAssessmentSheet({ job: v }: { job: JobAssessment }) {
   /** el 안의 제목·개요·표머리·행 높이를 실측해 쪽을 나눈다 — 1단계(예측)와 3단계(검증)가 함께 쓴다 */
   const computeChunks = (el: HTMLElement, rowsPerTr: JobRow[]): JobRow[][] => {
     const height = (node: Element | null) => node?.getBoundingClientRect().height ?? 0;
-    // 제목은 모든 쪽에 반복해서 찍히므로 매 쪽 예산에서 빼야 한다(빠뜨리면 1쪽이 넘친다)
+    // 제목은 1쪽에만 찍는다 — 1쪽 예산에서만 빼면 된다(2쪽부터는 표 머리만 반복한다)
     const titleHeight = height(el.querySelector(".sheet-title"));
     const overviewHeight =
       titleHeight + height(el.querySelector(".overview")) + height(el.querySelector(".matrix thead"));
-    const continuedHeight = titleHeight + height(el.querySelector(".matrix thead"));
+    const continuedHeight = height(el.querySelector(".matrix thead"));
     const budget = (PAGE_CONTENT_MM - SAFETY_MM) * PX_PER_MM;
 
     const trs = [...el.querySelectorAll<HTMLTableRowElement>(".matrix tbody tr")];
@@ -299,17 +299,23 @@ export function JobAssessmentSheet({ job: v }: { job: JobAssessment }) {
       <style>{"@page{size:A4 landscape;margin:15mm}"}</style>
       {pages.map((pageRows, p) => (
         <div className="print-page" key={p}>
-          <div className="sheet-title">
-            작업 위험성평가
-            <span className="eval-type">{v.evalType}</span>
-            {pages.length > 1 ? (
-              <span className="page-no">
-                {" "}
-                ({p + 1}/{pages.length})
-              </span>
-            ) : null}
-          </div>
-          {p === 0 && <OverviewSections v={v} />}
+          {p === 0 && (
+            <div className="sheet-title">
+              작업 위험성평가
+              <span className="eval-type">{v.evalType}</span>
+              {pages.length > 1 ? (
+                <span className="page-no">
+                  {" "}
+                  ({p + 1}/{pages.length})
+                </span>
+              ) : null}
+            </div>
+          )}
+          {p === 0 && (
+            <div className="overview">
+              <OverviewSections v={v} />
+            </div>
+          )}
           <MatrixTable rows={pageRows} startNo={startNos[p]} threshold={threshold} settings={settings} />
         </div>
       ))}
