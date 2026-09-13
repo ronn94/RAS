@@ -10,7 +10,7 @@
 import type { Assessment, HazardInfo, Inspection, PriorityAction, StopWork, Survey, Training } from "./types";
 import type { AnnualPlan } from "./annualPlan";
 import type { JobAssessment } from "./jobAssessment";
-import type { Tbm } from "./routine";
+import { withTbmDefaults, type Tbm } from "./routine";
 import { withDefaults, type AppSettings } from "./settings";
 
 /** 세션이 끊겼을 때(401) store.tsx가 로그인 화면으로 되돌릴 수 있도록 알린다.
@@ -106,17 +106,19 @@ export const signJobAssessment = (id: string, target: string, image: string | nu
   });
 
 /* ── 상시평가 (TBM · 일일교육) ─────────────────────────── */
-export const listRoutines = () => api<Tbm[]>("/routineassessments");
-export const putRoutine = (v: Tbm) =>
-  api<Tbm>(`/routineassessments/${v.id}`, { method: "PUT", body: JSON.stringify(v) });
+export const listRoutines = async () => (await api<Tbm[]>("/routineassessments")).map(withTbmDefaults);
+export const putRoutine = async (v: Tbm) =>
+  withTbmDefaults(await api<Tbm>(`/routineassessments/${v.id}`, { method: "PUT", body: JSON.stringify(v) }));
 export const deleteRoutine = (id: string) => api(`/routineassessments/${id}`, { method: "DELETE" });
 
 /** target은 참석자 id, 또는 TBM 리더를 가리키는 "leader" */
-export const signRoutine = (id: string, target: string, image: string | null) =>
-  api<Tbm>(`/routineassessments/${id}/sign`, {
-    method: "POST",
-    body: JSON.stringify({ target, image }),
-  });
+export const signRoutine = async (id: string, target: string, image: string | null) =>
+  withTbmDefaults(
+    await api<Tbm>(`/routineassessments/${id}/sign`, {
+      method: "POST",
+      body: JSON.stringify({ target, image }),
+    }),
+  );
 
 /* ── 푸시 알림 구독 ──────────────────────────────────────── */
 export const getPushVapidKey = () => api<{ publicKey: string }>("/push/vapid-key");

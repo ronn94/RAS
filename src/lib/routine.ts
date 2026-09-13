@@ -372,3 +372,32 @@ export const signedTbmParticipants = (v: Tbm) => v.participants.filter((p) => p.
 export function tbmFullySigned(v: Tbm): boolean {
   return Boolean(v.leaderSign) && v.participants.length > 0 && v.participants.every((p) => p.sign);
 }
+
+/**
+ * 서버에서 읽어 온 TBM을 지금의 모양으로 맞춘다.
+ *
+ * TBM 서식은 쓰면서 칸이 늘었다(작업명 토글, 작업유형 …). 먼저 저장된 기록에는 그 칸이
+ * 아예 없어서, 화면이 `workNames`를 펼치는 순간 터지고 **상시평가 탭 전체가 하얗게** 됐다.
+ * 값이 빠졌다고 기록을 버릴 수는 없으니, 읽는 길목에서 한 번 채워 넣는다.
+ */
+export function withTbmDefaults(v: Tbm): Tbm {
+  const base = emptyTbm();
+  return {
+    ...v,
+    sameWorkDate: v.sameWorkDate ?? true,
+    riskAssessmentDone: v.riskAssessmentDone ?? true,
+    jobAssessmentId: v.jobAssessmentId ?? null,
+    team: v.team ?? "",
+    location: v.location ?? "",
+    otherLocation: v.otherLocation ?? "",
+    workTypes: v.workTypes ?? [],
+    workNames: v.workNames ?? [],
+    workDescription: v.workDescription ?? "",
+    risks: v.risks ?? [],
+    measures: v.measures ?? [],
+    pmis: { ...base.pmis, ...(v.pmis ?? {}) },
+    leaderName: v.leaderName ?? "",
+    participants: (v.participants ?? []).map((p) => ({ ...p, name: p.name ?? "", external: !!p.external })),
+    removalPerson: v.removalPerson ?? "",
+  };
+}
