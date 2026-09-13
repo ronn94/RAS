@@ -188,15 +188,17 @@ export async function storageUsage() {
 
 /* ── 고아 사진 정리 ─────────────────────────────────────── */
 export async function cleanupOrphanPhotos(): Promise<number> {
-  const [assessments, inspections, surveys, stopWorks, priorityActions, trainings, jobAssessments] = await Promise.all([
-    listAssessments(),
-    listInspections(),
-    listSurveys(),
-    listStopWorks(),
-    listPriorityActions(),
-    listTrainings(),
-    listJobAssessments(),
-  ]);
+  const [assessments, inspections, surveys, stopWorks, priorityActions, trainings, jobAssessments, routines] =
+    await Promise.all([
+      listAssessments(),
+      listInspections(),
+      listSurveys(),
+      listStopWorks(),
+      listPriorityActions(),
+      listTrainings(),
+      listJobAssessments(),
+      listRoutines(),
+    ]);
   const used: string[] = [];
   for (const a of assessments) {
     for (const r of a.rows) {
@@ -224,8 +226,15 @@ export async function cleanupOrphanPhotos(): Promise<number> {
     used.push(...v.photos);
     for (const a of v.attendees) if (a.sign) used.push(a.sign);
   }
-  // 작업평가도 참여자 서명이 사람 수만큼 있다
+  // 작업평가도 참여자 서명이 사람 수만큼 있고, 평가자·승인자 서명도 참여자와 별개 칸이다
   for (const v of jobAssessments) {
+    for (const p of v.participants) if (p.sign) used.push(p.sign);
+    if (v.evaluatorSign) used.push(v.evaluatorSign);
+    if (v.approvedBySign) used.push(v.approvedBySign);
+  }
+  // 상시평가(TBM)도 리더·참석자 서명이 R2 사진이다
+  for (const v of routines) {
+    if (v.leaderSign) used.push(v.leaderSign);
     for (const p of v.participants) if (p.sign) used.push(p.sign);
   }
   const { removed } = await api<{ removed: number }>("/photos/cleanup", {
