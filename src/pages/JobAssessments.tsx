@@ -225,7 +225,7 @@ export function JobAssessmentsPage({
                       <TR key={v.id} className="cursor-pointer" onClick={() => onOpen(v.id)}>
                         <TD className="tabular-nums font-medium">{v.date || "-"}</TD>
                         <TD className="text-muted-foreground">{v.team || "-"}</TD>
-                        <TD className="align-top text-center text-muted-foreground">
+                        <TD className="text-center text-muted-foreground">
                           <div className="flex flex-col items-center leading-tight">
                             <span className="whitespace-nowrap">{v.mainCategory || "-"}</span>
                             <span className="whitespace-nowrap">{v.subCategory || "-"}</span>
