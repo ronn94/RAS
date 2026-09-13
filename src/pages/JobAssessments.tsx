@@ -207,7 +207,8 @@ export function JobAssessmentsPage({
                     <TH className="w-24">평가일자</TH>
                     <TH className="w-16">구분</TH>
                     <TH className="w-24 text-center">분류</TH>
-                    <TH>작업내용</TH>
+                    {/* 모바일 화면에서는 기본 폭(대략 64px)의 3배(192px)로 넓힌다 — 큰 화면에선 원래대로 자동 폭 */}
+                    <TH className="min-w-48 sm:min-w-0">작업내용</TH>
                     <TH className="w-24 text-center">JRA</TH>
                     <TH className="w-20">평가자</TH>
                     <TH className="w-20 text-center">서명</TH>
