@@ -203,6 +203,8 @@ export type JobAssessment = {
   approver: { charge: string; review: string; approve: string };
   /** 잠금 — 관리자가 걸면 게스트는 고치지도, 서명하지도 못한다 */
   locked?: boolean;
+  /** 이 잠금이 '승인 서명 접수'로 저절로 걸린 것인가 — 관리자가 손수 건 잠금과 구별한다 */
+  autoLocked?: boolean;
   updatedAt: number;
 };
 

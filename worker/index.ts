@@ -16,7 +16,7 @@ import { login, loginGuest, logout, readSession } from "./auth";
 import { DEFAULT_SETTINGS, withDefaults, type AppSettings } from "../src/lib/settings";
 import type { PriorityAction, StopWork, Survey, Training, TrainingAttendee } from "../src/lib/types";
 import type { JobAssessment, JobParticipant } from "../src/lib/jobAssessment";
-import type { Tbm, TbmParticipant } from "../src/lib/routine";
+import { tbmFullySigned, type Tbm, type TbmParticipant } from "../src/lib/routine";
 import type { Bindings } from "./bindings";
 import { runDailyDigest } from "./digest";
 import { sendPush } from "./push";
@@ -301,6 +301,31 @@ app.route("/api/annualplans", collection("annual_plans"));
    기본 켜짐) — 이 문서는 애초에 작업 현장에서 근로자가 직접 쓰고 관리하는 것이 목적이다.
    그래도 서명은 문서 전체를 덮어쓰는 PUT이 아니라 전용 경로로만 받는다 — 관리자가
    본문을 고치는 동안 온 서명이 저장 한 번에 날아가지 않게 하려는 것이다. */
+/**
+ * 사람이 잠금 스위치를 직접 움직였으면 '저절로 걸린 잠금' 표시를 뗀다 — 그래야
+ * 나중에 서명 하나가 지워져도 관리자가 건 잠금을 우리가 마음대로 풀지 않는다.
+ */
+function clearManualLock<T extends { locked?: boolean; autoLocked?: boolean }>(next: T, stored: T): T {
+  return !!next.locked === !!stored.locked ? next : { ...next, autoLocked: false };
+}
+
+/**
+ * 서명 접수가 끝난 문서는 저절로 잠근다 — 다 받은 서류에 나중에 손이 닿아
+ * 기록이 달라지는 일을 막는다. 지운 서명 때문에 다시 미완이 되면 풀어 준다.
+ *
+ * 관리자가 손수 건 잠금은 건드리지 않는다(autoLocked가 아니다). 잠금 해제도
+ * 관리자 몫이라, 여기서 푸는 것은 **저절로 걸었던 잠금**뿐이다.
+ */
+function applyAutoLock(doc: { locked?: boolean; autoLocked?: boolean }, complete: boolean): void {
+  if (complete) {
+    doc.locked = true;
+    doc.autoLocked = true;
+  } else if (doc.autoLocked) {
+    doc.locked = false;
+    doc.autoLocked = false;
+  }
+}
+
 app.post("/api/jobassessments/:id/sign", requirePermission("jobAssessment"), async (c) => {
   const id = c.req.param("id");
   // target: 참여자 id, 또는 평가자·승인자를 가리키는 "evaluator"/"approver"
@@ -362,6 +387,8 @@ app.post("/api/jobassessments/:id/sign", requirePermission("jobAssessment"), asy
     await c.env.ras_db.prepare("DELETE FROM photo_meta WHERE id = ?1").bind(previous).run();
   }
 
+  applyAutoLock(doc, !!doc.approvedBySign);
+
   doc.updatedAt = Date.now();
   await c.env.ras_db
     .prepare("UPDATE job_assessments SET data = ?2, updated_at = ?3 WHERE id = ?1")
@@ -391,7 +418,7 @@ app.route(
       next.approvedBySign = (stored as JobAssessment).approvedBySign;
       next.approvedBySignedAt = (stored as JobAssessment).approvedBySignedAt;
     }
-    return next;
+    return clearManualLock(next, stored as JobAssessment);
   }),
 );
 
@@ -452,6 +479,8 @@ app.post("/api/routineassessments/:id/sign", requirePermission("routine"), async
     await c.env.ras_db.prepare("DELETE FROM photo_meta WHERE id = ?1").bind(previous).run();
   }
 
+  applyAutoLock(doc, tbmFullySigned(doc));
+
   doc.updatedAt = Date.now();
   await c.env.ras_db
     .prepare("UPDATE routine_assessments SET data = ?2, updated_at = ?3 WHERE id = ?1")
@@ -474,7 +503,7 @@ app.route(
       next.leaderSign = (stored as Tbm).leaderSign;
       next.leaderSignedAt = (stored as Tbm).leaderSignedAt;
     }
-    return next;
+    return clearManualLock(next, stored as Tbm);
   }),
 );
 

@@ -236,7 +236,7 @@ export function TbmsPage({ openId, onOpen }: { openId: string | null; onOpen: (i
                               !canRoutine
                                 ? "수정 권한이 없습니다 (설정 → 게스트 권한)"
                                 : v.locked && !isAdmin
-                                  ? "관리자가 잠근 문서입니다"
+                                  ? "잠긴 문서입니다 — 서명 접수가 끝나면 저절로 잠깁니다"
                                   : "작성화면에서 고칩니다"
                             }
                           >
@@ -252,7 +252,7 @@ export function TbmsPage({ openId, onOpen }: { openId: string | null; onOpen: (i
                             title={
                               !isAdmin
                                 ? v.locked
-                                  ? "관리자가 잠근 문서입니다"
+                                  ? "잠긴 문서입니다 — 서명 접수가 끝나면 저절로 잠깁니다"
                                   : "잠금은 관리자만 할 수 있습니다"
                                 : v.locked
                                   ? "잠금 해제 — 다시 서명을 받을 수 있게 합니다"

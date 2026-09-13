@@ -15,7 +15,7 @@ import { photoUrl } from "@/lib/db";
 import {
   TBM_PMIS_GROUPS,
   TBM_WORK_TYPES,
-  measureValue,
+  tbmMeasureLines,
   tbmWorkLine,
   type Tbm,
   type TbmParticipant,
@@ -36,7 +36,6 @@ const check = (on: boolean) => (on ? "☑" : "☐");
 /** 개요표 — 1쪽에만 싣는다 */
 function Overview({ v, risks }: { v: Tbm; risks: TbmRisk[] }) {
   const selected = new Set(v.risks);
-  const chosenMeasures = new Set(v.measures);
   const place = v.location === "기타" ? `기타(${v.otherLocation})` : v.location;
 
   return (
@@ -99,18 +98,11 @@ function Overview({ v, risks }: { v: Tbm; risks: TbmRisk[] }) {
             <td className="lbl">안전대책</td>
             <td colSpan={3}>
               <div className="measure-grid">
-                {risks
-                  .filter((r) => selected.has(r.key))
-                  .flatMap((r) =>
-                    r.measures
-                      .map((m, i) => ({ m, value: measureValue(r.key, i), label: r.label }))
-                      .filter((x) => chosenMeasures.has(x.value))
-                      .map((x) => (
-                        <div key={x.value}>
-                          ☑ [{x.label}] {x.m}
-                        </div>
-                      )),
-                  )}
+                {tbmMeasureLines(v, risks).map((x) => (
+                  <div key={x.key}>
+                    ☑ [{x.label}] {x.text}
+                  </div>
+                ))}
               </div>
             </td>
           </tr>
@@ -242,7 +234,7 @@ export function TbmSheet({ tbm: v }: { tbm: Tbm }) {
     return rows.length > 0 ? rows : [[]];
   }, [v.participants]);
 
-  const signature = JSON.stringify([v.participants, v.risks, v.measures, v.workDescription]);
+  const signature = JSON.stringify([v.participants, v.risks, v.measures, v.customMeasures, v.workDescription]);
   React.useLayoutEffect(() => {
     setPages(null);
     setVerified(false);

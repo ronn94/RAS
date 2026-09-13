@@ -305,7 +305,7 @@ export function JobAssessmentDetail({
       {readOnly && (
         <div className="no-print flex items-center gap-2 rounded-2xl bg-muted px-4 py-2.5 text-sm text-muted-foreground">
           <Lock className="size-3.5 shrink-0" />
-          관리자가 잠근 문서입니다. 내용은 볼 수 있지만 고치거나 서명할 수 없습니다.
+          잠긴 문서입니다 — 승인 서명까지 받으면 저절로 잠깁니다. 내용은 볼 수 있지만 고치거나 서명할 수 없습니다.
         </div>
       )}
 

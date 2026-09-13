@@ -28,6 +28,7 @@ import {
   TBM_PMIS_GROUPS,
   TBM_WORK_TYPES,
   emptyTbmParticipant,
+  hasMeasureFor,
   measureValue,
   tbmMissing,
   type Tbm,
@@ -76,7 +77,12 @@ export function TbmDetail({
   const toggleRisk = (key: string) =>
     setDraft((d) =>
       d.risks.includes(key)
-        ? { ...d, risks: d.risks.filter((x) => x !== key), measures: d.measures.filter((m) => !m.startsWith(`${key}:`)) }
+        ? {
+            ...d,
+            risks: d.risks.filter((x) => x !== key),
+            measures: d.measures.filter((m) => !m.startsWith(`${key}:`)),
+            customMeasures: Object.fromEntries(Object.entries(d.customMeasures).filter(([k]) => k !== key)),
+          }
         : { ...d, risks: [...d.risks, key] },
     );
 
@@ -380,7 +386,8 @@ export function TbmDetail({
           <CardHeader>
             <CardTitle>위험요인과 안전대책</CardTitle>
             <CardDescription>
-              위험요인을 고르면 그 아래에 대책 후보가 펼쳐집니다. 고른 위험요인마다 대책을 하나 이상 골라야 합니다.
+              위험요인을 고르면 그 아래에 대책 후보가 펼쳐집니다. 고른 위험요인마다 후보를 하나 이상 고르거나, 대책을
+              직접 적어야 합니다.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -407,7 +414,7 @@ export function TbmDetail({
                 {risks
                   .filter((r) => draft.risks.includes(r.key))
                   .map((r) => {
-                    const picked = draft.measures.some((m) => m.startsWith(`${r.key}:`));
+                    const picked = hasMeasureFor(draft, r.key);
                     return (
                       <div key={r.key} className="rounded-xl bg-muted/40 p-3">
                         <div className="mb-2 flex items-center gap-2">
@@ -435,10 +442,20 @@ export function TbmDetail({
                           })}
                           {r.measures.length === 0 && (
                             <p className="text-xs text-muted-foreground">
-                              이 위험요인에는 대책 후보가 없습니다(설정 → TBM 위험요인에서 추가하세요).
+                              이 위험요인에는 대책 후보가 없습니다 — 아래 칸에 직접 적으세요(설정 → TBM 위험요인에서
+                              후보를 넣을 수도 있습니다).
                             </p>
                           )}
                         </div>
+                        {/* 후보에 없는 대책은 여기 적는다 — 한 줄에 하나씩, 인쇄물에도 줄마다 한 항목으로 나온다 */}
+                        <Textarea
+                          className="mt-2 bg-background"
+                          rows={2}
+                          disabled={!canWrite}
+                          placeholder="직접 적을 대책 (한 줄에 하나씩)"
+                          value={draft.customMeasures[r.key] ?? ""}
+                          onChange={(e) => patch({ customMeasures: { ...draft.customMeasures, [r.key]: e.target.value } })}
+                        />
                       </div>
                     );
                   })}

@@ -281,6 +281,8 @@ export type Tbm = {
   /* 위험요인·대책 */
   risks: string[]; // TbmRisk.key 목록
   measures: string[]; // "key:index" 형태 — 위험요인을 지우면 딸린 대책도 함께 지운다
+  /** 위험요인별로 직접 적은 대책 — 후보에 없는 대책을 그때그때 쓴다(위험요인 key → 글) */
+  customMeasures: Record<string, string>;
   /* PMIS */
   pmis: Record<string, string>;
   /* 서명 */
@@ -291,6 +293,8 @@ export type Tbm = {
   removalPerson: string;
   /** 잠금 — 관리자가 걸면 게스트는 고치지도, 서명하지도 못한다 */
   locked?: boolean;
+  /** 이 잠금이 '서명 완료'로 저절로 걸린 것인가 — 관리자가 손수 건 잠금과 구별한다 */
+  autoLocked?: boolean;
   updatedAt: number;
 };
 
@@ -317,6 +321,7 @@ export function emptyTbm(defaults: { location?: string } = {}): Tbm {
     workDescription: "",
     risks: [],
     measures: [],
+    customMeasures: {},
     // 기본값은 모두 '이상 없음' 쪽(무·양)이다 — 문제가 있는 항목만 바꾼다
     pmis: Object.fromEntries(TBM_PMIS_ITEMS.map((item) => [item.key, item.first])),
     leaderName: "",
@@ -330,8 +335,13 @@ export function emptyTbm(defaults: { location?: string } = {}): Tbm {
 export const measureValue = (riskKey: string, index: number) => `${riskKey}:${index}`;
 
 /** 고른 위험요인마다 대책을 하나 이상 골랐는가 — 원본 프로그램과 같은 필수 규칙이다 */
-export function everyRiskHasMeasure(v: Pick<Tbm, "risks" | "measures">): boolean {
-  return v.risks.every((key) => v.measures.some((m) => m.startsWith(`${key}:`)));
+export function everyRiskHasMeasure(v: Pick<Tbm, "risks" | "measures" | "customMeasures">): boolean {
+  return v.risks.every((key) => hasMeasureFor(v, key));
+}
+
+/** 그 위험요인에 대책이 하나라도 있는가 — 고른 후보든, 직접 적은 글이든 인정한다 */
+export function hasMeasureFor(v: Pick<Tbm, "measures" | "customMeasures">, key: string): boolean {
+  return v.measures.some((m) => m.startsWith(`${key}:`)) || !!(v.customMeasures?.[key] ?? "").trim();
 }
 
 /**
@@ -371,6 +381,28 @@ export function tbmWorkParts(v: Pick<Tbm, "workNames" | "workDescription">): str
  */
 export const tbmWorkLine = (v: Pick<Tbm, "workNames" | "workDescription">) => tbmWorkParts(v).join(" / ");
 
+/**
+ * 인쇄물의 '안전대책' 칸에 찍을 줄 — 위험요인 순서대로, 고른 후보를 먼저 두고
+ * 직접 적은 글을 그 뒤에 붙인다. 직접 적은 글은 여러 줄로 나눠 써도 한 줄씩 나온다.
+ */
+export function tbmMeasureLines(v: Tbm, risks: TbmRisk[]): { key: string; label: string; text: string }[] {
+  const selected = new Set(v.risks);
+  const chosen = new Set(v.measures);
+  return risks
+    .filter((r) => selected.has(r.key))
+    .flatMap((r) => {
+      const picked = r.measures
+        .map((m, i) => ({ key: measureValue(r.key, i), label: r.label, text: m }))
+        .filter((x) => chosen.has(x.key));
+      const written = (v.customMeasures?.[r.key] ?? "")
+        .split("\n")
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .map((text, i) => ({ key: `${r.key}#${i}`, label: r.label, text }));
+      return [...picked, ...written];
+    });
+}
+
 /** 서명을 받은 참석자 수 */
 export const signedTbmParticipants = (v: Tbm) => v.participants.filter((p) => p.sign).length;
 
@@ -401,6 +433,7 @@ export function withTbmDefaults(v: Tbm): Tbm {
     workDescription: v.workDescription ?? "",
     risks: v.risks ?? [],
     measures: v.measures ?? [],
+    customMeasures: v.customMeasures ?? {},
     pmis: { ...base.pmis, ...(v.pmis ?? {}) },
     leaderName: v.leaderName ?? "",
     participants: (v.participants ?? []).map((p) => ({ ...p, name: p.name ?? "", external: !!p.external })),
