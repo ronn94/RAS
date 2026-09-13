@@ -28,11 +28,12 @@ import {
   TBM_PMIS_GROUPS,
   TBM_WORK_TYPES,
   emptyTbmParticipant,
-  everyRiskHasMeasure,
   measureValue,
+  tbmMissing,
   type Tbm,
   type TbmParticipant,
 } from "@/lib/routine";
+import { supervisorNames, workNamesOf } from "@/lib/settings";
 import { JOB_TEAMS } from "@/lib/jobAssessment";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
@@ -57,15 +58,8 @@ export function TbmDetail({
 
   const patch = (p: Partial<Tbm>) => setDraft((d) => ({ ...d, ...p }));
 
-  const missing = [
-    !draft.date && "TBM 일자",
-    !draft.team && "구분",
-    !draft.location && "장소",
-    !draft.workDescription.trim() && "작업내용",
-    !draft.leaderName && "TBM 리더",
-    draft.risks.length === 0 && "위험요인",
-    draft.risks.length > 0 && !everyRiskHasMeasure(draft) && "안전대책(고른 위험요인마다 1개 이상)",
-  ].filter(Boolean) as string[];
+  // 등록 가능 기준은 화면과 저장이 어긋나지 않게 한 곳(routine.ts)에서 판단한다
+  const missing = tbmMissing(draft);
 
   const submit = async () => {
     if (missing.length) return;
@@ -91,6 +85,10 @@ export function TbmDetail({
 
   /* ── 참석자 ────────────────────────────────────────────── */
   const staff = [...settings.staff].sort((a, b) => a.localeCompare(b, "ko"));
+  /** TBM 리더는 설정에서 '관리감독자'로 지정한 사람 중에서만 고른다 */
+  const supervisors = supervisorNames(settings);
+  /** 그 팀에 등록해 둔 되풀이 작업명 — 구분을 고르기 전에는 비어 있다 */
+  const teamWorkNames = workNamesOf(settings, draft.team);
   const internalNames = new Set(draft.participants.filter((p) => !p.external).map((p) => p.name.trim()));
 
   const toggleStaff = (name: string) =>
@@ -229,7 +227,8 @@ export function TbmDetail({
                 className="w-full"
                 disabled={!canWrite}
                 value={draft.team}
-                onChange={(e) => patch({ team: e.target.value })}
+                // 팀을 바꾸면 앞 팀에서 고른 작업명은 뜻이 달라지므로 비운다
+                onChange={(e) => patch({ team: e.target.value, workNames: [] })}
               >
                 <option value="">선택</option>
                 {JOB_TEAMS.map((t) => (
@@ -341,12 +340,36 @@ export function TbmDetail({
             </div>
             <div className="space-y-1.5 sm:col-span-4">
               <Label>작업내용</Label>
+              {/* 자주 하는 작업은 설정(팀별 작업명)에 등록해 두고 여기서 골라 쓴다 */}
+              {draft.team ? (
+                teamWorkNames.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {teamWorkNames.map((name) => (
+                      <Button
+                        key={name}
+                        variant={draft.workNames.includes(name) ? "default" : "outline"}
+                        size="sm"
+                        disabled={!canWrite}
+                        onClick={() => patch({ workNames: toggleIn(draft.workNames, name) })}
+                      >
+                        {name}
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {draft.team}에 등록된 작업명이 없습니다(설정 → 팀별 작업명). 아래 칸에 직접 적어 주세요.
+                  </p>
+                )
+              ) : (
+                <p className="text-xs text-muted-foreground">구분을 먼저 고르면 그 팀의 작업명이 뜹니다.</p>
+              )}
               <Textarea
                 rows={2}
                 disabled={!canWrite}
                 value={draft.workDescription}
                 onChange={(e) => patch({ workDescription: e.target.value })}
-                placeholder="오늘 할 작업을 적습니다"
+                placeholder="목록에 없는 작업은 여기에 직접 적습니다"
               />
             </div>
           </CardContent>
@@ -483,8 +506,8 @@ export function TbmDetail({
                   }))
                 }
               >
-                <option value="">직원 명단에서 고르세요</option>
-                {staff.map((n) => (
+                <option value="">관리감독자에서 고르세요</option>
+                {supervisors.map((n) => (
                   <option key={n} value={n}>
                     {n}
                   </option>

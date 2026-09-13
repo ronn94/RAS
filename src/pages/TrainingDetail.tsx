@@ -55,6 +55,7 @@ import {
   type TrainingAttendee,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ApproverSelect } from "@/components/approver";
 import { useStore } from "@/store";
 
 export function TrainingDetail({
@@ -407,13 +408,22 @@ export function TrainingDetail({
             ).map(([key, label]) => (
               <div key={key} className="space-y-1.5">
                 <Label>{label}</Label>
-                <Input
-                  disabled={!canWrite}
-                  list="ras-staff"
-                  value={draft.approver[key]}
-                  onChange={(e) => patch({ approver: { ...draft.approver, [key]: e.target.value } })}
-                  placeholder={settings.org.approver[key] || "설정의 결재자 기본값"}
-                />
+                {/* '승인'만 설정에서 지정한 승인자 중에서 고른다(담당·검토는 그대로 자유 입력) */}
+                {key === "approve" ? (
+                  <ApproverSelect
+                    disabled={!canWrite}
+                    value={draft.approver.approve}
+                    onChange={(approve) => patch({ approver: { ...draft.approver, approve } })}
+                  />
+                ) : (
+                  <Input
+                    disabled={!canWrite}
+                    list="ras-staff"
+                    value={draft.approver[key]}
+                    onChange={(e) => patch({ approver: { ...draft.approver, [key]: e.target.value } })}
+                    placeholder={settings.org.approver[key] || "설정의 결재자 기본값"}
+                  />
+                )}
               </div>
             ))}
           </div>

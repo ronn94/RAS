@@ -52,6 +52,7 @@ import {
   type PlanRow,
 } from "@/lib/annualPlan";
 import { cn } from "@/lib/utils";
+import { ApproverSelect } from "@/components/approver";
 import { useStore } from "@/store";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -256,7 +257,16 @@ export function AnnualPlanPage() {
                   ).map(([key, label]) => (
                     <div key={key} className="space-y-1.5">
                       <Label>{label}</Label>
-                      {editing ? (
+                      {editing && key === "approve" ? (
+                        /* '승인'만 설정에서 지정한 승인자 중에서 고른다(담당·검토는 자유 입력) */
+                        <ApproverSelect
+                          className="h-8 w-28"
+                          value={draft.approver.approve}
+                          onChange={(approve) =>
+                            setDraft((d) => (d ? { ...d, approver: { ...d.approver, approve } } : d))
+                          }
+                        />
+                      ) : editing ? (
                         <Input
                           className="h-8 w-28"
                           list="ras-staff"

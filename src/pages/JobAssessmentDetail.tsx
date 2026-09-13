@@ -51,6 +51,7 @@ import {
   TableWrap,
   Textarea,
 } from "@/components/ui";
+import { ApproverSelect } from "@/components/approver";
 import { SignatureCanvas, signatureDataUrl } from "@/components/signature";
 import { usePhotoUrl } from "@/components/photo";
 import { JobAssessmentSheet } from "@/print/JobAssessmentSheet";
@@ -694,11 +695,11 @@ function StepParticipants({
           </div>
           <div className="space-y-1.5">
             <Label>승인자 (사업소장)</Label>
-            <Input
+            {/* 설정 → 직원 명단에서 '승인자'로 지정한 사람만 고른다 */}
+            <ApproverSelect
               disabled={!canWrite}
-              list="ras-staff"
               value={draft.approvedBy}
-              onChange={(e) => patch({ approvedBy: e.target.value })}
+              onChange={(approvedBy) => patch({ approvedBy })}
             />
           </div>
           <datalist id="ras-staff">

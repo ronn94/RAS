@@ -16,6 +16,7 @@ import {
   TBM_PMIS_GROUPS,
   TBM_WORK_TYPES,
   measureValue,
+  tbmWorkText,
   type Tbm,
   type TbmParticipant,
   type TbmRisk,
@@ -79,7 +80,7 @@ function Overview({ v, risks }: { v: Tbm; risks: TbmRisk[] }) {
           <tr>
             <td className="lbl">작업내용</td>
             <td colSpan={3} className="wrap work-desc">
-              {v.workDescription}
+              {tbmWorkText(v)}
             </td>
           </tr>
           <tr>

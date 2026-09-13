@@ -50,6 +50,18 @@ export type AppSettings = {
   owners: string[]; // 담당자 후보
   /** 직원 명단 — 월간 게시용 보고서의 '열람 명단' 서명표에 쓴다(담당자 목록과 별개) */
   staff: string[];
+  /**
+   * 직원 명단 안에서 역할을 따로 지정한 사람들. 이름을 그대로 담으므로
+   * 직원 명단에서 이름을 지우거나 고치면 여기서도 빠진다(이름이 곧 키다).
+   * - supervisors: 관리감독자 — TBM 리더로 고를 수 있는 사람
+   * - approvers: 승인자 — 작업평가의 승인자·인쇄물 결재란의 '승인'에 들어갈 사람
+   */
+  roles: { supervisors: string[]; approvers: string[] };
+  /**
+   * 팀별로 되풀이하는 작업 이름 — TBM 등록 화면에서 토글 버튼으로 뜬다.
+   * 키는 구분(기계팀·전기팀·공정팀·실험실)이고, 없는 팀은 빈 목록으로 본다.
+   */
+  workNames: Record<string, string[]>;
   /** 위험성 기준 */
   risk: {
     threshold: number; // 고위험군 기준점 (기본 8)
@@ -93,6 +105,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   statuses: [...STATUSES],
   owners: [],
   staff: [],
+  roles: { supervisors: [], approvers: [] },
+  workNames: {},
   risk: {
     threshold: 8,
     likelihood: [
@@ -151,6 +165,12 @@ export function withDefaults(saved: Partial<AppSettings> | undefined | null): Ap
     statuses: saved.statuses?.length ? saved.statuses : DEFAULT_SETTINGS.statuses,
     owners: saved.owners ?? [],
     staff: saved.staff ?? [],
+    // 직원 명단에서 빠진 이름은 역할에서도 뺀다 — 명단이 정본이라 유령 이름이 남으면 안 된다
+    roles: {
+      supervisors: (saved.roles?.supervisors ?? []).filter((n) => (saved.staff ?? []).includes(n)),
+      approvers: (saved.roles?.approvers ?? []).filter((n) => (saved.staff ?? []).includes(n)),
+    },
+    workNames: saved.workNames ?? {},
     risk: {
       threshold: saved.risk?.threshold ?? DEFAULT_SETTINGS.risk.threshold,
       likelihood: saved.risk?.likelihood?.length ? saved.risk.likelihood : DEFAULT_SETTINGS.risk.likelihood,
@@ -165,6 +185,26 @@ export function withDefaults(saved: Partial<AppSettings> | undefined | null): Ap
     updatedAt: saved.updatedAt ?? 0,
   };
 }
+
+/**
+ * 역할이 지정된 사람 목록 — 지정된 사람이 아직 없으면 **직원 명단 전체**를 돌려준다.
+ * 아무도 지정하지 않은 상태에서 드롭다운이 텅 비면 아무것도 고를 수 없어, 지정하기
+ * 전까지는 예전처럼 전원이 보이게 두는 것이다(지정하는 순간 그 사람들만 남는다).
+ */
+function roleList(settings: AppSettings, key: "supervisors" | "approvers"): string[] {
+  const picked = settings.roles?.[key] ?? [];
+  const names = picked.length > 0 ? picked : settings.staff;
+  return [...names].sort((a, b) => a.localeCompare(b, "ko"));
+}
+
+/** 관리감독자 — TBM 리더 드롭다운이 쓴다 */
+export const supervisorNames = (settings: AppSettings) => roleList(settings, "supervisors");
+
+/** 승인자 — 작업평가의 승인자·인쇄물 결재란의 '승인'이 쓴다 */
+export const approverNames = (settings: AppSettings) => roleList(settings, "approvers");
+
+/** 그 팀에 등록된 반복 작업명 — TBM 등록 화면의 토글 버튼이 쓴다 */
+export const workNamesOf = (settings: AppSettings, team: string) => settings.workNames?.[team] ?? [];
 
 /** 위험분류 이름 목록 — 요인구분에서 뽑는다(화면 드롭다운·필터가 쓴다) */
 export function classNames(settings: AppSettings): string[] {

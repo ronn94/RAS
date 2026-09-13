@@ -274,6 +274,9 @@ export type Tbm = {
   /** 그날의 작업평가와 선택적으로 잇는다 — 이으면 작업내용·위험요인을 끌어올 수 있다 */
   jobAssessmentId: string | null;
   workTypes: string[];
+  /** 설정(팀별 작업명)에서 토글로 고른 작업 — 되풀이하는 작업은 적지 않고 고른다 */
+  workNames: string[];
+  /** 목록에 없는 작업을 그때그때 적는 칸 — 토글과 함께 쓸 수 있다 */
   workDescription: string;
   /* 위험요인·대책 */
   risks: string[]; // TbmRisk.key 목록
@@ -310,6 +313,7 @@ export function emptyTbm(defaults: { location?: string } = {}): Tbm {
     riskAssessmentDone: true,
     jobAssessmentId: null,
     workTypes: [],
+    workNames: [],
     workDescription: "",
     risks: [],
     measures: [],
@@ -328,6 +332,37 @@ export const measureValue = (riskKey: string, index: number) => `${riskKey}:${in
 /** 고른 위험요인마다 대책을 하나 이상 골랐는가 — 원본 프로그램과 같은 필수 규칙이다 */
 export function everyRiskHasMeasure(v: Pick<Tbm, "risks" | "measures">): boolean {
   return v.risks.every((key) => v.measures.some((m) => m.startsWith(`${key}:`)));
+}
+
+/**
+ * 등록(저장)하기 전에 비어 있는 항목 목록. 비어 있으면 등록할 수 있다.
+ *
+ * TBM은 **작업 직전에 다 같이 확인하는** 서류라, 빠진 칸이 있으면 회의를 한 셈이
+ * 되지 않는다. 그래서 개요는 칸마다, 위험요인은 고른 것마다 대책까지, PMIS는
+ * 여덟 항목 전부, 사람은 리더와 참석자 각각 한 명 이상을 요구한다.
+ * (작업평가 연결만은 그날 작업평가가 없을 수도 있어 선택으로 둔다.)
+ */
+export function tbmMissing(v: Tbm): string[] {
+  const missing: string[] = [];
+  if (!v.date) missing.push("TBM 일자");
+  if (!v.time) missing.push("시각");
+  if (!v.team) missing.push("구분");
+  if (!v.location) missing.push("장소");
+  else if (v.location === TBM_OTHER_LOCATION && !v.otherLocation.trim()) missing.push("장소 직접 입력");
+  if (v.workTypes.length === 0) missing.push("작업유형");
+  // 토글로 고르거나 직접 적거나 — 둘 다 비어 있을 때만 빠진 것으로 본다
+  if (v.workNames.length === 0 && !v.workDescription.trim()) missing.push("작업내용");
+  if (v.risks.length === 0) missing.push("위험요인");
+  else if (!everyRiskHasMeasure(v)) missing.push("안전대책(고른 위험요인마다 1개 이상)");
+  if (TBM_PMIS_ITEMS.some((item) => !v.pmis[item.key])) missing.push("PMIS Check(8항목 전부)");
+  if (!v.leaderName) missing.push("TBM 리더");
+  if (v.participants.filter((p) => p.name.trim()).length === 0) missing.push("참석자(1명 이상)");
+  return missing;
+}
+
+/** 인쇄물·목록에 보여줄 작업내용 — 고른 작업명과 직접 적은 내용을 줄바꿈으로 잇는다 */
+export function tbmWorkText(v: Pick<Tbm, "workNames" | "workDescription">): string {
+  return [...v.workNames, v.workDescription.trim()].filter(Boolean).join("\n");
 }
 
 /** 서명을 받은 참석자 수 */

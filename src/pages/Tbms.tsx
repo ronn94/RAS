@@ -30,7 +30,7 @@ import {
 import { TbmDetail } from "@/pages/TbmDetail";
 import { TbmPreview } from "@/pages/TbmPreview";
 import { JOB_TEAMS } from "@/lib/jobAssessment";
-import { signedTbmParticipants, tbmFullySigned, type Tbm } from "@/lib/routine";
+import { signedTbmParticipants, tbmFullySigned, tbmWorkText, type Tbm } from "@/lib/routine";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
 
@@ -95,7 +95,7 @@ export function TbmsPage({ openId, onOpen }: { openId: string | null; onOpen: (i
       if (fYear && !(v.date || "").startsWith(fYear)) return false;
       if (fTeam && v.team !== fTeam) return false;
       if (!query) return true;
-      return [v.location, v.otherLocation, v.workDescription, v.leaderName].some((t) =>
+      return [v.location, v.otherLocation, tbmWorkText(v), v.leaderName].some((t) =>
         (t || "").toLowerCase().includes(query),
       );
     });
@@ -199,7 +199,7 @@ export function TbmsPage({ openId, onOpen }: { openId: string | null; onOpen: (i
                         <TD className="text-muted-foreground">
                           {v.location === "기타" ? v.otherLocation || "기타" : v.location || "-"}
                         </TD>
-                        <TD className="whitespace-normal">{v.workDescription || "-"}</TD>
+                        <TD className="whitespace-pre-line">{tbmWorkText(v) || "-"}</TD>
                         <TD>{v.leaderName || "-"}</TD>
                         <TD className="text-center">
                           {v.participants.length === 0 ? (
@@ -287,7 +287,7 @@ export function TbmsPage({ openId, onOpen }: { openId: string | null; onOpen: (i
           <DialogTitle>이 TBM을 삭제할까요?</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          {deleteTarget?.date || "-"} {deleteTarget?.time} · {deleteTarget?.workDescription || "-"}
+          {deleteTarget?.date || "-"} {deleteTarget?.time} · {deleteTarget ? tbmWorkText(deleteTarget) || "-" : "-"}
           <br />
           받아 둔 서명 {deleteTarget ? signedTbmParticipants(deleteTarget) : 0}건도 함께 사라집니다. 되돌릴 수 없습니다.
         </p>

@@ -2,7 +2,9 @@ import * as React from "react";
 import { Bell, BellOff, ListPlus, Plus, RotateCcw, Save, X } from "lucide-react";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Input, Label } from "@/components/ui";
 import { DEFAULT_SETTINGS, type AppSettings, type ScaleLabel } from "@/lib/settings";
+import { JOB_TEAMS } from "@/lib/jobAssessment";
 import type { TbmRisk } from "@/lib/routine";
+import { cn } from "@/lib/utils";
 import type { HazardFactor } from "@/lib/types";
 import { currentSubscription, needsHomeScreenOnIOS, pushSupported, subscribePush, unsubscribePush } from "@/lib/push";
 import { backfillSurveysFromNotes, sendTestPush } from "@/lib/db";
@@ -188,6 +190,59 @@ function ListEditor({
           <Plus />
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 직원 명단 안에서 역할(관리감독자·승인자)을 지정하는 토글 목록.
+ *
+ * 아무도 고르지 않으면 그 역할의 드롭다운에는 **직원 전원**이 뜬다 — 지정하기 전까지
+ * 아무것도 못 고르는 상태를 만들지 않기 위해서다(`supervisorNames`/`approverNames`).
+ */
+function RolePicker({
+  title,
+  hint,
+  staff,
+  picked,
+  onChange,
+}: {
+  title: string;
+  hint: string;
+  staff: string[];
+  picked: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const toggle = (name: string) =>
+    onChange(picked.includes(name) ? picked.filter((n) => n !== name) : [...picked, name]);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <Label>{title}</Label>
+        <span className="text-xs text-muted-foreground">{hint}</span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {staff.map((name) => (
+          <button
+            key={name}
+            type="button"
+            onClick={() => toggle(name)}
+            aria-pressed={picked.includes(name)}
+            className={cn(
+              "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+              picked.includes(name)
+                ? "border-transparent bg-primary text-primary-foreground"
+                : "border-border text-muted-foreground hover:bg-muted",
+            )}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+      {picked.length === 0 && (
+        <p className="text-xs text-muted-foreground">아무도 지정하지 않아 지금은 직원 전원이 후보로 뜹니다.</p>
+      )}
     </div>
   );
 }
@@ -696,9 +751,66 @@ export function SettingsPage() {
             가나다순으로 정렬되며, {SIGN_SLOTS}명까지는 빈 칸을 채워 표 크기를 고정합니다. 담당자 목록과는 별개입니다.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2">
-          <ListEditor value={settings.staff} onChange={(v) => void patch({ staff: v })} placeholder="예: 김하수" />
-          <p className="text-xs text-muted-foreground">현재 {settings.staff.length}명</p>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <ListEditor
+              value={settings.staff}
+              onChange={(v) =>
+                // 명단에서 빠진 사람은 역할에서도 함께 뺀다 — 명단이 정본이다
+                void patch({
+                  staff: v,
+                  roles: {
+                    supervisors: settings.roles.supervisors.filter((n) => v.includes(n)),
+                    approvers: settings.roles.approvers.filter((n) => v.includes(n)),
+                  },
+                })
+              }
+              placeholder="예: 김하수"
+            />
+            <p className="text-xs text-muted-foreground">현재 {settings.staff.length}명</p>
+          </div>
+
+          {settings.staff.length > 0 && (
+            <div className="space-y-3 border-t border-border/60 pt-3">
+              <RolePicker
+                title="관리감독자"
+                hint="TBM 리더로 고를 수 있는 사람입니다."
+                staff={settings.staff}
+                picked={settings.roles.supervisors}
+                onChange={(supervisors) => void patch({ roles: { ...settings.roles, supervisors } })}
+              />
+              <RolePicker
+                title="승인자"
+                hint="작업평가의 승인자와 인쇄물 결재란의 ‘승인’에 들어갈 사람입니다."
+                staff={settings.staff}
+                picked={settings.roles.approvers}
+                onChange={(approvers) => void patch({ roles: { ...settings.roles, approvers } })}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 팀별 작업명 — TBM 등록 화면에서 토글 버튼으로 뜬다 */}
+      <Card className="shadow-xs">
+        <CardHeader>
+          <CardTitle>팀별 작업명</CardTitle>
+          <CardDescription>
+            되풀이하는 작업 이름을 팀마다 등록해 두면, TBM 등록 화면의 &lsquo;작업내용&rsquo;에서 버튼으로 골라
+            쓸 수 있습니다. 목록에 없는 작업은 그때그때 직접 적습니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {JOB_TEAMS.map((team) => (
+            <div key={team} className="space-y-2">
+              <Label>{team}</Label>
+              <ListEditor
+                value={settings.workNames[team] ?? []}
+                onChange={(v) => void patch({ workNames: { ...settings.workNames, [team]: v } })}
+                placeholder="예: 침전지 슬러지 수집기 점검"
+              />
+            </div>
+          ))}
         </CardContent>
       </Card>
 
