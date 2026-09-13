@@ -149,7 +149,7 @@ export function SurveysPage({ openId, onOpen }: { openId: string | null; onOpen:
                     <TH className="w-28">세부공정</TH>
                     <TH className="w-24">위험분류</TH>
                     <TH className="w-20 text-center">위험코드</TH>
-                    <TH>유해위험요인</TH>
+                    <TH className="min-w-80">유해위험요인</TH>
                     <TH className="w-20 text-center">위험성</TH>
                     <TH className="w-24 text-center">검토</TH>
                     <TH className="w-24 text-center">평가표 이관</TH>
@@ -168,7 +168,7 @@ export function SurveysPage({ openId, onOpen }: { openId: string | null; onOpen:
                         <TD className="text-muted-foreground">{v.subProcess || "-"}</TD>
                         <TD className="text-muted-foreground">{v.hazardClass || "-"}</TD>
                         <TD className="text-center tabular-nums text-muted-foreground">{v.hazardCode || "-"}</TD>
-                        <TD className="max-w-md truncate whitespace-normal">{v.hazard || "-"}</TD>
+                        <TD className="min-w-80 max-w-2xl truncate whitespace-normal">{v.hazard || "-"}</TD>
                         <TD className="text-center">
                           <Badge className={riskBadgeClass(risk)}>{risk ?? "-"}</Badge>
                         </TD>
