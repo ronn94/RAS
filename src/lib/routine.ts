@@ -316,7 +316,8 @@ export function emptyTbm(defaults: { location?: string } = {}): Tbm {
     otherLocation: "",
     riskAssessmentDone: true,
     jobAssessmentId: null,
-    workTypes: [],
+    // 현장 대부분이 자체작업이라 기본으로 켜 둔다 — 필요하면 그대로 끄거나 다른 유형을 더 고르면 된다
+    workTypes: ["자체작업"],
     workNames: [],
     workDescription: "",
     risks: [],
