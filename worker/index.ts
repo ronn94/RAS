@@ -16,6 +16,7 @@ import { login, loginGuest, logout, readSession } from "./auth";
 import { DEFAULT_SETTINGS, withDefaults, type AppSettings } from "../src/lib/settings";
 import type { PriorityAction, StopWork, Survey, Training, TrainingAttendee } from "../src/lib/types";
 import type { JobAssessment, JobParticipant } from "../src/lib/jobAssessment";
+import type { Tbm, TbmParticipant } from "../src/lib/routine";
 import type { Bindings } from "./bindings";
 import { runDailyDigest } from "./digest";
 import { sendPush } from "./push";
@@ -56,7 +57,7 @@ async function loadPermissions(db: D1Database): Promise<Record<string, boolean>>
   return { ...DEFAULT_SETTINGS.permissions, ...(parsed?.permissions ?? {}) };
 }
 
-type PermissionKey = "edit" | "delete" | "photo" | "survey" | "stopwork" | "jobAssessment";
+type PermissionKey = "edit" | "delete" | "photo" | "survey" | "stopwork" | "jobAssessment" | "routine";
 
 /** 나열한 권한 중 **하나라도** 켜져 있으면 통과한다 */
 function requirePermission(...keys: PermissionKey[]): MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> {
@@ -101,7 +102,7 @@ type NotifyOnCreate<T> = {
 
 /* ── 공용: JSON 문서 컬렉션(assessments / hazard_infos) ──────── */
 function collection<T extends { id: string } = Record<string, unknown> & { id: string }>(
-  table: "assessments" | "hazard_infos" | "inspections" | "surveys" | "stop_works" | "priority_actions" | "trainings" | "annual_plans" | "job_assessments",
+  table: "assessments" | "hazard_infos" | "inspections" | "surveys" | "stop_works" | "priority_actions" | "trainings" | "annual_plans" | "job_assessments" | "routine_assessments",
   /** 이 컬렉션을 쓰기 위해 필요한 권한. 설문지는 전역 편집권한과 분리해 survey로 연다 */
   perms: { write: PermissionKey[]; remove: PermissionKey[] } = { write: ["edit"], remove: ["delete"] },
   notifyOnCreate?: NotifyOnCreate<T>,
@@ -389,6 +390,89 @@ app.route(
     if (!next.approvedBySign && (stored as JobAssessment).approvedBySign) {
       next.approvedBySign = (stored as JobAssessment).approvedBySign;
       next.approvedBySignedAt = (stored as JobAssessment).approvedBySignedAt;
+    }
+    return next;
+  }),
+);
+
+/* ── 상시평가 (TBM · 일일교육) ────────────────────────────────
+   작업평가와 같은 성격의 현장 문서다 — 등록·수정·서명 전부 게스트에게 열려 있고
+   (전용 권한 routine, 기본 켜짐), 서명만은 본문을 덮어쓰는 PUT이 아니라 전용
+   경로로 받는다. target은 참석자 id, 또는 TBM 리더를 가리키는 "leader". */
+app.post("/api/routineassessments/:id/sign", requirePermission("routine"), async (c) => {
+  const id = c.req.param("id");
+  const { target, image } = await c.req.json<{ target: string; image: string | null }>();
+
+  const row = await c.env.ras_db
+    .prepare("SELECT data FROM routine_assessments WHERE id = ?1")
+    .bind(id)
+    .first<{ data: string }>();
+  if (!row) return c.json({ error: "문서를 찾을 수 없습니다." }, 404);
+  const doc = JSON.parse(row.data) as Tbm;
+  if (doc.locked && c.get("role") === "guest") {
+    return c.json({ error: "잠긴 문서에는 서명할 수 없습니다." }, 403);
+  }
+
+  let previous: string | undefined;
+  let apply: (signId: string | undefined, signedAt: number | undefined) => void;
+  if (target === "leader") {
+    previous = doc.leaderSign;
+    apply = (signId, signedAt) => {
+      doc.leaderSign = signId;
+      doc.leaderSignedAt = signedAt;
+    };
+  } else {
+    const p = doc.participants.find((x) => x.id === target);
+    if (!p) return c.json({ error: "참석자를 찾을 수 없습니다." }, 404);
+    previous = p.sign;
+    apply = (signId, signedAt) => {
+      p.sign = signId;
+      p.signedAt = signedAt;
+    };
+  }
+
+  if (image) {
+    const comma = image.indexOf(",");
+    const contentType = image.slice(0, comma).match(/^data:([^;]+)/)?.[1] ?? "image/png";
+    const binary = atob(image.slice(comma + 1));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    const signId = crypto.randomUUID();
+    await c.env.ras_photos.put(signId, bytes, { httpMetadata: { contentType } });
+    await c.env.ras_db
+      .prepare("INSERT INTO photo_meta (id, size, content_type, created_at) VALUES (?1, ?2, ?3, ?4)")
+      .bind(signId, bytes.byteLength, contentType, Date.now())
+      .run();
+    apply(signId, Date.now());
+  } else {
+    apply(undefined, undefined);
+  }
+  if (previous) {
+    await c.env.ras_photos.delete(previous);
+    await c.env.ras_db.prepare("DELETE FROM photo_meta WHERE id = ?1").bind(previous).run();
+  }
+
+  doc.updatedAt = Date.now();
+  await c.env.ras_db
+    .prepare("UPDATE routine_assessments SET data = ?2, updated_at = ?3 WHERE id = ?1")
+    .bind(id, JSON.stringify(doc), doc.updatedAt)
+    .run();
+  return c.json(doc);
+});
+
+app.route(
+  "/api/routineassessments",
+  collection<Tbm>("routine_assessments", { write: ["routine"], remove: ["routine"] }, undefined, (incoming, stored) => {
+    // 관리자가 문서를 열어 둔 사이에 받은 서명을 저장 한 번으로 날리지 않게 지킨다
+    const signs = new Map(((stored.participants as TbmParticipant[] | undefined) ?? []).map((p) => [p.id, p]));
+    const participants = ((incoming.participants as TbmParticipant[] | undefined) ?? []).map((p) => {
+      const kept = signs.get(p.id);
+      return p.sign || !kept?.sign ? p : { ...p, sign: kept.sign, signedAt: kept.signedAt };
+    });
+    const next = { ...incoming, participants } as Tbm;
+    if (!next.leaderSign && (stored as Tbm).leaderSign) {
+      next.leaderSign = (stored as Tbm).leaderSign;
+      next.leaderSignedAt = (stored as Tbm).leaderSignedAt;
     }
     return next;
   }),

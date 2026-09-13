@@ -2,6 +2,7 @@ import * as React from "react";
 import { Bell, BellOff, ListPlus, Plus, RotateCcw, Save, X } from "lucide-react";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Input, Label } from "@/components/ui";
 import { DEFAULT_SETTINGS, type AppSettings, type ScaleLabel } from "@/lib/settings";
+import type { TbmRisk } from "@/lib/routine";
 import type { HazardFactor } from "@/lib/types";
 import { currentSubscription, needsHomeScreenOnIOS, pushSupported, subscribePush, unsubscribePush } from "@/lib/push";
 import { backfillSurveysFromNotes, sendTestPush } from "@/lib/db";
@@ -341,8 +342,72 @@ function FactorEditor({ value, onChange }: { value: HazardFactor[]; onChange: (v
   );
 }
 
+/**
+ * TBM 위험요인 편집기 — 위험요인 이름과 그 아래 안전대책 후보.
+ *
+ * 위험요인의 `key`는 화면에 내보이지 않는다. 이미 그 키로 저장된 TBM이 있어서
+ * 이름을 바꿔도 지난 문서가 깨지지 않아야 하기 때문이다(새로 추가할 때만 키를 만든다).
+ */
+function TbmRiskEditor({ value, onChange }: { value: TbmRisk[]; onChange: (v: TbmRisk[]) => void }) {
+  const [open, setOpen] = React.useState<Set<string>>(new Set());
+  const toggle = (key: string) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  const patchRisk = (i: number, p: Partial<TbmRisk>) =>
+    onChange(value.map((r, idx) => (idx === i ? { ...r, ...p } : r)));
+
+  return (
+    <div className="space-y-2">
+      {value.map((r, i) => (
+        <div key={r.key} className="rounded-xl bg-muted/40 p-3">
+          <div className="flex items-center gap-2">
+            <Input
+              className="max-w-xs"
+              value={r.label}
+              onChange={(e) => patchRisk(i, { label: e.target.value })}
+              aria-label="위험요인 이름"
+              placeholder="예: 떨어짐/추락"
+            />
+            <Button variant="ghost" size="sm" className="text-xs" onClick={() => toggle(r.key)}>
+              안전대책 {r.measures.length}개 {open.has(r.key) ? "숨기기" : "펼치기"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="ml-auto text-destructive hover:text-destructive"
+              onClick={() => onChange(value.filter((_, idx) => idx !== i))}
+              aria-label={`${r.label} 위험요인 삭제`}
+            >
+              <X className="size-3.5" />
+            </Button>
+          </div>
+          {open.has(r.key) && (
+            <div className="mt-2 rounded-xl bg-background p-2.5">
+              <ListEditor
+                value={r.measures}
+                onChange={(measures) => patchRisk(i, { measures })}
+                placeholder="예: 안전대 부착설비 이상유무"
+              />
+            </div>
+          )}
+        </div>
+      ))}
+      <Button
+        variant="outline"
+        onClick={() => onChange([...value, { key: crypto.randomUUID().slice(0, 8), label: "", measures: [] }])}
+      >
+        <Plus /> 위험요인 추가
+      </Button>
+    </div>
+  );
+}
+
 /** 저장 버튼이 붙는 섹션과 그 섹션이 들고 있는 설정 키 */
-type SectionKey = "profile" | "org" | "hazardFactors" | "risk";
+type SectionKey = "profile" | "org" | "hazardFactors" | "risk" | "tbmRisks";
 
 export function SettingsPage() {
   const { settings, updateSettings } = useStore();
@@ -358,7 +423,7 @@ export function SettingsPage() {
   React.useEffect(() => {
     setDraft((d) => {
       const next = { ...settings };
-      for (const k of ["profile", "org", "hazardFactors", "risk"] as SectionKey[]) {
+      for (const k of ["profile", "org", "hazardFactors", "risk", "tbmRisks"] as SectionKey[]) {
         if (JSON.stringify(d[k]) !== JSON.stringify(settings[k])) (next as Record<string, unknown>)[k] = d[k];
       }
       return next;
@@ -381,7 +446,7 @@ export function SettingsPage() {
   const edit = (p: Partial<AppSettings>) => setDraft((d) => ({ ...d, ...p }));
 
   const dirty = (k: SectionKey) => JSON.stringify(draft[k]) !== JSON.stringify(settings[k]);
-  const anyDirty = (["profile", "org", "hazardFactors", "risk"] as SectionKey[]).some(dirty);
+  const anyDirty = (["profile", "org", "hazardFactors", "risk", "tbmRisks"] as SectionKey[]).some(dirty);
 
   const save = async (k: SectionKey, label: string) => {
     try {
@@ -511,6 +576,7 @@ export function SettingsPage() {
               { key: "survey", label: "설문지 제출", hint: "의견청취 설문지 작성·수정·삭제" },
               { key: "stopwork", label: "작업중지 요청", hint: "작업중지 요청서 작성·수정 (근로자의 법정 권리)" },
               { key: "jobAssessment", label: "작업평가", hint: "작업 위험성평가 등록·수정·참여자 서명" },
+              { key: "routine", label: "상시평가", hint: "TBM·일일교육 등록·수정·참석자 서명" },
             ] as const
           ).map((p) => (
             <label key={p.key} className="flex items-center gap-2.5 rounded-xl bg-muted/40 px-3 py-2.5">
@@ -677,6 +743,22 @@ export function SettingsPage() {
               onChange={(v) => edit({ risk: { ...draft.risk, severity: v } })}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* TBM 위험요인 — 상시평가(TBM)에서 고르는 위험요인과 그에 딸린 안전대책 후보 */}
+      <Card className="shadow-xs">
+        <CardHeader className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <CardTitle>TBM 위험요인</CardTitle>
+            <CardDescription>
+              상시평가 → TBM에서 고르는 위험요인입니다. 위험요인을 고르면 여기 적힌 안전대책이 후보로 뜹니다.
+            </CardDescription>
+          </div>
+          <SaveButton section="tbmRisks" label="TBM 위험요인" />
+        </CardHeader>
+        <CardContent>
+          <TbmRiskEditor value={draft.tbmRisks} onChange={(v) => edit({ tbmRisks: v })} />
         </CardContent>
       </Card>
 

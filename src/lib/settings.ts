@@ -2,6 +2,7 @@
  * 앱 설정 — 유지보수를 코드 수정 없이 하기 위한 값들.
  * IndexedDB의 settings 스토어에 단일 레코드로 저장한다.
  */
+import { DEFAULT_TBM_RISKS, type TbmRisk } from "./routine";
 import { HAZARD_FACTORS, STATUSES, type HazardFactor } from "./types";
 
 export type ScaleLabel = { value: number; label: string };
@@ -25,6 +26,8 @@ export type AppSettings = {
     stopwork: boolean;
     /** 작업평가는 게스트가 직접 등록·수정·서명까지 다루는 문서라 전용 권한으로 뗀다 */
     jobAssessment: boolean;
+    /** 상시평가(TBM·일일교육)도 작업 현장에서 직접 쓰고 서명받는 문서라 따로 뗀다 */
+    routine: boolean;
   };
   /**
    * 푸시 알림 종류별 on/off — 관리자 전용 기능이라 계정 하나에 공통으로 적용된다(기기별이 아니다).
@@ -53,6 +56,8 @@ export type AppSettings = {
     likelihood: ScaleLabel[]; // 가능성 척도
     severity: ScaleLabel[]; // 중대성 척도
   };
+  /** TBM 위험요인과 그에 딸린 안전대책 후보 — 설정에서 추가·삭제한다 */
+  tbmRisks: TbmRisk[];
   /** 작업평가 서명 규칙 */
   jobAssessment: {
     /** true(기본) — 평가자·내부 참여자·외부 참여자 전원이 서명해야 승인자 서명이 열린다.
@@ -72,7 +77,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
   profile: { name: "관리자", role: "안전관리자" },
   // 설문지·작업중지권·작업평가는 근로자에게 직접 받는 것이 목적이라 기본으로 켜 둔다
   // (작업중지권은 근로자의 법정 권리라 막아 두면 제도 자체가 굴러가지 않는다)
-  permissions: { edit: false, delete: false, photo: false, survey: true, stopwork: true, jobAssessment: true },
+  permissions: {
+    edit: false,
+    delete: false,
+    photo: false,
+    survey: true,
+    stopwork: true,
+    jobAssessment: true,
+    routine: true,
+  },
   // 전부 기본 켜짐 — 관리자가 필요 없는 종류만 끈다
   notifications: { dueDate: true, stopworkStale: true, newSurvey: true, newStopwork: true },
   processes: [],
@@ -96,6 +109,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
       { value: 4, label: "사망" },
     ],
   },
+  tbmRisks: DEFAULT_TBM_RISKS.map((r) => ({ ...r, measures: [...r.measures] })),
   jobAssessment: { approverRequireAll: true },
   updatedAt: 0,
 };
@@ -142,6 +156,9 @@ export function withDefaults(saved: Partial<AppSettings> | undefined | null): Ap
       likelihood: saved.risk?.likelihood?.length ? saved.risk.likelihood : DEFAULT_SETTINGS.risk.likelihood,
       severity: saved.risk?.severity?.length ? saved.risk.severity : DEFAULT_SETTINGS.risk.severity,
     },
+    // 예전 설정에는 이 칸이 없다 — 그때 저장된 것은 원본 15종으로 채워 준다.
+    // 관리자가 손으로 전부 지운 경우([])는 undefined가 아니므로 그대로 존중한다.
+    tbmRisks: (saved.tbmRisks ?? DEFAULT_SETTINGS.tbmRisks).map((r) => ({ ...r, measures: [...(r.measures ?? [])] })),
     jobAssessment: {
       approverRequireAll: saved.jobAssessment?.approverRequireAll ?? DEFAULT_SETTINGS.jobAssessment.approverRequireAll,
     },

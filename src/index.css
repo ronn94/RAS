@@ -1043,6 +1043,171 @@
   background: #f0f0f0;
 }
 
+/* ── TBM 회의록 (원본 BP 서식 · A4 세로) ──────────────────────
+   다른 RAS 서식과 달리 번호 구간이 아니라 '■ 제목'을 쓴다 — 이미 이 모양으로
+   결재를 받아 온 서류라 모양이 달라지면 현장에서 다른 서류로 본다. */
+.sheet-tbm {
+  font-size: 8pt;
+  line-height: 1.35;
+}
+.sheet-tbm .print-page {
+  box-sizing: border-box;
+  width: 186mm; /* A4 세로 210mm - 좌우 여백 12mm */
+  position: relative;
+}
+.sheet-tbm table {
+  margin-bottom: 2mm;
+}
+.sheet-tbm :is(th, td) {
+  padding: 1.4mm;
+  font-size: 8pt;
+}
+.sheet-tbm .sheet-title {
+  margin-bottom: 5mm;
+  text-align: center;
+  font-size: 21pt;
+  font-weight: 700;
+}
+.sheet-tbm .sheet-title .page-no {
+  font-size: 10pt;
+  font-weight: 400;
+  color: #666;
+}
+.sheet-tbm .sec {
+  margin: 5mm 0 2mm;
+  font-size: 12pt;
+  font-weight: 700;
+}
+.sheet-tbm .lbl {
+  background: #eee;
+  font-weight: 700;
+  text-align: center;
+}
+.sheet-tbm .num,
+.sheet-tbm .same-date {
+  text-align: center;
+  white-space: nowrap;
+}
+.sheet-tbm .wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+/* 작업내용은 손으로 덧붙여 적을 수 있게 넉넉히 비워 둔다 */
+.sheet-tbm .work-desc {
+  height: 17mm;
+  vertical-align: top;
+}
+.sheet-tbm .inline-check {
+  margin-right: 4mm;
+  white-space: nowrap;
+}
+.sheet-tbm .risk-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1mm;
+}
+.sheet-tbm .risk {
+  font-size: 7pt;
+}
+.sheet-tbm .measure-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1mm;
+}
+.sheet-tbm .measure-grid div {
+  font-size: 7pt;
+}
+/* PMIS는 바깥 테두리만 굵게 두고 안쪽은 점선으로 — 원본과 같다 */
+.sheet-tbm .pmis {
+  border: 1.5px solid #111;
+}
+.sheet-tbm .pmis :is(th, td) {
+  border-style: dotted;
+  border-color: #777;
+}
+.sheet-tbm .pmis tr:first-child :is(th, td) {
+  border-top: 0;
+}
+.sheet-tbm .pmis tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+.sheet-tbm .pmis-group {
+  width: 14%;
+  font-size: 9pt;
+  line-height: 1.7;
+}
+.sheet-tbm .pmis-items {
+  width: 36%;
+  padding: 2mm 3mm;
+}
+.sheet-tbm .pmis-items > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2mm;
+  line-height: 1.75;
+}
+.sheet-tbm .pmis-items > div > span:first-child {
+  white-space: nowrap;
+}
+.sheet-tbm .pmis-choice {
+  color: #1647df;
+  white-space: nowrap;
+}
+.sheet-tbm .pmis-choice.selected {
+  font-weight: 800;
+}
+/* '■ 참석자 명단' 제목과 TBM 리더 서명을 한 줄에 둔다 */
+.sheet-tbm .leader {
+  display: flex;
+  align-items: center;
+  gap: 4mm;
+}
+.sheet-tbm .leader .sec {
+  margin-bottom: 0;
+}
+.sheet-tbm .leader-info {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  font-size: 9pt;
+}
+.sheet-tbm .leader-info img {
+  width: 35mm;
+  height: 9mm;
+  object-fit: contain;
+}
+/* 리더 서명을 아직 못 받았으면 수기로 받을 자리를 남긴다 */
+.sheet-tbm .leader-blank {
+  display: inline-block;
+  width: 35mm;
+  border-bottom: 0.5pt solid #999;
+}
+.sheet-tbm .signs :is(th, td) {
+  text-align: center;
+}
+.sheet-tbm .signs td {
+  height: 15mm;
+}
+.sheet-tbm .signs .sign-cell img {
+  display: block;
+  width: 100%;
+  height: 13mm;
+  object-fit: contain;
+}
+.sheet-tbm .removal td {
+  height: 9mm;
+}
+/* 회사(기관)명 — 원본처럼 오른쪽 아래에 크게 */
+.sheet-tbm .org {
+  margin-top: 4mm;
+  text-align: right;
+  font-size: 16pt;
+  font-weight: 900;
+  color: #333;
+}
+
 /* ── 위험성평가 연간계획표 (원본 SSI-602-02 · A4 가로 1장) ──────
    가로 22칸 × 세로 32줄(머리 2 + 15항목 × 2)을 한 장에 넣어야 해서
    글자와 줄 높이를 아주 작게 잡는다. 계획은 ○, 실적은 ●로 구분한다. */

@@ -10,6 +10,7 @@
 import type { Assessment, HazardInfo, Inspection, PriorityAction, StopWork, Survey, Training } from "./types";
 import type { AnnualPlan } from "./annualPlan";
 import type { JobAssessment } from "./jobAssessment";
+import type { Tbm } from "./routine";
 import { withDefaults, type AppSettings } from "./settings";
 
 /** 세션이 끊겼을 때(401) store.tsx가 로그인 화면으로 되돌릴 수 있도록 알린다.
@@ -100,6 +101,19 @@ export const deleteJobAssessment = (id: string) => api(`/jobassessments/${id}`, 
  * target은 참여자 id, 또는 평가자·승인자를 가리키는 "evaluator"/"approver" */
 export const signJobAssessment = (id: string, target: string, image: string | null) =>
   api<JobAssessment>(`/jobassessments/${id}/sign`, {
+    method: "POST",
+    body: JSON.stringify({ target, image }),
+  });
+
+/* ── 상시평가 (TBM · 일일교육) ─────────────────────────── */
+export const listRoutines = () => api<Tbm[]>("/routineassessments");
+export const putRoutine = (v: Tbm) =>
+  api<Tbm>(`/routineassessments/${v.id}`, { method: "PUT", body: JSON.stringify(v) });
+export const deleteRoutine = (id: string) => api(`/routineassessments/${id}`, { method: "DELETE" });
+
+/** target은 참석자 id, 또는 TBM 리더를 가리키는 "leader" */
+export const signRoutine = (id: string, target: string, image: string | null) =>
+  api<Tbm>(`/routineassessments/${id}/sign`, {
     method: "POST",
     body: JSON.stringify({ target, image }),
   });

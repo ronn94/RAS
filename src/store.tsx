@@ -22,6 +22,7 @@ import {
 } from "@/lib/types";
 import { emptyAnnualPlan, copyPlanForYear, type AnnualPlan } from "@/lib/annualPlan";
 import { emptyJobAssessment, type JobAssessment } from "@/lib/jobAssessment";
+import { emptyTbm, type Tbm } from "@/lib/routine";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
 import type { Identity } from "@/lib/auth";
 
@@ -88,6 +89,14 @@ type Ctx = {
   signJobAssessment: (id: string, target: string, image: string | null) => Promise<JobAssessment>;
   /** 게스트가 작업평가를 등록·수정·서명할 수 있는가 (관리자는 항상 true) */
   canJobAssessment: boolean;
+  /** 상시평가 — 지금은 TBM 하나뿐이라 목록도 TBM만 담긴다 */
+  routines: Tbm[];
+  createTbm: () => Tbm;
+  saveRoutine: (v: Tbm) => Promise<void>;
+  removeRoutine: (id: string) => Promise<void>;
+  signRoutine: (id: string, target: string, image: string | null) => Promise<Tbm>;
+  /** 게스트가 상시평가를 등록·수정·서명할 수 있는가 (관리자는 항상 true) */
+  canRoutine: boolean;
 };
 
 /* ── 이관으로 묶인 항목 동기화 ────────────────────────────────
@@ -208,6 +217,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   const [trainings, setTrainings] = React.useState<Training[]>([]);
   const [annualPlans, setAnnualPlans] = React.useState<AnnualPlan[]>([]);
   const [jobAssessments, setJobAssessments] = React.useState<JobAssessment[]>([]);
+  const [routines, setRoutines] = React.useState<Tbm[]>([]);
   const [settings, setSettings] = React.useState<AppSettings>(DEFAULT_SETTINGS);
   const [lastBackup, setLastBackup] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -232,6 +242,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       setTrainings(await db.listTrainings());
       setAnnualPlans(await db.listAnnualPlans());
       setJobAssessments(await db.listJobAssessments());
+      setRoutines(await db.listRoutines());
       const s = await db.loadSettings();
       setSettings(s);
       setRiskThreshold(s.risk.threshold);
@@ -536,6 +547,29 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
     return next;
   }, []);
 
+  /* ── 상시평가 ─────────────────────────────────────────── */
+  const saveRoutine = React.useCallback(async (v: Tbm) => {
+    await db.putRoutine(v);
+    setRoutines((prev) => {
+      const i = prev.findIndex((x) => x.id === v.id);
+      return i < 0 ? [v, ...prev] : prev.map((x) => (x.id === v.id ? v : x));
+    });
+  }, []);
+
+  // TBM 장소는 설정의 공정명에서 고르므로 첫 공정을 미리 넣어 둔다(작업평가의 대분류와 같은 방식)
+  const createTbm = React.useCallback(() => emptyTbm({ location: settings.processes[0] }), [settings.processes]);
+
+  const removeRoutine = React.useCallback(async (id: string) => {
+    await db.deleteRoutine(id);
+    setRoutines((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
+  const signRoutine = React.useCallback(async (id: string, target: string, image: string | null) => {
+    const next = await db.signRoutine(id, target, image);
+    setRoutines((prev) => prev.map((x) => (x.id === next.id ? next : x)));
+    return next;
+  }, []);
+
   const updateSettings = React.useCallback(
     async (patch: Partial<AppSettings>) => {
       const next = { ...settings, ...patch, updatedAt: Date.now() };
@@ -560,6 +594,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   const canSurvey = isAdmin || settings.permissions.survey;
   const canStopWork = isAdmin || settings.permissions.stopwork;
   const canJobAssessment = isAdmin || settings.permissions.jobAssessment;
+  const canRoutine = isAdmin || settings.permissions.routine;
 
   const value = React.useMemo(
     () => ({
@@ -613,6 +648,12 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       removeJobAssessment,
       signJobAssessment,
       canJobAssessment,
+      routines,
+      createTbm,
+      saveRoutine,
+      removeRoutine,
+      signRoutine,
+      canRoutine,
       settings,
       updateSettings,
       lastBackup,
@@ -669,6 +710,12 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       removeJobAssessment,
       signJobAssessment,
       canJobAssessment,
+      routines,
+      createTbm,
+      saveRoutine,
+      removeRoutine,
+      signRoutine,
+      canRoutine,
       settings,
       updateSettings,
       lastBackup,
