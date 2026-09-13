@@ -393,13 +393,17 @@ export function JobAssessmentDetail({
         <span className="text-xs text-muted-foreground">
           {step} / {STEPS.length} 단계
         </span>
-        <Button
-          variant="outline"
-          disabled={step === STEPS.length}
-          onClick={() => setStep((s) => Math.min(STEPS.length, s + 1))}
-        >
-          다음 <ChevronRight className="size-3.5" />
-        </Button>
+        {step === STEPS.length ? (
+          canWrite && (
+            <Button disabled={saving || missing.length > 0} onClick={() => void submit()}>
+              {saving ? "저장 중…" : isNew ? "등록" : "저장"}
+            </Button>
+          )
+        ) : (
+          <Button variant="outline" onClick={() => setStep((s) => Math.min(STEPS.length, s + 1))}>
+            다음 <ChevronRight className="size-3.5" />
+          </Button>
+        )}
       </div>
 
       <Dialog open={loadOpen} onClose={() => setLoadOpen(false)}>
