@@ -360,19 +360,14 @@ export function tbmMissing(v: Tbm): string[] {
   return missing;
 }
 
-/** 인쇄물·목록에 보여줄 작업내용 — 고른 작업명과 직접 적은 내용을 줄바꿈으로 잇는다 */
-export function tbmWorkText(v: Pick<Tbm, "workNames" | "workDescription">): string {
-  return tbmWorkParts(v).join("\n");
-}
-
 /** 고른 작업명들, 그 뒤에 수기로 적은 내용 — 화면과 인쇄물이 같은 순서를 쓴다 */
 export function tbmWorkParts(v: Pick<Tbm, "workNames" | "workDescription">): string[] {
   return [...(v.workNames ?? []), (v.workDescription ?? "").trim()].filter(Boolean);
 }
 
 /**
- * 목록의 '작업내용' 칸에 쓰는 한 줄짜리 표기 — 고른 것마다 줄을 바꾸면 행 높이가
- * 들쭉날쭉해 표를 훑기 어렵다. 한 줄에 '/'로 이어 붙인다.
+ * 목록과 인쇄물의 '작업내용' 표기 — 고른 것마다 줄을 바꾸면 행이 들쭉날쭉해
+ * 표를 훑기 어렵다. 한 줄에 '/'로 이어 붙인다.
  */
 export const tbmWorkLine = (v: Pick<Tbm, "workNames" | "workDescription">) => tbmWorkParts(v).join(" / ");
 
