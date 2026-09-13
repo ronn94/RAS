@@ -305,3 +305,16 @@ export function approverSignEnabled(v: JobAssessment, requireAll: boolean): bool
     ? sectionAllSigned(internal) && sectionAllSigned(external)
     : sectionAnySigned(internal) && sectionAnySigned(external);
 }
+
+/**
+ * 자동 잠금 기준 — **승인자 서명과 무관하게**, 손 서명이 다 들어왔는가.
+ * 평가자와 내부·외부 참여자(미정 제외) 전원이 서명하면 참이다. 승인자는 결재
+ * 절차라 서명이 늦어질 수 있어 잠금 기준에서 뺀다 — '상태' 열의 승인/대기
+ * 배지는 이 값과 별개로 승인자 서명 유무만 본다.
+ */
+export function handSignaturesComplete(v: JobAssessment): boolean {
+  if (!v.evaluatorSign) return false;
+  const internal = v.participants.filter((p) => !p.external);
+  const external = v.participants.filter((p) => p.external);
+  return sectionAllSigned(internal) && sectionAllSigned(external);
+}

@@ -15,7 +15,7 @@ import { cors } from "hono/cors";
 import { login, loginGuest, logout, readSession } from "./auth";
 import { DEFAULT_SETTINGS, withDefaults, type AppSettings } from "../src/lib/settings";
 import type { PriorityAction, StopWork, Survey, Training, TrainingAttendee } from "../src/lib/types";
-import type { JobAssessment, JobParticipant } from "../src/lib/jobAssessment";
+import { handSignaturesComplete, type JobAssessment, type JobParticipant } from "../src/lib/jobAssessment";
 import { tbmFullySigned, type Tbm, type TbmParticipant } from "../src/lib/routine";
 import type { Bindings } from "./bindings";
 import { runDailyDigest } from "./digest";
@@ -387,7 +387,7 @@ app.post("/api/jobassessments/:id/sign", requirePermission("jobAssessment"), asy
     await c.env.ras_db.prepare("DELETE FROM photo_meta WHERE id = ?1").bind(previous).run();
   }
 
-  applyAutoLock(doc, !!doc.approvedBySign);
+  applyAutoLock(doc, handSignaturesComplete(doc));
 
   doc.updatedAt = Date.now();
   await c.env.ras_db
