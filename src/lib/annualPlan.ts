@@ -184,6 +184,8 @@ export type PlanRow = {
   /** 손으로 켠 실적 달 — 자동 집계와 합쳐서 본다(자동에 안 잡히는 외부 교육 등) */
   actual: number[];
   note: string;
+  /** 이행률 칸 옆에 붙는 증빙 PDF — R2(사진과 같은 저장소)에 올려 id만 담는다 */
+  attachment?: { id: string; name: string; size: number };
 };
 
 export type AnnualPlan = {

@@ -16,7 +16,7 @@
  * 자동으로 켜진 달은 눌러도 꺼지지 않는다(기록이 정본이다). 대신 다른 달은 자유롭게 켜고 끈다.
  */
 import * as React from "react";
-import { CalendarPlus, Check, Info, Pencil, Printer, Trash2 } from "lucide-react";
+import { CalendarPlus, Check, FileText, Info, Paperclip, Pencil, Printer, Trash2 } from "lucide-react";
 import {
   Badge,
   Button,
@@ -51,8 +51,8 @@ import {
   type PlanItemKey,
   type PlanRow,
 } from "@/lib/annualPlan";
+import { deletePhoto, photoUrl, uploadPhoto } from "@/lib/db";
 import { cn } from "@/lib/utils";
-import { ApproverSelect } from "@/components/approver";
 import { useStore } from "@/store";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -65,7 +65,6 @@ export function AnnualPlanPage() {
     inspections,
     surveys,
     trainings,
-    settings,
     loading,
     canEdit,
     canDelete,
@@ -248,46 +247,6 @@ export function AnnualPlanPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-end gap-3">
-                  {(
-                    [
-                      ["charge", "담당"],
-                      ["review", "검토"],
-                      ["approve", "승인"],
-                    ] as const
-                  ).map(([key, label]) => (
-                    <div key={key} className="space-y-1.5">
-                      <Label>{label}</Label>
-                      {editing && key === "approve" ? (
-                        /* '승인'만 설정에서 지정한 승인자 중에서 고른다(담당·검토는 자유 입력) */
-                        <ApproverSelect
-                          className="h-8 w-28"
-                          value={draft.approver.approve}
-                          onChange={(approve) =>
-                            setDraft((d) => (d ? { ...d, approver: { ...d.approver, approve } } : d))
-                          }
-                        />
-                      ) : editing ? (
-                        <Input
-                          className="h-8 w-28"
-                          list="ras-staff"
-                          value={draft.approver[key]}
-                          onChange={(e) =>
-                            setDraft((d) => (d ? { ...d, approver: { ...d.approver, [key]: e.target.value } } : d))
-                          }
-                          placeholder={settings.org.approver[key] || "-"}
-                        />
-                      ) : (
-                        <p className="flex h-8 w-28 items-center text-sm">
-                          {draft.approver[key] || settings.org.approver[key] || "-"}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                  <datalist id="ras-staff">
-                    {settings.staff.map((n) => (
-                      <option key={n} value={n} />
-                    ))}
-                  </datalist>
                   {editing && (
                     <Button
                       variant="ghost"
@@ -427,6 +386,7 @@ function PlanTable({
             ))}
             <TH className="w-32">비고</TH>
             <TH className="w-20 text-center">이행률</TH>
+            <TH className="w-16 text-center">첨부</TH>
           </TR>
         </THead>
         <TBody>
@@ -505,6 +465,13 @@ function PlanTable({
                   </TD>
                   <TD rowSpan={2} className="text-center align-middle">
                     <RateBadge rate={rate} />
+                  </TD>
+                  <TD rowSpan={2} className="text-center align-middle">
+                    <AttachmentCell
+                      attachment={row.attachment}
+                      editing={editing}
+                      onChange={(next) => onPatchRow(t.key, { attachment: next })}
+                    />
                   </TD>
                 </TR>
                 <TR>
@@ -596,6 +563,113 @@ function MonthCell({
         {dot}
       </button>
     </TD>
+  );
+}
+
+type PlanAttachment = { id: string; name: string; size: number };
+
+/**
+ * 이행률 옆 증빙 PDF 한 장 — 이 절차를 실제로 실시했다는 근거 문서를 걸어 둔다.
+ * 사진과 같은 R2 저장소를 그대로 쓴다(uploadPhoto는 blob 종류를 가리지 않는다).
+ * 보기 전용일 때는 이미 붙은 파일을 열어 보는 것만 되고, 수정 중일 때만 새로
+ * 올리거나 뗄 수 있다 — 다른 칸과 같은 편집 규칙이다.
+ */
+function AttachmentCell({
+  attachment,
+  editing,
+  onChange,
+}: {
+  attachment?: PlanAttachment;
+  editing: boolean;
+  onChange: (next: PlanAttachment | undefined) => void;
+}) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = React.useState(false);
+
+  const pick = async (file: File) => {
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      alert("PDF 파일만 첨부할 수 있습니다.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const id = await uploadPhoto(file);
+      if (attachment) await deletePhoto(attachment.id).catch(() => undefined);
+      onChange({ id, name: file.name, size: file.size });
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "첨부에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!attachment) return;
+    setBusy(true);
+    try {
+      await deletePhoto(attachment.id);
+      onChange(undefined);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "삭제에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!editing && !attachment) return <span className="text-xs text-muted-foreground">-</span>;
+
+  return (
+    <div className="flex items-center justify-center gap-0.5">
+      {attachment && (
+        <a
+          href={photoUrl(attachment.id)}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex size-7 items-center justify-center rounded-md text-series-1 hover:bg-muted"
+          title={attachment.name}
+        >
+          <FileText className="size-3.5" />
+        </a>
+      )}
+      {editing && (
+        <>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) void pick(f);
+            }}
+          />
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            disabled={busy}
+            onClick={() => inputRef.current?.click()}
+            aria-label={attachment ? "PDF 다시 첨부" : "PDF 첨부"}
+            title={attachment ? "PDF 다시 첨부" : "증빙 PDF 첨부"}
+          >
+            <Paperclip className="size-3.5" />
+          </Button>
+          {attachment && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={busy}
+              className="text-destructive hover:text-destructive"
+              onClick={() => void remove()}
+              aria-label="첨부 삭제"
+              title="첨부 삭제"
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 

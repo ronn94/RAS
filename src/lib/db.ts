@@ -195,7 +195,7 @@ export async function storageUsage() {
 
 /* ── 고아 사진 정리 ─────────────────────────────────────── */
 export async function cleanupOrphanPhotos(): Promise<number> {
-  const [assessments, inspections, surveys, stopWorks, priorityActions, trainings, jobAssessments, routines] =
+  const [assessments, inspections, surveys, stopWorks, priorityActions, trainings, jobAssessments, routines, annualPlans] =
     await Promise.all([
       listAssessments(),
       listInspections(),
@@ -205,6 +205,7 @@ export async function cleanupOrphanPhotos(): Promise<number> {
       listTrainings(),
       listJobAssessments(),
       listRoutines(),
+      listAnnualPlans(),
     ]);
   const used: string[] = [];
   for (const a of assessments) {
@@ -243,6 +244,10 @@ export async function cleanupOrphanPhotos(): Promise<number> {
   for (const v of routines) {
     if (v.leaderSign) used.push(v.leaderSign);
     for (const p of v.participants) if (p.sign) used.push(p.sign);
+  }
+  // 연간계획표 행에 붙인 증빙 PDF도 R2에 있다 — 빠뜨리면 정리 때 함께 지워진다
+  for (const v of annualPlans) {
+    for (const r of v.rows) if (r.attachment) used.push(r.attachment.id);
   }
   const { removed } = await api<{ removed: number }>("/photos/cleanup", {
     method: "POST",

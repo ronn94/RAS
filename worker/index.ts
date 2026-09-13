@@ -586,7 +586,7 @@ app.post("/api/admin/backfill-surveys", adminOnly, async (c) => {
 
 /* ── 사진 (R2) ──────────────────────────────────────────────
    업로드 시 서버에서 새 id를 발급한다 — 클라이언트가 id를 정하지 않는다. */
-app.post("/api/photos", requirePermission("photo", "survey", "stopwork"), async (c) => {
+app.post("/api/photos", requirePermission("photo", "survey", "stopwork", "edit"), async (c) => {
   const body = await c.req.arrayBuffer();
   if (body.byteLength === 0) return c.json({ error: "빈 파일입니다" }, 400);
   const id = crypto.randomUUID();
@@ -610,7 +610,7 @@ app.get("/api/photos/:id", async (c) => {
   });
 });
 
-app.delete("/api/photos/:id", requirePermission("photo", "survey", "stopwork"), async (c) => {
+app.delete("/api/photos/:id", requirePermission("photo", "survey", "stopwork", "edit"), async (c) => {
   const id = c.req.param("id");
   await c.env.ras_photos.delete(id);
   await c.env.ras_db.prepare("DELETE FROM photo_meta WHERE id = ?1").bind(id).run();
