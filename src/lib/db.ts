@@ -9,6 +9,7 @@
  */
 import type { Assessment, HazardInfo, Inspection, PriorityAction, StopWork, Survey, Training } from "./types";
 import type { AnnualPlan } from "./annualPlan";
+import type { CertReview } from "./certReview";
 import type { JobAssessment } from "./jobAssessment";
 import { withTbmDefaults, type Tbm } from "./routine";
 import { withDefaults, type AppSettings } from "./settings";
@@ -90,6 +91,12 @@ export const listAnnualPlans = () => api<AnnualPlan[]>("/annualplans");
 export const putAnnualPlan = (v: AnnualPlan) =>
   api<AnnualPlan>(`/annualplans/${v.id}`, { method: "PUT", body: JSON.stringify(v) });
 export const deleteAnnualPlan = (id: string) => api(`/annualplans/${id}`, { method: "DELETE" });
+
+/* ── 이력 관리 · 정기·사후심사 ──────────────────────────── */
+export const listCertReviews = () => api<CertReview[]>("/certreviews");
+export const putCertReview = (v: CertReview) =>
+  api<CertReview>(`/certreviews/${v.id}`, { method: "PUT", body: JSON.stringify(v) });
+export const deleteCertReview = (id: string) => api(`/certreviews/${id}`, { method: "DELETE" });
 
 /* ── 작업 위험성평가 ───────────────────────────────────── */
 export const listJobAssessments = () => api<JobAssessment[]>("/jobassessments");

@@ -21,6 +21,7 @@ import {
   type TrainingKind,
 } from "@/lib/types";
 import { emptyAnnualPlan, copyPlanForYear, type AnnualPlan } from "@/lib/annualPlan";
+import type { CertReview } from "@/lib/certReview";
 import { emptyJobAssessment, type JobAssessment } from "@/lib/jobAssessment";
 import { emptyTbm, type Tbm } from "@/lib/routine";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
@@ -97,6 +98,10 @@ type Ctx = {
   signRoutine: (id: string, target: string, image: string | null) => Promise<Tbm>;
   /** 게스트가 상시평가를 등록·수정·서명할 수 있는가 (관리자는 항상 true) */
   canRoutine: boolean;
+  /** 이력 관리 · 정기·사후심사 — 관리자 전용 기록이라 별도 게스트 권한 없이 canEdit/canDelete를 그대로 쓴다 */
+  certReviews: CertReview[];
+  saveCertReview: (v: CertReview) => Promise<void>;
+  removeCertReview: (id: string) => Promise<void>;
 };
 
 /* ── 이관으로 묶인 항목 동기화 ────────────────────────────────
@@ -218,6 +223,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   const [annualPlans, setAnnualPlans] = React.useState<AnnualPlan[]>([]);
   const [jobAssessments, setJobAssessments] = React.useState<JobAssessment[]>([]);
   const [routines, setRoutines] = React.useState<Tbm[]>([]);
+  const [certReviews, setCertReviews] = React.useState<CertReview[]>([]);
   const [settings, setSettings] = React.useState<AppSettings>(DEFAULT_SETTINGS);
   const [lastBackup, setLastBackup] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -243,6 +249,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       setAnnualPlans(await db.listAnnualPlans());
       setJobAssessments(await db.listJobAssessments());
       setRoutines(await db.listRoutines());
+      setCertReviews(await db.listCertReviews());
       const s = await db.loadSettings();
       setSettings(s);
       setRiskThreshold(s.risk.threshold);
@@ -570,6 +577,19 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
     return next;
   }, []);
 
+  const saveCertReview = React.useCallback(async (v: CertReview) => {
+    await db.putCertReview(v);
+    setCertReviews((prev) => {
+      const exists = prev.some((x) => x.id === v.id);
+      return exists ? prev.map((x) => (x.id === v.id ? v : x)) : [...prev, v];
+    });
+  }, []);
+
+  const removeCertReview = React.useCallback(async (id: string) => {
+    await db.deleteCertReview(id);
+    setCertReviews((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
   const updateSettings = React.useCallback(
     async (patch: Partial<AppSettings>) => {
       const next = { ...settings, ...patch, updatedAt: Date.now() };
@@ -654,6 +674,9 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       removeRoutine,
       signRoutine,
       canRoutine,
+      certReviews,
+      saveCertReview,
+      removeCertReview,
       settings,
       updateSettings,
       lastBackup,
@@ -716,6 +739,9 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       removeRoutine,
       signRoutine,
       canRoutine,
+      certReviews,
+      saveCertReview,
+      removeCertReview,
       settings,
       updateSettings,
       lastBackup,

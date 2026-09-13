@@ -102,7 +102,7 @@ type NotifyOnCreate<T> = {
 
 /* ── 공용: JSON 문서 컬렉션(assessments / hazard_infos) ──────── */
 function collection<T extends { id: string } = Record<string, unknown> & { id: string }>(
-  table: "assessments" | "hazard_infos" | "inspections" | "surveys" | "stop_works" | "priority_actions" | "trainings" | "annual_plans" | "job_assessments" | "routine_assessments",
+  table: "assessments" | "hazard_infos" | "inspections" | "surveys" | "stop_works" | "priority_actions" | "trainings" | "annual_plans" | "job_assessments" | "routine_assessments" | "cert_reviews",
   /** 이 컬렉션을 쓰기 위해 필요한 권한. 설문지는 전역 편집권한과 분리해 survey로 연다 */
   perms: { write: PermissionKey[]; remove: PermissionKey[] } = { write: ["edit"], remove: ["delete"] },
   notifyOnCreate?: NotifyOnCreate<T>,
@@ -295,6 +295,7 @@ app.route(
 /* ── 이력 관리 · 연간계획표 ─────────────────────────────────
    서명이 없어 특별 취급이 필요 없다 — 기본 권한(edit/delete)으로 그대로 연다 */
 app.route("/api/annualplans", collection("annual_plans"));
+app.route("/api/certreviews", collection("cert_reviews"));
 
 /* ── 작업 위험성평가 ─────────────────────────────────────────
    실시서와 달리 **등록·수정·서명 전부** 게스트에게 열려 있다(전용 권한 jobAssessment,

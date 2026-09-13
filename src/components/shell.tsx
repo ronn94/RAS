@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   ClipboardCheck,
   ClipboardList,
+  BadgeCheck,
   DatabaseBackup,
   LayoutDashboard,
   ListChecks,
@@ -29,6 +30,7 @@ export type ViewKey =
   | "stopworks"
   | "annualplan"
   | "trainings"
+  | "certreviews"
   | "settings"
   | "backup";
 
@@ -67,6 +69,7 @@ const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
     items: [
       { key: "annualplan", title: "연간계획", icon: <CalendarRange /> },
       { key: "trainings", title: "실시서·공람표", icon: <GraduationCap /> },
+      { key: "certreviews", title: "정기·사후심사", icon: <BadgeCheck /> },
     ],
   },
 ];
