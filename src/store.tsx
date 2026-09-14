@@ -567,10 +567,15 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   // TBM 장소는 설정의 공정명에서 고르므로 첫 공정을 미리 넣어 둔다(작업평가의 대분류와 같은 방식)
   const createTbm = React.useCallback(() => emptyTbm({ location: settings.processes[0] }), [settings.processes]);
 
-  /** 새 교육일지 — 교육내용은 설정 기본 목록에서, 참석자 소속은 기본 소속에서 끌어온다 */
+  /** 새 교육일지 — 교육내용·실시자는 설정 기본값에서, 참석자 소속은 기본 소속에서 끌어온다 */
   const createEducation = React.useCallback(
-    () => emptyEducation({ topics: settings.educationTopics, dept: settings.org.dept }),
-    [settings.educationTopics, settings.org.dept],
+    () =>
+      emptyEducation({
+        topics: settings.educationTopics,
+        dept: settings.org.dept,
+        ...settings.educationDefaults,
+      }),
+    [settings.educationTopics, settings.org.dept, settings.educationDefaults],
   );
 
   const removeRoutine = React.useCallback(async (id: string) => {

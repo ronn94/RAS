@@ -515,7 +515,14 @@ function TbmRiskEditor({ value, onChange }: { value: TbmRisk[]; onChange: (v: Tb
 }
 
 /** 저장 버튼이 붙는 섹션과 그 섹션이 들고 있는 설정 키 */
-type SectionKey = "profile" | "org" | "hazardFactors" | "risk" | "tbmRisks" | "educationTopics";
+type SectionKey =
+  | "profile"
+  | "org"
+  | "hazardFactors"
+  | "risk"
+  | "tbmRisks"
+  | "educationTopics"
+  | "educationDefaults";
 
 export function SettingsPage() {
   const { settings, updateSettings } = useStore();
@@ -531,7 +538,7 @@ export function SettingsPage() {
   React.useEffect(() => {
     setDraft((d) => {
       const next = { ...settings };
-      for (const k of ["profile", "org", "hazardFactors", "risk", "tbmRisks", "educationTopics"] as SectionKey[]) {
+      for (const k of ["profile", "org", "hazardFactors", "risk", "tbmRisks", "educationTopics", "educationDefaults"] as SectionKey[]) {
         if (JSON.stringify(d[k]) !== JSON.stringify(settings[k])) (next as Record<string, unknown>)[k] = d[k];
       }
       return next;
@@ -554,9 +561,9 @@ export function SettingsPage() {
   const edit = (p: Partial<AppSettings>) => setDraft((d) => ({ ...d, ...p }));
 
   const dirty = (k: SectionKey) => JSON.stringify(draft[k]) !== JSON.stringify(settings[k]);
-  const anyDirty = (["profile", "org", "hazardFactors", "risk", "tbmRisks", "educationTopics"] as SectionKey[]).some(
-    dirty,
-  );
+  const anyDirty = (
+    ["profile", "org", "hazardFactors", "risk", "tbmRisks", "educationTopics", "educationDefaults"] as SectionKey[]
+  ).some(dirty);
 
   const save = async (k: SectionKey, label: string) => {
     try {
@@ -943,6 +950,53 @@ export function SettingsPage() {
         </CardHeader>
         <CardContent>
           <EducationTopicEditor value={draft.educationTopics} onChange={(v) => edit({ educationTopics: v })} />
+        </CardContent>
+      </Card>
+
+      {/* 일일교육 실시자 기본값 — 늘 같은 사람이 같은 자리에서 하므로 등록 때 미리 채운다 */}
+      <Card className="shadow-xs">
+        <CardHeader className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <CardTitle>일일교육 실시자</CardTitle>
+            <CardDescription>
+              일일교육을 새로 등록할 때 실시자·장소 칸에 미리 채워지는 값입니다. 그날 다르면 등록 화면에서 고쳐 쓰면
+              됩니다(이미 등록된 문서는 바뀌지 않습니다).
+            </CardDescription>
+          </div>
+          <SaveButton section="educationDefaults" label="일일교육 실시자" />
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <Label>직명</Label>
+            <Input
+              className="mt-1"
+              value={draft.educationDefaults.instructorRole}
+              placeholder="예: 운영팀장"
+              onChange={(e) =>
+                edit({ educationDefaults: { ...draft.educationDefaults, instructorRole: e.target.value } })
+              }
+            />
+          </div>
+          <div>
+            <Label>교육실시자</Label>
+            <Input
+              className="mt-1"
+              value={draft.educationDefaults.instructorName}
+              placeholder="예: 김원동"
+              onChange={(e) =>
+                edit({ educationDefaults: { ...draft.educationDefaults, instructorName: e.target.value } })
+              }
+            />
+          </div>
+          <div>
+            <Label>교육실시 장소</Label>
+            <Input
+              className="mt-1"
+              value={draft.educationDefaults.place}
+              placeholder="예: 관리동 사무실"
+              onChange={(e) => edit({ educationDefaults: { ...draft.educationDefaults, place: e.target.value } })}
+            />
+          </div>
         </CardContent>
       </Card>
 

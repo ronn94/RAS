@@ -500,7 +500,6 @@ export type Education = {
   targetCount: number | null;
   doneCount: number | null;
   undoneCount: number | null;
-  countNote: string; // 교육인원 표의 '비고'
   /* 실시자 */
   instructorRole: string; // 직명
   instructorName: string; // 성명
@@ -518,7 +517,16 @@ export function emptyEducationAttendee(name = "", dept = ""): EducationAttendee 
   return { id: crypto.randomUUID(), name, dept };
 }
 
-export function emptyEducation(defaults: { topics?: EducationTopic[]; dept?: string } = {}): Education {
+export function emptyEducation(
+  defaults: {
+    topics?: EducationTopic[];
+    dept?: string;
+    /** 설정 → 일일교육에 둔 실시자 기본값 — 매번 같은 사람이 같은 자리에서 한다 */
+    instructorRole?: string;
+    instructorName?: string;
+    place?: string;
+  } = {},
+): Education {
   return {
     id: crypto.randomUUID(),
     kind: "education",
@@ -534,10 +542,9 @@ export function emptyEducation(defaults: { topics?: EducationTopic[]; dept?: str
     targetCount: null,
     doneCount: null,
     undoneCount: null,
-    countNote: "",
-    instructorRole: "",
-    instructorName: "",
-    place: "",
+    instructorRole: defaults.instructorRole ?? "",
+    instructorName: defaults.instructorName ?? "",
+    place: defaults.place ?? "",
     remark: "",
     attendees: [],
     updatedAt: Date.now(),
@@ -610,7 +617,6 @@ export function withEducationDefaults(v: Education): Education {
     targetCount: v.targetCount ?? null,
     doneCount: v.doneCount ?? null,
     undoneCount: v.undoneCount ?? null,
-    countNote: v.countNote ?? "",
     instructorRole: v.instructorRole ?? "",
     instructorName: v.instructorName ?? "",
     place: v.place ?? "",

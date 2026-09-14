@@ -72,6 +72,8 @@ export type AppSettings = {
   tbmRisks: TbmRisk[];
   /** 일일교육(안전보건교육일지)의 기본 교육내용 — 매일 같은 내용이라 여기 두고 등록 때 끌어온다 */
   educationTopics: EducationTopic[];
+  /** 일일교육 실시자 기본값 — 늘 같은 사람이 같은 자리에서 하므로 등록 때 미리 채운다 */
+  educationDefaults: { instructorRole: string; instructorName: string; place: string };
   /** 작업평가 서명 규칙 */
   jobAssessment: {
     /** true(기본) — 평가자·내부 참여자·외부 참여자 전원이 서명해야 승인자 서명이 열린다.
@@ -127,6 +129,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   },
   tbmRisks: DEFAULT_TBM_RISKS.map((r) => ({ ...r, measures: [...r.measures] })),
   educationTopics: DEFAULT_EDUCATION_TOPICS.map((t) => ({ ...t })),
+  educationDefaults: { instructorRole: "운영팀장", instructorName: "김원동", place: "관리동 사무실" },
   jobAssessment: { approverRequireAll: true },
   updatedAt: 0,
 };
@@ -187,6 +190,7 @@ export function withDefaults(saved: Partial<AppSettings> | undefined | null): Ap
       text: t.text ?? "",
       note: t.note ?? "",
     })),
+    educationDefaults: { ...DEFAULT_SETTINGS.educationDefaults, ...saved.educationDefaults },
     jobAssessment: {
       approverRequireAll: saved.jobAssessment?.approverRequireAll ?? DEFAULT_SETTINGS.jobAssessment.approverRequireAll,
     },

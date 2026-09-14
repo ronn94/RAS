@@ -397,16 +397,6 @@ export function EducationDetail({
                 <Label>교육미실시자수</Label>
                 <div className="mt-1">{countInput(draft.undoneCount, counts.undone, (v) => patch({ undoneCount: v }))}</div>
               </div>
-              <div className="min-w-48 flex-1">
-                <Label>비고</Label>
-                <Input
-                  className="mt-1"
-                  disabled={!canWrite}
-                  value={draft.countNote}
-                  placeholder="예: 휴가 2명"
-                  onChange={(e) => patch({ countNote: e.target.value })}
-                />
-              </div>
             </div>
 
             <div>

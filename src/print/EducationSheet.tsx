@@ -95,7 +95,7 @@ function Journal({ v, staffCount }: { v: Education; staffCount: number }) {
         <tr>
           <td className="lbl">교 육 인 원</td>
           <td className="nest">
-            {/* 구분·계·비고를 정확히 3등분한다 */}
+            {/* 세 항목을 머리행으로 눕히고 숫자는 그 아래 한 줄에 — 2행 3열, 폭은 3등분 */}
             <table className="nested counts">
               <colgroup>
                 <col style={{ width: "33.33%" }} />
@@ -104,23 +104,13 @@ function Journal({ v, staffCount }: { v: Education; staffCount: number }) {
               </colgroup>
               <tbody>
                 <tr>
-                  <td className="lbl">구　　분</td>
-                  <td className="lbl">계</td>
-                  <td className="lbl">비 고</td>
+                  <td className="lbl">교육대상자수</td>
+                  <td className="lbl">교육실시자수</td>
+                  <td className="lbl">교육미실시자수</td>
                 </tr>
                 <tr>
-                  <td className="center">교육대상자수</td>
                   <td className="center num">{counts.target}</td>
-                  <td className="wrap" rowSpan={3}>
-                    {v.countNote}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="center">교육실시자수</td>
                   <td className="center num">{counts.done}</td>
-                </tr>
-                <tr>
-                  <td className="center">교육미실시자수</td>
                   <td className="center num">{counts.undone}</td>
                 </tr>
               </tbody>
