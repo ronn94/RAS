@@ -64,7 +64,11 @@ function Approval({ charge, team, chief }: { charge: string; team: string; chief
   );
 }
 
-/** 1쪽 본문 — 교육일지 표 */
+/** 1쪽 본문 — 교육일지 표.
+ *
+ * 한 장에 명단까지 담아야 해서, 여러 칸으로 갈리는 자리(교육인원·교육자료·실시자)는
+ * 바깥 표의 열을 쪼개지 않고 **칸 안에 표·격자를 한 겹 더** 둔다. 그래야 바깥 열 너비에
+ * 끌려가지 않고 구간마다 폭을 똑같이 나눌 수 있다. */
 function Journal({ v, staffCount }: { v: Education; staffCount: number }) {
   const counts = educationCounts(v, staffCount);
   const minutes = educationMinutes(v);
@@ -73,115 +77,129 @@ function Journal({ v, staffCount }: { v: Education; staffCount: number }) {
   return (
     <table className="journal">
       <colgroup>
-        <col style={{ width: "22mm" }} />
-        <col style={{ width: "34mm" }} />
-        <col style={{ width: "22mm" }} />
-        <col style={{ width: "22mm" }} />
-        <col style={{ width: "22mm" }} />
+        <col style={{ width: "24mm" }} />
         <col />
       </colgroup>
       <tbody>
         <tr>
           <td className="lbl">교육일시</td>
-          <td colSpan={5} className="center">
+          <td className="center row-1">
             {korDate(v.date)}　　{korTime(v.startTime)} ~ {korTime(v.endTime)}
             {minutes > 0 ? ` (${minutes}분)` : ""}
           </td>
         </tr>
         <tr>
-          <td className="lbl tall">교 육 구 분</td>
-          <td colSpan={5}>■ {v.category}</td>
+          <td className="lbl">교 육 구 분</td>
+          <td className="row-kind">■ {v.category}</td>
         </tr>
         <tr>
-          <td className="lbl" rowSpan={4}>
-            교 육 인 원
-          </td>
-          <td className="lbl">구　　분</td>
-          <td className="lbl" colSpan={2}>
-            계
-          </td>
-          <td className="lbl" colSpan={2}>
-            비 고
-          </td>
-        </tr>
-        <tr>
-          <td className="center">교육대상자수</td>
-          <td className="center num" colSpan={2}>
-            {counts.target}
-          </td>
-          <td className="wrap" colSpan={2} rowSpan={3}>
-            {v.countNote}
-          </td>
-        </tr>
-        <tr>
-          <td className="center">교육실시자수</td>
-          <td className="center num" colSpan={2}>
-            {counts.done}
-          </td>
-        </tr>
-        <tr>
-          <td className="center">교육미실시자수</td>
-          <td className="center num" colSpan={2}>
-            {counts.undone}
+          <td className="lbl">교 육 인 원</td>
+          <td className="nest">
+            {/* 구분·계·비고를 정확히 3등분한다 */}
+            <table className="nested counts">
+              <colgroup>
+                <col style={{ width: "33.33%" }} />
+                <col style={{ width: "33.33%" }} />
+                <col />
+              </colgroup>
+              <tbody>
+                <tr>
+                  <td className="lbl">구　　분</td>
+                  <td className="lbl">계</td>
+                  <td className="lbl">비 고</td>
+                </tr>
+                <tr>
+                  <td className="center">교육대상자수</td>
+                  <td className="center num">{counts.target}</td>
+                  <td className="wrap" rowSpan={3}>
+                    {v.countNote}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="center">교육실시자수</td>
+                  <td className="center num">{counts.done}</td>
+                </tr>
+                <tr>
+                  <td className="center">교육미실시자수</td>
+                  <td className="center num">{counts.undone}</td>
+                </tr>
+              </tbody>
+            </table>
           </td>
         </tr>
         <tr>
           <td className="lbl">교육목표</td>
-          <td colSpan={5}>{v.goal}</td>
+          <td className="row-1">{v.goal}</td>
         </tr>
         <tr>
           <td className="lbl">교육자료</td>
-          {EDUCATION_MATERIALS.map((m) => (
-            <td key={m} className="material">
-              <span className="material-name">{m}</span>
-              <span className="material-mark">{v.materials.includes(m) ? "○" : ""}</span>
-            </td>
-          ))}
-          <td />
-        </tr>
-        <tr>
-          <td className="lbl">교 육 내 용</td>
-          <td colSpan={5} className="topics">
-            {topics.map((t, i) => (
-              <div key={i}>
-                <span>• {t.text}</span>
-                {t.note.trim() && <div className="topic-note">({t.note})</div>}
-              </div>
-            ))}
+          <td className="nest">
+            {/* 네 가지를 정확히 4등분해 이름 옆에 ○ 자리를 둔다 */}
+            <table className="nested materials">
+              <colgroup>
+                {EDUCATION_MATERIALS.map((m) => (
+                  <col key={m} style={{ width: "25%" }} />
+                ))}
+              </colgroup>
+              <tbody>
+                <tr>
+                  {EDUCATION_MATERIALS.map((m) => (
+                    <td key={m} className="center">
+                      {m}
+                      <span className="material-mark">{v.materials.includes(m) ? "○" : ""}</span>
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
           </td>
         </tr>
         <tr>
-          <td className="lbl" rowSpan={2}>
+          <td className="lbl">교 육 내 용</td>
+          {/* 줄이 많아 한 열로 세우면 한 장을 넘긴다 — 두 열로 접어 높이를 반으로 줄인다 */}
+          <td className="topics">
+            <div className="topic-grid">
+              {topics.map((t, i) => (
+                <div key={i} className="topic">
+                  <span>• {t.text}</span>
+                  {t.note.trim() && <div className="topic-note">({t.note})</div>}
+                </div>
+              ))}
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td className="lbl">
             교 육
             <br />
             실시자
             <br />및 장소
           </td>
-          <td className="lbl" colSpan={2}>
-            직　　명
-          </td>
-          <td className="lbl">성　　명</td>
-          <td className="lbl" colSpan={2}>
-            교육실시 장소
+          <td className="nest">
+            <table className="nested doer">
+              <colgroup>
+                <col style={{ width: "33.33%" }} />
+                <col style={{ width: "33.33%" }} />
+                <col />
+              </colgroup>
+              <tbody>
+                <tr>
+                  <td className="lbl">직　　명</td>
+                  <td className="lbl">성　　명</td>
+                  <td className="lbl">교육실시 장소</td>
+                </tr>
+                <tr>
+                  <td className="center">{v.instructorRole}</td>
+                  <td className="center">{v.instructorName}</td>
+                  <td className="center">{v.place}</td>
+                </tr>
+              </tbody>
+            </table>
           </td>
         </tr>
         <tr>
-          <td className="center" colSpan={2}>
-            {v.instructorRole}
-          </td>
-          <td className="center">{v.instructorName}</td>
-          <td className="center" colSpan={2}>
-            {v.place}
-          </td>
-        </tr>
-        <tr>
-          <td className="lbl remark-label">
-            특 이
-            <br />사 항
-          </td>
-          <td colSpan={5} className="wrap remark">
-            {v.remark}
-          </td>
+          <td className="lbl">특이사항</td>
+          <td className="wrap remark">{v.remark}</td>
         </tr>
       </tbody>
     </table>
@@ -254,6 +272,7 @@ export function EducationSheet({ education: v }: { education: Education }) {
   return (
     <div className="print-root sheet sheet-education">
       <style>{"@page{size:A4 portrait;margin:13mm 12mm 15mm}"}</style>
+      {/* 교육일지와 참석자 명단을 한 장에 담는다 — 24명까지는 이 한 쪽으로 끝난다 */}
       <div className="print-page">
         <div className="head">
           <div className="sheet-title">안전보건교육일지</div>
@@ -261,14 +280,20 @@ export function EducationSheet({ education: v }: { education: Education }) {
         </div>
         <div className="subject">교육제목 : {v.title}</div>
         <Journal v={v} staffCount={settings.staff.length} />
+        <div className="list-title">
+          안전보건교육 참석자 명단
+          {pages.length > 1 ? <span className="page-no"> (1/{pages.length})</span> : null}
+        </div>
+        <AttendeeList attendees={pages[0]} offset={0} />
       </div>
-      {pages.map((chunk, p) => (
-        <div className="print-page" key={p}>
-          <div className="sheet-title list-title">
+      {/* 25명째부터는 명단만 쪽을 더한다 */}
+      {pages.slice(1).map((chunk, i) => (
+        <div className="print-page" key={i}>
+          <div className="list-title">
             안전보건교육 참석자 명단
-            {pages.length > 1 ? <span className="page-no"> ({p + 1}/{pages.length})</span> : null}
+            <span className="page-no"> ({i + 2}/{pages.length})</span>
           </div>
-          <AttendeeList attendees={chunk} offset={p * PER_PAGE} />
+          <AttendeeList attendees={chunk} offset={(i + 1) * PER_PAGE} />
         </div>
       ))}
     </div>
@@ -293,7 +318,7 @@ export function EducationContinuousSheet({ education: v }: { education: Educatio
         </div>
         <div className="subject">교육제목 : {v.title}</div>
         <Journal v={v} staffCount={settings.staff.length} />
-        <div className="sheet-title list-title">안전보건교육 참석자 명단</div>
+        <div className="list-title">안전보건교육 참석자 명단</div>
         {pages.map((chunk, p) => (
           <AttendeeList key={p} attendees={chunk} offset={p * PER_PAGE} />
         ))}

@@ -1208,20 +1208,24 @@
   color: #333;
 }
 
-/* ── 안전보건교육일지 (일일교육 · A4 세로) ─────────────────────
-   현장 종이 서식을 그대로 옮겼다. 1쪽은 교육일지, 2쪽부터 참석자 명단이며
-   명단은 한 쪽에 12줄 × 2벌로 칸 수가 고정돼 있다. */
+/* ── 안전보건교육일지 (일일교육 · A4 세로 한 장) ────────────────
+   현장 종이 서식을 그대로 옮기되, 교육일지와 참석자 명단(12줄 × 2벌)을 **한 장**에
+   담는 것이 목표다. 그래서 구간마다 높이를 못 박고, 교육내용은 두 열로 접는다.
+   여러 칸으로 갈리는 자리는 칸 안에 표를 한 겹 더 두어 폭을 똑같이 나눈다. */
 .sheet-education {
-  font-size: 9pt;
-  line-height: 1.4;
+  font-size: 8.5pt;
+  line-height: 1.3;
 }
 .sheet-education .print-page {
   box-sizing: border-box;
   width: 186mm; /* A4 세로 210mm - 좌우 여백 12mm */
 }
 .sheet-education :is(th, td) {
-  padding: 1.4mm;
-  font-size: 9pt;
+  padding: 0.8mm 1.2mm;
+  font-size: 8.5pt;
+}
+.sheet-education table {
+  margin-bottom: 2mm;
 }
 /* 제목과 결재란을 한 줄에 — 제목은 가운데, 결재란은 오른쪽 위 */
 .sheet-education .head {
@@ -1229,20 +1233,20 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 4mm;
-  margin-bottom: 4mm;
+  margin-bottom: 2.5mm;
 }
 .sheet-education .head .sheet-title {
   flex: 1;
-  margin: 6mm 0 0;
+  margin: 4mm 0 0;
   text-align: center;
-  font-size: 20pt;
+  font-size: 18pt;
   font-weight: 700;
-  letter-spacing: 3mm;
-  text-indent: 3mm; /* 자간이 오른쪽에만 붙어 생기는 쏠림을 되돌린다 */
+  letter-spacing: 2.5mm;
+  text-indent: 2.5mm; /* 자간이 오른쪽에만 붙어 생기는 쏠림을 되돌린다 */
 }
 .sheet-education .approval {
   flex: 0 0 auto;
-  width: 68mm;
+  width: 62mm;
   margin: 0;
 }
 /* '결재' 두 글자는 세로로 — 원본과 같은 모양 */
@@ -1252,16 +1256,16 @@
   text-align: center;
 }
 .sheet-education .approval .lbl {
-  height: 7mm;
+  height: 6mm;
 }
 .sheet-education .approval .sign-box {
-  height: 13mm;
+  height: 11mm;
   text-align: center;
   vertical-align: middle;
 }
 .sheet-education .subject {
-  margin-bottom: 2mm;
-  font-size: 11pt;
+  margin-bottom: 1.5mm;
+  font-size: 10.5pt;
   font-weight: 700;
 }
 .sheet-education .journal .lbl {
@@ -1269,9 +1273,6 @@
   font-weight: 700;
   text-align: center;
   vertical-align: middle;
-}
-.sheet-education .journal .tall {
-  height: 16mm;
 }
 .sheet-education .center {
   text-align: center;
@@ -1286,48 +1287,76 @@
   word-break: break-word;
   vertical-align: top;
 }
-/* 교육자료 — 이름과 ○ 자리를 한 칸 안에 나란히 둔다 */
-.sheet-education .material {
+/* 한 줄짜리 칸과 교육구분 — 교육구분은 원래 두 줄 높이였던 것을 절반으로 줄였다 */
+.sheet-education .row-1 {
+  height: 6.5mm;
+}
+.sheet-education .row-kind {
+  height: 8mm;
+  vertical-align: middle;
+}
+/* 칸 안에 한 겹 더 둔 표 — 바깥 칸의 테두리와 겹치지 않게 위·왼쪽과
+   마지막 칸의 오른쪽·아래를 지운다(바깥 표가 그 선을 이미 긋고 있다) */
+.sheet-education td.nest {
   padding: 0;
 }
-.sheet-education .material-name {
-  display: inline-block;
-  padding: 1.4mm;
-  border-right: 0.2mm solid #000;
+.sheet-education .nested {
+  margin: 0;
+  border-top: 0;
+  border-left: 0;
 }
+.sheet-education .nested :is(th, td):last-child {
+  border-right: 0;
+}
+.sheet-education .nested tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+.sheet-education .counts td {
+  height: 6mm;
+}
+.sheet-education .materials td {
+  height: 7mm;
+}
+/* ○ 자리는 이름 옆에 같은 폭으로 비워 둔다 */
 .sheet-education .material-mark {
   display: inline-block;
-  min-width: 8mm;
-  padding: 1.4mm;
+  min-width: 7mm;
   text-align: center;
 }
+.sheet-education .doer td {
+  height: 6.5mm;
+}
+/* 교육내용 — 두 열로 접어 높이를 반으로 줄인다(한 장에 명단까지 담기 위해) */
 .sheet-education .topics {
-  padding: 2mm 3mm;
+  padding: 1.5mm 2mm;
   vertical-align: top;
 }
-.sheet-education .topics > div {
-  margin-bottom: 0.6mm;
+.sheet-education .topic-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4mm 4mm;
+}
+.sheet-education .topic {
+  break-inside: avoid;
 }
 /* 근거 조항은 원본처럼 빨간 글씨로 한 칸 들여 덧붙인다 */
 .sheet-education .topic-note {
   margin-left: 3mm;
   color: #c00;
 }
-.sheet-education .remark-label {
-  height: 20mm;
-}
+/* 특이사항 — 적을 내용이 거의 없어 한 줄 높이로 둔다 */
 .sheet-education .remark {
-  height: 20mm;
+  height: 8mm;
 }
 /* 참석자 명단 — 서명칸은 손서명 이미지가 들어갈 높이로 */
 .sheet-education .list-title {
-  margin: 4mm 0 3mm;
+  margin: 2.5mm 0 1.5mm;
   text-align: center;
-  font-size: 15pt;
+  font-size: 13pt;
   font-weight: 700;
 }
 .sheet-education .list-title .page-no {
-  font-size: 9pt;
+  font-size: 8.5pt;
   font-weight: 400;
   color: #666;
 }
@@ -1335,19 +1364,20 @@
   background: #e8f0e4;
   text-align: center;
 }
+/* 한 장에 담고 남는 높이는 서명칸에 돌린다 — 수기로 서명받을 자리가 넉넉해야 한다 */
 .sheet-education .attendees td {
-  height: 9mm;
+  height: 9.5mm;
 }
 .sheet-education .attendees .no {
   font-variant-numeric: tabular-nums;
 }
 .sheet-education .attendees .sign-cell {
-  padding: 0.5mm;
+  padding: 0.4mm;
 }
 .sheet-education .attendees .sign-cell img {
   display: block;
   width: 100%;
-  height: 8mm;
+  height: 8.5mm;
   object-fit: contain;
 }
 

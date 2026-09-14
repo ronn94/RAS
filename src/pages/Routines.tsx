@@ -3,7 +3,7 @@
  *
  * 정기평가·작업평가가 '평가표'라면 상시평가는 **작업 당일의 기록**이다. 둘 다 같은
  * 저장소(`routine_assessments`)에 `kind`로 구분해 담기지만, 서식이 달라 화면은 따로 둔다.
- * 서식이 서로 달라 화면은 따로 두되, 목록·서명·권한·잠금 규칙은 그대로 나눠 쓴다.
+ * 목록·서명·권한·잠금 규칙은 그대로 나눠 쓴다.
  */
 import * as React from "react";
 import { TbmsPage } from "@/pages/Tbms";
@@ -16,6 +16,14 @@ type Sub = "tbm" | "education";
 export function RoutinesPage({ openId, onOpen }: { openId: string | null; onOpen: (id: string | null) => void }) {
   const { routines } = useStore();
   const [sub, setSub] = React.useState<Sub>("tbm");
+
+  /* 알림·대시보드에서 id로 바로 들어올 수 있다 — 그 id가 어느 종류인지 보고 서브탭을
+     맞춘다(안 맞추면 교육일지를 열었는데 TBM 목록이 뜬다). */
+  React.useEffect(() => {
+    if (!openId) return;
+    const found = routines.find((v) => v.id === openId);
+    if (found) setSub(found.kind === "education" ? "education" : "tbm");
+  }, [openId, routines]);
 
   const tbmCount = routines.filter((v) => v.kind === "tbm").length;
   const educationCount = routines.filter((v) => v.kind === "education").length;
