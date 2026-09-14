@@ -441,3 +441,196 @@ export function withTbmDefaults(v: Tbm): Tbm {
     removalPerson: v.removalPerson ?? "",
   };
 }
+
+/* ── 일일교육 (안전보건교육일지) ──────────────────────────────
+   현장에서 쓰던 종이 서식을 그대로 옮겼다. 1쪽은 교육일지, 2쪽부터 참석자 명단이다.
+   TBM과 같은 저장소(routine_assessments)에 kind로만 갈라 담아, 목록·서명·권한·잠금
+   규칙을 전부 그대로 나눠 쓴다 — 현장에서는 둘 다 '그날 아침에 쓰는 서류'라 조작법이
+   달라지면 안 된다. */
+
+/** 교육자료 — 서식의 네 칸. 고른 것에 ○가 찍힌다 */
+export const EDUCATION_MATERIALS = ["교안", "프로젝터", "VTR", "기타"] as const;
+
+/**
+ * 교육내용 한 줄. `note`는 원본 서식에서 **빨간 글씨로 덧붙는 근거 조항**이다
+ * (예: 보호구 착용 의무 아래의 '산업안전보건기준에 관한 규칙 제32조').
+ * 한 필드에 뭉뚱그리면 인쇄물에서 근거만 빨갛게 찍을 수 없어 따로 둔다.
+ */
+export type EducationTopic = { text: string; note: string };
+
+/** 설정에 시드하는 기본 교육내용 — 첨부 서식의 여덟 줄 그대로다 */
+export const DEFAULT_EDUCATION_TOPICS: EducationTopic[] = [
+  { text: "안전구호 제창", note: "" },
+  { text: "아침체조 실시", note: "" },
+  { text: "각 팀별 TBM 실시", note: "" },
+  { text: "2인 1조 작업 준수", note: "" },
+  { text: "보호구 지급에 따른 근로자 보호구 착용 의무 이행 준수", note: "산업안전보건기준에 관한 규칙 제32조" },
+  { text: "작업 중 위험하다고 판단 시 작업중지권 사용", note: "" },
+  { text: "폭염안전 5대 기본수칙 준수", note: "" },
+  { text: "현장 체감온도 측정 및 관리(폭염대책기간)", note: "" },
+];
+
+/** 참석자 한 명 — 서식의 [연번·소속·성명·서명] 한 줄에 대응한다 */
+export type EducationAttendee = {
+  id: string;
+  name: string;
+  /** 소속 — 설정의 기본 소속(org.dept)으로 채운다 */
+  dept: string;
+  /** 손 서명 이미지 id (R2) */
+  sign?: string;
+  signedAt?: number;
+};
+
+export type Education = {
+  id: string;
+  kind: "education";
+  /* 머리 */
+  title: string; // 교육제목
+  category: string; // 교육구분
+  goal: string; // 교육목표
+  /* 교육일시 */
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:MM
+  endTime: string; // HH:MM
+  /** 교육자료 — 고른 것만 담는다(EDUCATION_MATERIALS 중에서) */
+  materials: string[];
+  /** 교육내용 — 설정 기본값으로 채워 두고 그날 고친다 */
+  topics: EducationTopic[];
+  /* 교육인원 — 자동 계산값을 덮어쓰고 싶을 때만 값이 들어간다(null이면 자동) */
+  targetCount: number | null;
+  doneCount: number | null;
+  undoneCount: number | null;
+  countNote: string; // 교육인원 표의 '비고'
+  /* 실시자 */
+  instructorRole: string; // 직명
+  instructorName: string; // 성명
+  place: string; // 교육실시 장소
+  remark: string; // 특이사항
+  /* 서명 */
+  attendees: EducationAttendee[];
+  /** TBM과 같은 잠금 규칙 — 서명이 다 차면 저절로 걸린다 */
+  locked?: boolean;
+  autoLocked?: boolean;
+  updatedAt: number;
+};
+
+export function emptyEducationAttendee(name = "", dept = ""): EducationAttendee {
+  return { id: crypto.randomUUID(), name, dept };
+}
+
+export function emptyEducation(defaults: { topics?: EducationTopic[]; dept?: string } = {}): Education {
+  return {
+    id: crypto.randomUUID(),
+    kind: "education",
+    title: "일일안전교육(아침조회)",
+    category: "기타(일일안전)교육",
+    goal: "무사고 및 무재해 유지",
+    date: new Date().toISOString().slice(0, 10),
+    // 아침조회는 작업 시작 전 15분이다 — 서식의 기본 시각을 그대로 둔다
+    startTime: "09:00",
+    endTime: "09:15",
+    materials: ["기타"],
+    topics: (defaults.topics ?? DEFAULT_EDUCATION_TOPICS).map((t) => ({ ...t })),
+    targetCount: null,
+    doneCount: null,
+    undoneCount: null,
+    countNote: "",
+    instructorRole: "",
+    instructorName: "",
+    place: "",
+    remark: "",
+    attendees: [],
+    updatedAt: Date.now(),
+  };
+}
+
+/** 교육 소요 시간(분) — 서식의 '(15분)' 자리에 찍는다. 자정을 넘기면 0으로 본다 */
+export function educationMinutes(v: Pick<Education, "startTime" | "endTime">): number {
+  const toMin = (t: string) => {
+    const [h, m] = (t || "").split(":").map(Number);
+    return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : NaN;
+  };
+  const diff = toMin(v.endTime) - toMin(v.startTime);
+  return Number.isFinite(diff) && diff > 0 ? diff : 0;
+}
+
+/**
+ * 교육인원 세 칸 — 명단에서 세되, 손으로 적어 둔 값이 있으면 그것을 쓴다.
+ * `staffCount`는 설정의 직원 명단 수(교육대상자)다.
+ */
+export function educationCounts(v: Education, staffCount: number): { target: number; done: number; undone: number } {
+  const done = v.doneCount ?? v.attendees.filter((a) => a.name.trim()).length;
+  const target = v.targetCount ?? Math.max(staffCount, done);
+  // 미실시자는 음수가 될 수 없다 — 대상보다 많이 참석한 날(외부 인원 등)은 0으로 둔다
+  const undone = v.undoneCount ?? Math.max(target - done, 0);
+  return { target, done, undone };
+}
+
+/** 교육내용 중 실제로 찍을 줄만 — 빈 줄은 인쇄물에서 뺀다 */
+export const educationTopicLines = (v: Education) => v.topics.filter((t) => t.text.trim());
+
+/** 서명을 받은 참석자 수 */
+export const signedEducationAttendees = (v: Education) => v.attendees.filter((a) => a.sign).length;
+
+/** 참석자 전원이 서명했는가 — 목록의 '완료' 배지와 자동 잠금이 이 값을 본다 */
+export function educationFullySigned(v: Education): boolean {
+  return v.attendees.length > 0 && v.attendees.every((a) => a.sign);
+}
+
+/**
+ * 등록(저장)하기 전에 비어 있는 항목 목록. 비어 있으면 등록할 수 있다.
+ * TBM과 같은 규칙이다 — 빠진 칸이 있으면 교육을 한 셈이 되지 않는다.
+ */
+export function educationMissing(v: Education): string[] {
+  const missing: string[] = [];
+  if (!v.title.trim()) missing.push("교육제목");
+  if (!v.date) missing.push("교육일자");
+  if (!v.startTime || !v.endTime) missing.push("교육시각");
+  else if (educationMinutes(v) === 0) missing.push("교육시각(끝나는 시각이 시작보다 빠릅니다)");
+  if (v.materials.length === 0) missing.push("교육자료");
+  if (educationTopicLines(v).length === 0) missing.push("교육내용(1줄 이상)");
+  if (!v.instructorName.trim()) missing.push("교육실시자");
+  if (!v.place.trim()) missing.push("교육실시 장소");
+  if (v.attendees.filter((a) => a.name.trim()).length === 0) missing.push("참석자(1명 이상)");
+  return missing;
+}
+
+/** 서버에서 읽어 온 교육일지를 지금의 모양으로 맞춘다(withTbmDefaults와 같은 이유) */
+export function withEducationDefaults(v: Education): Education {
+  const base = emptyEducation();
+  return {
+    ...v,
+    title: v.title ?? base.title,
+    category: v.category ?? base.category,
+    goal: v.goal ?? base.goal,
+    startTime: v.startTime ?? base.startTime,
+    endTime: v.endTime ?? base.endTime,
+    materials: v.materials ?? [],
+    topics: (v.topics ?? []).map((t) => ({ text: t.text ?? "", note: t.note ?? "" })),
+    targetCount: v.targetCount ?? null,
+    doneCount: v.doneCount ?? null,
+    undoneCount: v.undoneCount ?? null,
+    countNote: v.countNote ?? "",
+    instructorRole: v.instructorRole ?? "",
+    instructorName: v.instructorName ?? "",
+    place: v.place ?? "",
+    remark: v.remark ?? "",
+    attendees: (v.attendees ?? []).map((a) => ({ ...a, name: a.name ?? "", dept: a.dept ?? "" })),
+  };
+}
+
+/* ── 두 종류를 함께 다루는 자리 ───────────────────────────── */
+
+/** 상시평가 문서 — 목록·저장·서명은 종류를 가리지 않고 이 타입으로 오간다 */
+export type RoutineDoc = Tbm | Education;
+
+export const isTbm = (v: RoutineDoc): v is Tbm => v.kind === "tbm";
+export const isEducation = (v: RoutineDoc): v is Education => v.kind === "education";
+
+/** 읽는 길목에서 종류에 맞는 기본값 채우기를 고른다 */
+export const withRoutineDefaults = (v: RoutineDoc): RoutineDoc =>
+  isEducation(v) ? withEducationDefaults(v) : withTbmDefaults(v as Tbm);
+
+/** 서명이 다 찼는가 — 자동 잠금이 종류마다 다른 기준을 본다 */
+export const routineFullySigned = (v: RoutineDoc): boolean =>
+  isEducation(v) ? educationFullySigned(v) : tbmFullySigned(v as Tbm);

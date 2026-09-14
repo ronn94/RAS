@@ -3,12 +3,11 @@
  *
  * 정기평가·작업평가가 '평가표'라면 상시평가는 **작업 당일의 기록**이다. 둘 다 같은
  * 저장소(`routine_assessments`)에 `kind`로 구분해 담기지만, 서식이 달라 화면은 따로 둔다.
- * 일일교육은 아직 서식을 옮기기 전이라 자리만 잡아 두었다.
+ * 서식이 서로 달라 화면은 따로 두되, 목록·서명·권한·잠금 규칙은 그대로 나눠 쓴다.
  */
 import * as React from "react";
 import { TbmsPage } from "@/pages/Tbms";
-import { EmptyState } from "@/components/ui";
-import { GraduationCap } from "lucide-react";
+import { EducationsPage } from "@/pages/Educations";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
 
@@ -19,11 +18,12 @@ export function RoutinesPage({ openId, onOpen }: { openId: string | null; onOpen
   const [sub, setSub] = React.useState<Sub>("tbm");
 
   const tbmCount = routines.filter((v) => v.kind === "tbm").length;
+  const educationCount = routines.filter((v) => v.kind === "education").length;
   const detailOpen = !!openId && routines.some((v) => v.id === openId);
 
   const SUBS: { key: Sub; label: string; count: number }[] = [
     { key: "tbm", label: "TBM", count: tbmCount },
-    { key: "education", label: "일일교육", count: 0 },
+    { key: "education", label: "일일교육", count: educationCount },
   ];
 
   return (
@@ -53,9 +53,7 @@ export function RoutinesPage({ openId, onOpen }: { openId: string | null; onOpen
       {sub === "tbm" ? (
         <TbmsPage openId={openId} onOpen={onOpen} />
       ) : (
-        <EmptyState icon={<GraduationCap className="size-6 text-muted-foreground" />}>
-          일일교육 서식은 아직 준비 중입니다.
-        </EmptyState>
+        <EducationsPage openId={openId} onOpen={onOpen} />
       )}
     </div>
   );

@@ -11,7 +11,7 @@ import type { Assessment, HazardInfo, Inspection, PriorityAction, StopWork, Surv
 import type { AnnualPlan } from "./annualPlan";
 import type { CertReview } from "./certReview";
 import type { JobAssessment } from "./jobAssessment";
-import { withTbmDefaults, type Tbm } from "./routine";
+import { isEducation, withRoutineDefaults, type RoutineDoc } from "./routine";
 import { withDefaults, type AppSettings } from "./settings";
 
 /** 세션이 끊겼을 때(401) store.tsx가 로그인 화면으로 되돌릴 수 있도록 알린다.
@@ -113,15 +113,15 @@ export const signJobAssessment = (id: string, target: string, image: string | nu
   });
 
 /* ── 상시평가 (TBM · 일일교육) ─────────────────────────── */
-export const listRoutines = async () => (await api<Tbm[]>("/routineassessments")).map(withTbmDefaults);
-export const putRoutine = async (v: Tbm) =>
-  withTbmDefaults(await api<Tbm>(`/routineassessments/${v.id}`, { method: "PUT", body: JSON.stringify(v) }));
+export const listRoutines = async () => (await api<RoutineDoc[]>("/routineassessments")).map(withRoutineDefaults);
+export const putRoutine = async (v: RoutineDoc) =>
+  withRoutineDefaults(await api<RoutineDoc>(`/routineassessments/${v.id}`, { method: "PUT", body: JSON.stringify(v) }));
 export const deleteRoutine = (id: string) => api(`/routineassessments/${id}`, { method: "DELETE" });
 
 /** target은 참석자 id, 또는 TBM 리더를 가리키는 "leader" */
 export const signRoutine = async (id: string, target: string, image: string | null) =>
-  withTbmDefaults(
-    await api<Tbm>(`/routineassessments/${id}/sign`, {
+  withRoutineDefaults(
+    await api<RoutineDoc>(`/routineassessments/${id}/sign`, {
       method: "POST",
       body: JSON.stringify({ target, image }),
     }),
@@ -240,10 +240,14 @@ export async function cleanupOrphanPhotos(): Promise<number> {
     if (v.evaluatorSign) used.push(v.evaluatorSign);
     if (v.approvedBySign) used.push(v.approvedBySign);
   }
-  // 상시평가(TBM)도 리더·참석자 서명이 R2 사진이다
+  // 상시평가도 서명이 R2 사진이다 — TBM은 리더+참석자, 일일교육은 참석자 명단
   for (const v of routines) {
-    if (v.leaderSign) used.push(v.leaderSign);
-    for (const p of v.participants) if (p.sign) used.push(p.sign);
+    if (isEducation(v)) {
+      for (const a of v.attendees) if (a.sign) used.push(a.sign);
+    } else {
+      if (v.leaderSign) used.push(v.leaderSign);
+      for (const p of v.participants) if (p.sign) used.push(p.sign);
+    }
   }
   // 연간계획표 행에 붙인 증빙 PDF도 R2에 있다 — 빠뜨리면 정리 때 함께 지워진다
   for (const v of annualPlans) {

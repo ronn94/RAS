@@ -2,7 +2,7 @@
  * 앱 설정 — 유지보수를 코드 수정 없이 하기 위한 값들.
  * IndexedDB의 settings 스토어에 단일 레코드로 저장한다.
  */
-import { DEFAULT_TBM_RISKS, type TbmRisk } from "./routine";
+import { DEFAULT_EDUCATION_TOPICS, DEFAULT_TBM_RISKS, type EducationTopic, type TbmRisk } from "./routine";
 import { HAZARD_FACTORS, STATUSES, type HazardFactor } from "./types";
 
 export type ScaleLabel = { value: number; label: string };
@@ -70,6 +70,8 @@ export type AppSettings = {
   };
   /** TBM 위험요인과 그에 딸린 안전대책 후보 — 설정에서 추가·삭제한다 */
   tbmRisks: TbmRisk[];
+  /** 일일교육(안전보건교육일지)의 기본 교육내용 — 매일 같은 내용이라 여기 두고 등록 때 끌어온다 */
+  educationTopics: EducationTopic[];
   /** 작업평가 서명 규칙 */
   jobAssessment: {
     /** true(기본) — 평가자·내부 참여자·외부 참여자 전원이 서명해야 승인자 서명이 열린다.
@@ -124,6 +126,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     ],
   },
   tbmRisks: DEFAULT_TBM_RISKS.map((r) => ({ ...r, measures: [...r.measures] })),
+  educationTopics: DEFAULT_EDUCATION_TOPICS.map((t) => ({ ...t })),
   jobAssessment: { approverRequireAll: true },
   updatedAt: 0,
 };
@@ -179,6 +182,11 @@ export function withDefaults(saved: Partial<AppSettings> | undefined | null): Ap
     // 예전 설정에는 이 칸이 없다 — 그때 저장된 것은 원본 15종으로 채워 준다.
     // 관리자가 손으로 전부 지운 경우([])는 undefined가 아니므로 그대로 존중한다.
     tbmRisks: (saved.tbmRisks ?? DEFAULT_SETTINGS.tbmRisks).map((r) => ({ ...r, measures: [...(r.measures ?? [])] })),
+    // ??는 undefined만 거른다 — 관리자가 일부러 비운 목록([])은 그대로 존중한다
+    educationTopics: (saved.educationTopics ?? DEFAULT_SETTINGS.educationTopics).map((t) => ({
+      text: t.text ?? "",
+      note: t.note ?? "",
+    })),
     jobAssessment: {
       approverRequireAll: saved.jobAssessment?.approverRequireAll ?? DEFAULT_SETTINGS.jobAssessment.approverRequireAll,
     },

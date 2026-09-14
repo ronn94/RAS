@@ -23,7 +23,7 @@ import {
 import { emptyAnnualPlan, copyPlanForYear, type AnnualPlan } from "@/lib/annualPlan";
 import type { CertReview } from "@/lib/certReview";
 import { emptyJobAssessment, type JobAssessment } from "@/lib/jobAssessment";
-import { emptyTbm, type Tbm } from "@/lib/routine";
+import { emptyEducation, emptyTbm, type Education, type RoutineDoc, type Tbm } from "@/lib/routine";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
 import type { Identity } from "@/lib/auth";
 
@@ -90,12 +90,13 @@ type Ctx = {
   signJobAssessment: (id: string, target: string, image: string | null) => Promise<JobAssessment>;
   /** 게스트가 작업평가를 등록·수정·서명할 수 있는가 (관리자는 항상 true) */
   canJobAssessment: boolean;
-  /** 상시평가 — 지금은 TBM 하나뿐이라 목록도 TBM만 담긴다 */
-  routines: Tbm[];
+  /** 상시평가 — TBM과 일일교육이 kind로만 갈려 한 목록에 함께 담긴다 */
+  routines: RoutineDoc[];
   createTbm: () => Tbm;
-  saveRoutine: (v: Tbm) => Promise<void>;
+  createEducation: () => Education;
+  saveRoutine: (v: RoutineDoc) => Promise<void>;
   removeRoutine: (id: string) => Promise<void>;
-  signRoutine: (id: string, target: string, image: string | null) => Promise<Tbm>;
+  signRoutine: (id: string, target: string, image: string | null) => Promise<RoutineDoc>;
   /** 게스트가 상시평가를 등록·수정·서명할 수 있는가 (관리자는 항상 true) */
   canRoutine: boolean;
   /** 이력 관리 · 정기·사후심사 — 관리자 전용 기록이라 별도 게스트 권한 없이 canEdit/canDelete를 그대로 쓴다 */
@@ -222,7 +223,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   const [trainings, setTrainings] = React.useState<Training[]>([]);
   const [annualPlans, setAnnualPlans] = React.useState<AnnualPlan[]>([]);
   const [jobAssessments, setJobAssessments] = React.useState<JobAssessment[]>([]);
-  const [routines, setRoutines] = React.useState<Tbm[]>([]);
+  const [routines, setRoutines] = React.useState<RoutineDoc[]>([]);
   const [certReviews, setCertReviews] = React.useState<CertReview[]>([]);
   const [settings, setSettings] = React.useState<AppSettings>(DEFAULT_SETTINGS);
   const [lastBackup, setLastBackup] = React.useState<number | null>(null);
@@ -555,7 +556,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   }, []);
 
   /* ── 상시평가 ─────────────────────────────────────────── */
-  const saveRoutine = React.useCallback(async (v: Tbm) => {
+  const saveRoutine = React.useCallback(async (v: RoutineDoc) => {
     await db.putRoutine(v);
     setRoutines((prev) => {
       const i = prev.findIndex((x) => x.id === v.id);
@@ -565,6 +566,12 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
 
   // TBM 장소는 설정의 공정명에서 고르므로 첫 공정을 미리 넣어 둔다(작업평가의 대분류와 같은 방식)
   const createTbm = React.useCallback(() => emptyTbm({ location: settings.processes[0] }), [settings.processes]);
+
+  /** 새 교육일지 — 교육내용은 설정 기본 목록에서, 참석자 소속은 기본 소속에서 끌어온다 */
+  const createEducation = React.useCallback(
+    () => emptyEducation({ topics: settings.educationTopics, dept: settings.org.dept }),
+    [settings.educationTopics, settings.org.dept],
+  );
 
   const removeRoutine = React.useCallback(async (id: string) => {
     await db.deleteRoutine(id);
@@ -670,6 +677,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       canJobAssessment,
       routines,
       createTbm,
+      createEducation,
       saveRoutine,
       removeRoutine,
       signRoutine,
@@ -735,6 +743,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       canJobAssessment,
       routines,
       createTbm,
+      createEducation,
       saveRoutine,
       removeRoutine,
       signRoutine,

@@ -1208,6 +1208,149 @@
   color: #333;
 }
 
+/* ── 안전보건교육일지 (일일교육 · A4 세로) ─────────────────────
+   현장 종이 서식을 그대로 옮겼다. 1쪽은 교육일지, 2쪽부터 참석자 명단이며
+   명단은 한 쪽에 12줄 × 2벌로 칸 수가 고정돼 있다. */
+.sheet-education {
+  font-size: 9pt;
+  line-height: 1.4;
+}
+.sheet-education .print-page {
+  box-sizing: border-box;
+  width: 186mm; /* A4 세로 210mm - 좌우 여백 12mm */
+}
+.sheet-education :is(th, td) {
+  padding: 1.4mm;
+  font-size: 9pt;
+}
+/* 제목과 결재란을 한 줄에 — 제목은 가운데, 결재란은 오른쪽 위 */
+.sheet-education .head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 4mm;
+  margin-bottom: 4mm;
+}
+.sheet-education .head .sheet-title {
+  flex: 1;
+  margin: 6mm 0 0;
+  text-align: center;
+  font-size: 20pt;
+  font-weight: 700;
+  letter-spacing: 3mm;
+  text-indent: 3mm; /* 자간이 오른쪽에만 붙어 생기는 쏠림을 되돌린다 */
+}
+.sheet-education .approval {
+  flex: 0 0 auto;
+  width: 68mm;
+  margin: 0;
+}
+/* '결재' 두 글자는 세로로 — 원본과 같은 모양 */
+.sheet-education .approval .vertical {
+  writing-mode: vertical-rl;
+  letter-spacing: 1mm;
+  text-align: center;
+}
+.sheet-education .approval .lbl {
+  height: 7mm;
+}
+.sheet-education .approval .sign-box {
+  height: 13mm;
+  text-align: center;
+  vertical-align: middle;
+}
+.sheet-education .subject {
+  margin-bottom: 2mm;
+  font-size: 11pt;
+  font-weight: 700;
+}
+.sheet-education .journal .lbl {
+  background: #e8f0e4; /* 원본의 연녹색 라벨 */
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+}
+.sheet-education .journal .tall {
+  height: 16mm;
+}
+.sheet-education .center {
+  text-align: center;
+  vertical-align: middle;
+}
+.sheet-education .num {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.sheet-education .wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
+  vertical-align: top;
+}
+/* 교육자료 — 이름과 ○ 자리를 한 칸 안에 나란히 둔다 */
+.sheet-education .material {
+  padding: 0;
+}
+.sheet-education .material-name {
+  display: inline-block;
+  padding: 1.4mm;
+  border-right: 0.2mm solid #000;
+}
+.sheet-education .material-mark {
+  display: inline-block;
+  min-width: 8mm;
+  padding: 1.4mm;
+  text-align: center;
+}
+.sheet-education .topics {
+  padding: 2mm 3mm;
+  vertical-align: top;
+}
+.sheet-education .topics > div {
+  margin-bottom: 0.6mm;
+}
+/* 근거 조항은 원본처럼 빨간 글씨로 한 칸 들여 덧붙인다 */
+.sheet-education .topic-note {
+  margin-left: 3mm;
+  color: #c00;
+}
+.sheet-education .remark-label {
+  height: 20mm;
+}
+.sheet-education .remark {
+  height: 20mm;
+}
+/* 참석자 명단 — 서명칸은 손서명 이미지가 들어갈 높이로 */
+.sheet-education .list-title {
+  margin: 4mm 0 3mm;
+  text-align: center;
+  font-size: 15pt;
+  font-weight: 700;
+}
+.sheet-education .list-title .page-no {
+  font-size: 9pt;
+  font-weight: 400;
+  color: #666;
+}
+.sheet-education .attendees th {
+  background: #e8f0e4;
+  text-align: center;
+}
+.sheet-education .attendees td {
+  height: 9mm;
+}
+.sheet-education .attendees .no {
+  font-variant-numeric: tabular-nums;
+}
+.sheet-education .attendees .sign-cell {
+  padding: 0.5mm;
+}
+.sheet-education .attendees .sign-cell img {
+  display: block;
+  width: 100%;
+  height: 8mm;
+  object-fit: contain;
+}
+
 /* ── 위험성평가 연간계획표 (원본 SSI-602-02 · A4 가로 1장) ──────
    가로 22칸 × 세로 32줄(머리 2 + 15항목 × 2)을 한 장에 넣어야 해서
    글자와 줄 높이를 아주 작게 잡는다. 계획은 ○, 실적은 ●로 구분한다. */

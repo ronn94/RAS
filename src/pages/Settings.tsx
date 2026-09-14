@@ -3,7 +3,7 @@ import { Bell, BellOff, ListPlus, Plus, RotateCcw, Save, X } from "lucide-react"
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Input, Label } from "@/components/ui";
 import { DEFAULT_SETTINGS, type AppSettings, type ScaleLabel } from "@/lib/settings";
 import { JOB_TEAMS } from "@/lib/jobAssessment";
-import type { TbmRisk } from "@/lib/routine";
+import type { EducationTopic, TbmRisk } from "@/lib/routine";
 import { cn } from "@/lib/utils";
 import type { HazardFactor } from "@/lib/types";
 import { currentSubscription, needsHomeScreenOnIOS, pushSupported, subscribePush, unsubscribePush } from "@/lib/push";
@@ -398,6 +398,59 @@ function FactorEditor({ value, onChange }: { value: HazardFactor[]; onChange: (v
 }
 
 /**
+ * 일일교육 교육내용 편집기 — 매일 아침조회에서 읽는 기본 항목.
+ *
+ * 줄마다 '근거 조항'을 따로 둔다 — 원본 서식에서 조항은 내용 아래에 빨간 글씨로
+ * 덧붙기 때문에, 한 칸에 뭉뚱그리면 인쇄물에서 그 모양을 낼 수 없다.
+ */
+function EducationTopicEditor({
+  value,
+  onChange,
+}: {
+  value: EducationTopic[];
+  onChange: (v: EducationTopic[]) => void;
+}) {
+  const patch = (i: number, p: Partial<EducationTopic>) =>
+    onChange(value.map((t, x) => (x === i ? { ...t, ...p } : t)));
+
+  return (
+    <div className="space-y-2">
+      {value.length === 0 ? (
+        <p className="rounded-xl bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground">
+          기본 교육내용이 비어 있습니다. 등록 화면에서 매번 직접 적게 됩니다.
+        </p>
+      ) : (
+        value.map((t, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <span className="mt-2 w-4 shrink-0 text-center text-sm text-muted-foreground">•</span>
+            <div className="grid flex-1 gap-1.5 sm:grid-cols-[1fr_16rem]">
+              <Input value={t.text} placeholder="교육내용" onChange={(e) => patch(i, { text: e.target.value })} />
+              <Input
+                value={t.note}
+                placeholder="근거 조항 (선택)"
+                onChange={(e) => patch(i, { note: e.target.value })}
+              />
+            </div>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="mt-1 shrink-0 text-destructive hover:text-destructive"
+              onClick={() => onChange(value.filter((_, x) => x !== i))}
+              aria-label="줄 삭제"
+            >
+              <X className="size-3.5" />
+            </Button>
+          </div>
+        ))
+      )}
+      <Button variant="outline" size="sm" onClick={() => onChange([...value, { text: "", note: "" }])}>
+        <Plus className="size-3.5" /> 줄 추가
+      </Button>
+    </div>
+  );
+}
+
+/**
  * TBM 위험요인 편집기 — 위험요인 이름과 그 아래 안전대책 후보.
  *
  * 위험요인의 `key`는 화면에 내보이지 않는다. 이미 그 키로 저장된 TBM이 있어서
@@ -462,7 +515,7 @@ function TbmRiskEditor({ value, onChange }: { value: TbmRisk[]; onChange: (v: Tb
 }
 
 /** 저장 버튼이 붙는 섹션과 그 섹션이 들고 있는 설정 키 */
-type SectionKey = "profile" | "org" | "hazardFactors" | "risk" | "tbmRisks";
+type SectionKey = "profile" | "org" | "hazardFactors" | "risk" | "tbmRisks" | "educationTopics";
 
 export function SettingsPage() {
   const { settings, updateSettings } = useStore();
@@ -478,7 +531,7 @@ export function SettingsPage() {
   React.useEffect(() => {
     setDraft((d) => {
       const next = { ...settings };
-      for (const k of ["profile", "org", "hazardFactors", "risk", "tbmRisks"] as SectionKey[]) {
+      for (const k of ["profile", "org", "hazardFactors", "risk", "tbmRisks", "educationTopics"] as SectionKey[]) {
         if (JSON.stringify(d[k]) !== JSON.stringify(settings[k])) (next as Record<string, unknown>)[k] = d[k];
       }
       return next;
@@ -501,7 +554,9 @@ export function SettingsPage() {
   const edit = (p: Partial<AppSettings>) => setDraft((d) => ({ ...d, ...p }));
 
   const dirty = (k: SectionKey) => JSON.stringify(draft[k]) !== JSON.stringify(settings[k]);
-  const anyDirty = (["profile", "org", "hazardFactors", "risk", "tbmRisks"] as SectionKey[]).some(dirty);
+  const anyDirty = (["profile", "org", "hazardFactors", "risk", "tbmRisks", "educationTopics"] as SectionKey[]).some(
+    dirty,
+  );
 
   const save = async (k: SectionKey, label: string) => {
     try {
@@ -871,6 +926,23 @@ export function SettingsPage() {
         </CardHeader>
         <CardContent>
           <TbmRiskEditor value={draft.tbmRisks} onChange={(v) => edit({ tbmRisks: v })} />
+        </CardContent>
+      </Card>
+
+      {/* 일일교육 교육내용 — 상시평가(일일교육) 등록 화면의 기본 교육내용 */}
+      <Card className="shadow-xs">
+        <CardHeader className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <CardTitle>일일교육 교육내용</CardTitle>
+            <CardDescription>
+              상시평가 → 일일교육을 등록하면 이 목록이 교육내용에 채워집니다. 그날만 다르게 적는 것은 등록 화면에서
+              바로 고칠 수 있습니다. 근거 조항은 인쇄물에 빨간 글씨로 덧붙습니다.
+            </CardDescription>
+          </div>
+          <SaveButton section="educationTopics" label="일일교육 교육내용" />
+        </CardHeader>
+        <CardContent>
+          <EducationTopicEditor value={draft.educationTopics} onChange={(v) => edit({ educationTopics: v })} />
         </CardContent>
       </Card>
 

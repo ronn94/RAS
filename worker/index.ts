@@ -16,7 +16,7 @@ import { login, loginGuest, logout, readSession } from "./auth";
 import { DEFAULT_SETTINGS, withDefaults, type AppSettings } from "../src/lib/settings";
 import type { PriorityAction, StopWork, Survey, Training, TrainingAttendee } from "../src/lib/types";
 import { handSignaturesComplete, type JobAssessment, type JobParticipant } from "../src/lib/jobAssessment";
-import { tbmFullySigned, type Tbm, type TbmParticipant } from "../src/lib/routine";
+import { isEducation, routineFullySigned, type Education, type RoutineDoc, type Tbm, type TbmParticipant } from "../src/lib/routine";
 import type { Bindings } from "./bindings";
 import { runDailyDigest } from "./digest";
 import { sendPush } from "./push";
@@ -423,6 +423,9 @@ app.route(
   }),
 );
 
+/** 서명이 달린 한 줄의 공통 모양 — TBM 참석자와 일일교육 참석자가 이만큼은 같다 */
+type SignedRow = { id: string; sign?: string; signedAt?: number };
+
 /* ── 상시평가 (TBM · 일일교육) ────────────────────────────────
    작업평가와 같은 성격의 현장 문서다 — 등록·수정·서명 전부 게스트에게 열려 있고
    (전용 권한 routine, 기본 켜짐), 서명만은 본문을 덮어쓰는 PUT이 아니라 전용
@@ -436,14 +439,23 @@ app.post("/api/routineassessments/:id/sign", requirePermission("routine"), async
     .bind(id)
     .first<{ data: string }>();
   if (!row) return c.json({ error: "문서를 찾을 수 없습니다." }, 404);
-  const doc = JSON.parse(row.data) as Tbm;
+  const doc = JSON.parse(row.data) as RoutineDoc;
   if (doc.locked && c.get("role") === "guest") {
     return c.json({ error: "잠긴 문서에는 서명할 수 없습니다." }, 403);
   }
 
   let previous: string | undefined;
   let apply: (signId: string | undefined, signedAt: number | undefined) => void;
-  if (target === "leader") {
+  if (isEducation(doc)) {
+    // 일일교육은 서명칸이 참석자 명단뿐이다(리더 같은 별도 칸이 없다)
+    const a = (doc as Education).attendees.find((x) => x.id === target);
+    if (!a) return c.json({ error: "참석자를 찾을 수 없습니다." }, 404);
+    previous = a.sign;
+    apply = (signId, signedAt) => {
+      a.sign = signId;
+      a.signedAt = signedAt;
+    };
+  } else if (target === "leader") {
     previous = doc.leaderSign;
     apply = (signId, signedAt) => {
       doc.leaderSign = signId;
@@ -480,7 +492,7 @@ app.post("/api/routineassessments/:id/sign", requirePermission("routine"), async
     await c.env.ras_db.prepare("DELETE FROM photo_meta WHERE id = ?1").bind(previous).run();
   }
 
-  applyAutoLock(doc, tbmFullySigned(doc));
+  applyAutoLock(doc, routineFullySigned(doc));
 
   doc.updatedAt = Date.now();
   await c.env.ras_db
@@ -492,19 +504,21 @@ app.post("/api/routineassessments/:id/sign", requirePermission("routine"), async
 
 app.route(
   "/api/routineassessments",
-  collection<Tbm>("routine_assessments", { write: ["routine"], remove: ["routine"] }, undefined, (incoming, stored) => {
-    // 관리자가 문서를 열어 둔 사이에 받은 서명을 저장 한 번으로 날리지 않게 지킨다
-    const signs = new Map(((stored.participants as TbmParticipant[] | undefined) ?? []).map((p) => [p.id, p]));
-    const participants = ((incoming.participants as TbmParticipant[] | undefined) ?? []).map((p) => {
+  collection<RoutineDoc>("routine_assessments", { write: ["routine"], remove: ["routine"] }, undefined, (incoming, stored) => {
+    /* 관리자가 문서를 열어 둔 사이에 받은 서명을 저장 한 번으로 날리지 않게 지킨다.
+       서명이 담긴 자리가 종류마다 다르다 — TBM은 participants(+리더), 일일교육은 attendees. */
+    const key = incoming.kind === "education" ? "attendees" : "participants";
+    const signs = new Map(((stored[key] as SignedRow[] | undefined) ?? []).map((p) => [p.id, p]));
+    const people = ((incoming[key] as SignedRow[] | undefined) ?? []).map((p) => {
       const kept = signs.get(p.id);
       return p.sign || !kept?.sign ? p : { ...p, sign: kept.sign, signedAt: kept.signedAt };
     });
-    const next = { ...incoming, participants } as Tbm;
-    if (!next.leaderSign && (stored as Tbm).leaderSign) {
+    const next = { ...incoming, [key]: people } as RoutineDoc;
+    if (next.kind !== "education" && !next.leaderSign && (stored as Tbm).leaderSign) {
       next.leaderSign = (stored as Tbm).leaderSign;
       next.leaderSignedAt = (stored as Tbm).leaderSignedAt;
     }
-    return clearManualLock(next, stored as Tbm);
+    return clearManualLock(next, stored as RoutineDoc);
   }),
 );
 
