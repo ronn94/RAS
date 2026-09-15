@@ -2,6 +2,7 @@ import * as React from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui";
 import { Shell, type ViewKey } from "@/components/shell";
+import { RefreshButton } from "@/components/refresh";
 import { AssessmentTabs } from "@/pages/AssessmentTabs";
 import { HighRiskPage } from "@/pages/HighRisk";
 import { HazardInfoPage } from "@/pages/HazardInfo";
@@ -94,6 +95,8 @@ function Router({ identity }: { identity: Identity }) {
         setOpenId(null);
       }}
       title={TITLES[activeView]}
+      /* 헤더 오른쪽 끝 — 어느 메뉴에 있든 같은 자리에서 자료를 다시 받는다 */
+      actions={<RefreshButton />}
       user={{ name: displayName, role: displayRole }}
       onLogout={() => void logout()}
       hiddenViews={isAdmin ? undefined : ADMIN_ONLY_VIEWS}
