@@ -195,18 +195,29 @@ export async function storageUsage() {
 
 /* ── 고아 사진 정리 ─────────────────────────────────────── */
 export async function cleanupOrphanPhotos(): Promise<number> {
-  const [assessments, inspections, surveys, stopWorks, priorityActions, trainings, jobAssessments, routines, annualPlans] =
-    await Promise.all([
-      listAssessments(),
-      listInspections(),
-      listSurveys(),
-      listStopWorks(),
-      listPriorityActions(),
-      listTrainings(),
-      listJobAssessments(),
-      listRoutines(),
-      listAnnualPlans(),
-    ]);
+  const [
+    assessments,
+    inspections,
+    surveys,
+    stopWorks,
+    priorityActions,
+    trainings,
+    jobAssessments,
+    routines,
+    annualPlans,
+    certReviews,
+  ] = await Promise.all([
+    listAssessments(),
+    listInspections(),
+    listSurveys(),
+    listStopWorks(),
+    listPriorityActions(),
+    listTrainings(),
+    listJobAssessments(),
+    listRoutines(),
+    listAnnualPlans(),
+    listCertReviews(),
+  ]);
   const used: string[] = [];
   for (const a of assessments) {
     for (const r of a.rows) {
@@ -252,6 +263,10 @@ export async function cleanupOrphanPhotos(): Promise<number> {
   // 연간계획표 행에 붙인 증빙 PDF도 R2에 있다 — 빠뜨리면 정리 때 함께 지워진다
   for (const v of annualPlans) {
     for (const r of v.rows) if (r.attachment) used.push(r.attachment.id);
+  }
+  // 정기·사후심사의 결과서 PDF도 같은 이유로 반드시 센다
+  for (const v of certReviews) {
+    if (v.attachment) used.push(v.attachment.id);
   }
   const { removed } = await api<{ removed: number }>("/photos/cleanup", {
     method: "POST",

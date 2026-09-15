@@ -9,6 +9,7 @@
  * 항목 구성은 현장에서 쓰던 엑셀(`심사이력, 환기시간.xlsx`의 '심사결과' 시트)을 그대로
  * 옮겼다 — 번호·항목·심사날짜·결과·점수·주관·심사위원·총평·비고.
  */
+import type { PdfAttachment } from "@/components/pdfAttachment";
 
 /** 항목 — 엑셀에 실제로 쓰인 세 가지. 목록에 없는 것은 직접 입력한다 */
 export const CERT_REVIEW_CATEGORIES = ["위험성평가 최초 인정심사", "위험성평가 재인정심사", "위험성평가 사후심사"] as const;
@@ -32,6 +33,8 @@ export type CertReview = {
   examiners: string;
   summary: string;
   note: string;
+  /** 심사 결과서 PDF — 결과지를 그대로 걸어 두면 나중에 총평·비고만 보고 끝내지 않아도 된다 */
+  attachment?: PdfAttachment;
   updatedAt: number;
 };
 

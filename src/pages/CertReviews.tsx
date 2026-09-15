@@ -27,6 +27,7 @@ import {
   TableWrap,
   Textarea,
 } from "@/components/ui";
+import { PdfAttachmentCell } from "@/components/pdfAttachment";
 import {
   CERT_REVIEW_CATEGORIES,
   CERT_REVIEW_RESULTS,
@@ -103,6 +104,7 @@ export function CertReviewsPage() {
                     <TH className="w-28">심사위원</TH>
                     <TH className="min-w-40">총평</TH>
                     <TH className="min-w-32">비고</TH>
+                    <TH className="w-16 text-center">첨부</TH>
                     <TH className="w-16" />
                   </TR>
                 </THead>
@@ -126,6 +128,13 @@ export function CertReviewsPage() {
                       <TD className="text-muted-foreground">{v.examiners || "-"}</TD>
                       <TD className="whitespace-pre-line text-muted-foreground">{v.summary || "-"}</TD>
                       <TD className="whitespace-pre-line text-muted-foreground">{v.note || "-"}</TD>
+                      <TD className="text-center" onClick={(e) => e.stopPropagation()}>
+                        <PdfAttachmentCell
+                          attachment={v.attachment}
+                          editable={canEdit}
+                          onChange={(next) => void saveCertReview({ ...v, attachment: next, updatedAt: Date.now() })}
+                        />
+                      </TD>
                       <TD className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"

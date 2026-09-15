@@ -5,6 +5,7 @@
  * 해마다 바뀌지 않고, 무엇보다 **실적 자동 집계가 이 항목 key에 묶여 있기 때문**이다.
  * 해마다 달라지는 대상·목표·세부내용만 문서에 담아 고칠 수 있게 했다.
  */
+import type { PdfAttachment } from "@/components/pdfAttachment";
 import type { Assessment, HazardInfo, Inspection, Survey, Training } from "./types";
 
 /** 원본 서식의 15개 항목. 실적 자동 집계 규칙이 이 key에 붙는다 */
@@ -185,7 +186,7 @@ export type PlanRow = {
   actual: number[];
   note: string;
   /** 이행률 칸 옆에 붙는 증빙 PDF — R2(사진과 같은 저장소)에 올려 id만 담는다 */
-  attachment?: { id: string; name: string; size: number };
+  attachment?: PdfAttachment;
 };
 
 export type AnnualPlan = {
