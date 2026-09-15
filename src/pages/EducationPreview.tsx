@@ -14,19 +14,23 @@ import { useStore } from "@/store";
 
 export function EducationPreview({
   education,
-  canEdit,
+  canWrite,
+  canSign: canSignPermission,
   onBack,
   onEdit,
 }: {
   education: Education;
-  /** 게스트도 일일교육은 직접 관리하므로 canRoutine을 그대로 받는다 */
-  canEdit: boolean;
+  /** '수정' 버튼 — canEducationWrite(기본 관리자 전용)를 받는다 */
+  canWrite: boolean;
+  /** '서명하기' 버튼 — canRoutine(기본 켜짐)을 받는다. 등록·수정과 무관하게
+   * 참석자가 직접 서명하는 것은 그대로 열려 있다 */
+  canSign: boolean;
   onBack: () => void;
   onEdit: () => void;
 }) {
   const { signRoutine, identity } = useStore();
   const [signOpen, setSignOpen] = React.useState(false);
-  const canSign = canEdit && (!education.locked || identity.role === "admin");
+  const canSign = canSignPermission && (!education.locked || identity.role === "admin");
   const signed = signedEducationAttendees(education);
 
   return (
@@ -63,8 +67,8 @@ export function EducationPreview({
           <Button
             variant="outline"
             onClick={onEdit}
-            disabled={!canEdit}
-            title={canEdit ? "작성화면에서 고칩니다" : "수정 권한이 없습니다"}
+            disabled={!canWrite}
+            title={canWrite ? "작성화면에서 고칩니다" : "수정 권한이 없습니다"}
           >
             <Pencil className="size-3.5" /> 수정
           </Button>

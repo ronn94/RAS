@@ -40,7 +40,8 @@ import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
 
 export function EducationsPage({ openId, onOpen }: { openId: string | null; onOpen: (id: string | null) => void }) {
-  const { routines, loading, identity, canRoutine, createEducation, saveRoutine, removeRoutine } = useStore();
+  const { routines, loading, identity, canRoutine, canEducationWrite, createEducation, saveRoutine, removeRoutine } =
+    useStore();
   const isAdmin = identity.role === "admin";
   const [draft, setDraft] = React.useState<Education | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<Education | null>(null);
@@ -85,7 +86,8 @@ export function EducationsPage({ openId, onOpen }: { openId: string | null; onOp
     return (
       <EducationPreview
         education={current}
-        canEdit={canRoutine}
+        canWrite={canEducationWrite}
+        canSign={canRoutine}
         onBack={() => onOpen(null)}
         onEdit={() => setEditId(current.id)}
       />
@@ -121,9 +123,9 @@ export function EducationsPage({ openId, onOpen }: { openId: string | null; onOp
           <Button
             size="icon"
             aria-label="등록"
-            disabled={!canRoutine}
+            disabled={!canEducationWrite}
             onClick={() => setDraft(createEducation())}
-            title={canRoutine ? "새 교육일지를 등록합니다" : "등록 권한이 없습니다 (설정 → 게스트 권한)"}
+            title={canEducationWrite ? "새 교육일지를 등록합니다" : "등록 권한이 없습니다 (설정 → 게스트 권한)"}
           >
             <Plus className="size-3.5" />
           </Button>
@@ -145,7 +147,7 @@ export function EducationsPage({ openId, onOpen }: { openId: string | null; onOp
             <EmptyState>불러오는 중…</EmptyState>
           ) : educations.length === 0 ? (
             <EmptyState icon={<GraduationCap className="size-6 text-muted-foreground" />}>
-              {canRoutine ? "등록된 교육일지가 없습니다. ‘+’로 시작하세요." : "등록된 교육일지가 없습니다."}
+              {canEducationWrite ? "등록된 교육일지가 없습니다. ‘+’로 시작하세요." : "등록된 교육일지가 없습니다."}
             </EmptyState>
           ) : sorted.length === 0 ? (
             <EmptyState icon={<GraduationCap className="size-6 text-muted-foreground" />}>
@@ -210,11 +212,11 @@ export function EducationsPage({ openId, onOpen }: { openId: string | null; onOp
                           <Button
                             variant="ghost"
                             size="icon-sm"
-                            disabled={!canRoutine || (v.locked && !isAdmin)}
+                            disabled={!canEducationWrite || (v.locked && !isAdmin)}
                             onClick={() => setEditId(v.id)}
                             aria-label="수정"
                             title={
-                              !canRoutine
+                              !canEducationWrite
                                 ? "수정 권한이 없습니다 (설정 → 게스트 권한)"
                                 : v.locked && !isAdmin
                                   ? "잠긴 문서입니다 — 서명 접수가 끝나면 저절로 잠깁니다"
@@ -245,7 +247,7 @@ export function EducationsPage({ openId, onOpen }: { openId: string | null; onOp
                           <Button
                             variant="ghost"
                             size="icon-sm"
-                            disabled={!canRoutine || (v.locked && !isAdmin)}
+                            disabled={!canEducationWrite || (v.locked && !isAdmin)}
                             className="text-destructive hover:text-destructive"
                             onClick={() => setDeleteTarget(v)}
                             aria-label="삭제"

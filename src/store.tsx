@@ -97,8 +97,11 @@ type Ctx = {
   saveRoutine: (v: RoutineDoc) => Promise<void>;
   removeRoutine: (id: string) => Promise<void>;
   signRoutine: (id: string, target: string, image: string | null) => Promise<RoutineDoc>;
-  /** 게스트가 상시평가를 등록·수정·서명할 수 있는가 (관리자는 항상 true) */
+  /** 게스트가 TBM을 등록·수정·서명할 수 있는가 (관리자는 항상 true) */
   canRoutine: boolean;
+  /** 게스트가 일일교육을 등록·수정·삭제할 수 있는가 — 기본은 꺼져 있어 관리자만 된다.
+   * 서명은 이 값과 무관하게 canRoutine을 그대로 쓴다(참석자가 직접 서명하는 것) */
+  canEducationWrite: boolean;
   /** 이력 관리 · 정기·사후심사 — 관리자 전용 기록이라 별도 게스트 권한 없이 canEdit/canDelete를 그대로 쓴다 */
   certReviews: CertReview[];
   saveCertReview: (v: CertReview) => Promise<void>;
@@ -627,6 +630,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
   const canStopWork = isAdmin || settings.permissions.stopwork;
   const canJobAssessment = isAdmin || settings.permissions.jobAssessment;
   const canRoutine = isAdmin || settings.permissions.routine;
+  const canEducationWrite = isAdmin || settings.permissions.education;
 
   const value = React.useMemo(
     () => ({
@@ -687,6 +691,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       removeRoutine,
       signRoutine,
       canRoutine,
+      canEducationWrite,
       certReviews,
       saveCertReview,
       removeCertReview,
@@ -753,6 +758,7 @@ export function StoreProvider({ identity, children }: { identity: Identity; chil
       removeRoutine,
       signRoutine,
       canRoutine,
+      canEducationWrite,
       certReviews,
       saveCertReview,
       removeCertReview,

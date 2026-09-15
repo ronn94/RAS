@@ -45,13 +45,13 @@ export function EducationDetail({
   isNew?: boolean;
   onDone: (saved: boolean) => void;
 }) {
-  const { settings, saveRoutine, identity, canRoutine } = useStore();
+  const { settings, saveRoutine, identity, canEducationWrite } = useStore();
   const [draft, setDraft] = React.useState<Education>(education);
   const [saving, setSaving] = React.useState(false);
 
   const isAdmin = identity.role === "admin";
   const readOnly = !!draft.locked && !isAdmin;
-  const canWrite = canRoutine && !readOnly;
+  const canWrite = canEducationWrite && !readOnly;
 
   const patch = (p: Partial<Education>) => setDraft((d) => ({ ...d, ...p }));
 

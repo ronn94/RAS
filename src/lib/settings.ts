@@ -26,8 +26,11 @@ export type AppSettings = {
     stopwork: boolean;
     /** 작업평가는 게스트가 직접 등록·수정·서명까지 다루는 문서라 전용 권한으로 뗀다 */
     jobAssessment: boolean;
-    /** 상시평가(TBM·일일교육)도 작업 현장에서 직접 쓰고 서명받는 문서라 따로 뗀다 */
+    /** TBM은 작업 현장에서 게스트가 직접 등록·수정·서명까지 다루는 문서라 따로 뗀다 */
     routine: boolean;
+    /** 일일교육은 등록·수정·삭제만 별도 — 기본은 관리자 전용이다(false). 서명은 위
+     * routine 권한을 그대로 쓴다(참석자가 직접 서명하는 것까지 막을 이유는 없다) */
+    education: boolean;
   };
   /**
    * 푸시 알림 종류별 on/off — 관리자 전용 기능이라 계정 하나에 공통으로 적용된다(기기별이 아니다).
@@ -101,6 +104,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     stopwork: true,
     jobAssessment: true,
     routine: true,
+    // 일일교육은 관리자가 등록·관리하는 문서라 기본은 꺼 둔다(작업평가·TBM과 다르다)
+    education: false,
   },
   // 전부 기본 켜짐 — 관리자가 필요 없는 종류만 끈다
   notifications: { dueDate: true, stopworkStale: true, newSurvey: true, newStopwork: true },

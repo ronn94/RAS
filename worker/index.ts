@@ -57,7 +57,7 @@ async function loadPermissions(db: D1Database): Promise<Record<string, boolean>>
   return { ...DEFAULT_SETTINGS.permissions, ...(parsed?.permissions ?? {}) };
 }
 
-type PermissionKey = "edit" | "delete" | "photo" | "survey" | "stopwork" | "jobAssessment" | "routine";
+type PermissionKey = "edit" | "delete" | "photo" | "survey" | "stopwork" | "jobAssessment" | "routine" | "education";
 
 /** 나열한 권한 중 **하나라도** 켜져 있으면 통과한다 */
 function requirePermission(...keys: PermissionKey[]): MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> {
@@ -427,9 +427,12 @@ app.route(
 type SignedRow = { id: string; sign?: string; signedAt?: number };
 
 /* ── 상시평가 (TBM · 일일교육) ────────────────────────────────
-   작업평가와 같은 성격의 현장 문서다 — 등록·수정·서명 전부 게스트에게 열려 있고
-   (전용 권한 routine, 기본 켜짐), 서명만은 본문을 덮어쓰는 PUT이 아니라 전용
-   경로로 받는다. target은 참석자 id, 또는 TBM 리더를 가리키는 "leader". */
+   TBM은 등록·수정·삭제·서명 전부 게스트에게 열려 있다(전용 권한 routine, 기본
+   켜짐). 일일교육은 등록·수정·삭제만 별도 권한(education, 기본 꺼짐 — 관리자
+   전용)으로 가르고, 서명은 그대로 routine을 쓴다 — 참석자가 직접 서명하는
+   것까지 막을 이유는 없어서다(routineAssessmentsRouter가 등록·수정·삭제를 맡는다).
+   서명은 본문을 덮어쓰는 PUT이 아니라 전용 경로로 받는다. target은 참석자 id,
+   또는 TBM 리더를 가리키는 "leader". */
 app.post("/api/routineassessments/:id/sign", requirePermission("routine"), async (c) => {
   const id = c.req.param("id");
   const { target, image } = await c.req.json<{ target: string; image: string | null }>();
@@ -502,9 +505,83 @@ app.post("/api/routineassessments/:id/sign", requirePermission("routine"), async
   return c.json(doc);
 });
 
+/**
+ * 상시평가 전용 라우터 — TBM과 일일교육이 **등록·수정·삭제 권한을 따로** 쓴다
+ * (일일교육은 관리자 전용이 기본값이다). 공용 collection()은 표 하나에 권한 하나만
+ * 걸 수 있어서, 여기서는 문서(TBM은 body에서, 삭제는 저장된 데이터에서)의 kind를 보고
+ * 그때그때 routine/education 중 맞는 권한을 검사한다. 서명(/sign 경로)은 관여하지
+ * 않는다 — 참석자가 직접 서명하는 것은 그대로 routine 권한(기본 켜짐)을 쓴다.
+ */
+function routineAssessmentsRouter(
+  preserve: (incoming: Record<string, unknown>, stored: Record<string, unknown>) => Record<string, unknown>,
+) {
+  const r = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+  const table = "routine_assessments";
+
+  const permissionFor = (kind: unknown): PermissionKey => (kind === "education" ? "education" : "routine");
+
+  /** 게스트일 때만 실제로 검사한다 — 관리자는 항상 통과(requirePermission과 같은 규칙) */
+  const checkWrite = async (
+    c: Context<{ Bindings: Bindings; Variables: Variables }>,
+    kind: unknown,
+  ): Promise<Response | null> => {
+    if (c.get("role") !== "guest") return null;
+    const permissions = await loadPermissions(c.env.ras_db);
+    if (!permissions[permissionFor(kind)]) return c.json({ error: "게스트 계정에는 이 권한이 없습니다." }, 403);
+    return null;
+  };
+
+  const lockedForGuest = async (c: Context<{ Bindings: Bindings; Variables: Variables }>, id: string) => {
+    if (c.get("role") !== "guest") return false;
+    const row = await c.env.ras_db.prepare(`SELECT data FROM ${table} WHERE id = ?1`).bind(id).first<{ data: string }>();
+    if (!row) return false;
+    return (JSON.parse(row.data) as { locked?: boolean }).locked === true;
+  };
+
+  r.get("/", async (c) => {
+    const { results } = await c.env.ras_db
+      .prepare(`SELECT data FROM ${table} ORDER BY updated_at DESC`)
+      .all<{ data: string }>();
+    return c.json(results.map((row) => JSON.parse(row.data)));
+  });
+
+  r.put("/:id", async (c) => {
+    const id = c.req.param("id");
+    let body = await c.req.json<Record<string, unknown>>();
+    const denied = await checkWrite(c, body.kind);
+    if (denied) return denied;
+    if (await lockedForGuest(c, id)) return c.json({ error: "잠긴 문서는 수정할 수 없습니다." }, 403);
+    const row = await c.env.ras_db.prepare(`SELECT data FROM ${table} WHERE id = ?1`).bind(id).first<{ data: string }>();
+    if (row) body = preserve(body, JSON.parse(row.data) as Record<string, unknown>);
+    const updatedAt = Date.now();
+    const doc = { ...body, id, updatedAt };
+    await c.env.ras_db
+      .prepare(
+        `INSERT INTO ${table} (id, data, facility, process, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(id) DO UPDATE SET data = ?2, facility = ?3, process = ?4, updated_at = ?5`,
+      )
+      .bind(id, JSON.stringify(doc), String(body.facility ?? ""), String(body.process ?? ""), updatedAt)
+      .run();
+    return c.json(doc);
+  });
+
+  r.delete("/:id", async (c) => {
+    const id = c.req.param("id");
+    const row = await c.env.ras_db.prepare(`SELECT data FROM ${table} WHERE id = ?1`).bind(id).first<{ data: string }>();
+    const kind = row ? (JSON.parse(row.data) as { kind?: string }).kind : undefined;
+    const denied = await checkWrite(c, kind);
+    if (denied) return denied;
+    if (await lockedForGuest(c, id)) return c.json({ error: "잠긴 문서는 삭제할 수 없습니다." }, 403);
+    await c.env.ras_db.prepare(`DELETE FROM ${table} WHERE id = ?1`).bind(id).run();
+    return c.json({ ok: true });
+  });
+
+  return r;
+}
+
 app.route(
   "/api/routineassessments",
-  collection<RoutineDoc>("routine_assessments", { write: ["routine"], remove: ["routine"] }, undefined, (incoming, stored) => {
+  routineAssessmentsRouter((incoming, stored) => {
     /* 관리자가 문서를 열어 둔 사이에 받은 서명을 저장 한 번으로 날리지 않게 지킨다.
        서명이 담긴 자리가 종류마다 다르다 — TBM은 participants(+리더), 일일교육은 attendees. */
     const key = incoming.kind === "education" ? "attendees" : "participants";

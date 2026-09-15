@@ -693,7 +693,12 @@ export function SettingsPage() {
               { key: "survey", label: "설문지 제출", hint: "의견청취 설문지 작성·수정·삭제" },
               { key: "stopwork", label: "작업중지 요청", hint: "작업중지 요청서 작성·수정 (근로자의 법정 권리)" },
               { key: "jobAssessment", label: "작업평가", hint: "작업 위험성평가 등록·수정·참여자 서명" },
-              { key: "routine", label: "상시평가", hint: "TBM·일일교육 등록·수정·참석자 서명" },
+              { key: "routine", label: "상시평가 (TBM)", hint: "TBM 등록·수정·삭제·참석자 서명" },
+              {
+                key: "education",
+                label: "상시평가 (일일교육)",
+                hint: "일일교육 등록·수정·삭제 — 기본은 꺼짐(관리자 전용). 참석자 서명은 위 TBM 권한을 함께 쓴다",
+              },
             ] as const
           ).map((p) => (
             <label key={p.key} className="flex items-center gap-2.5 rounded-xl bg-muted/40 px-3 py-2.5">
