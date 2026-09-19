@@ -2,6 +2,7 @@ import * as React from "react";
 import { Eye, LogIn, TriangleAlert } from "lucide-react";
 import { Button, Card, CardContent, Input, Label } from "@/components/ui";
 import { login, loginGuest } from "@/lib/auth";
+import { InstallAppButton } from "@/components/installApp";
 
 export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
   const [username, setUsername] = React.useState("");
@@ -106,6 +107,8 @@ export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
             </Button>
           </CardContent>
         </Card>
+
+        <InstallAppButton />
 
         <p className="text-center text-sm text-muted-foreground">
           게스트는 조회만 가능합니다. 편집 권한은 관리자가 설정에서 켤 수 있습니다.
