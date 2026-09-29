@@ -537,7 +537,7 @@ export function TbmDetail({
             {/* 리더를 고르면 바로 이 자리에서 손서명을 받는다 — 참석자·평가자는 등록 뒤
                 미리보기의 '서명하기'로 모으지만, 리더는 현장에서 회의를 열며 바로 적는
                 사람이라 등록화면에서 한 번에 끝내는 편이 자연스럽다 */}
-            <div className="max-w-xs">
+            <div className="sm:max-w-sm">
               <SignatureField
                 label="TBM 리더 서명"
                 signId={draft.leaderSign}
