@@ -2,9 +2,9 @@
  * 작업 위험성평가 — 서명 모아보기 팝업.
  *
  * 미리보기 화면의 '서명하기' 버튼을 누르면 뜬다. 문서 안에서 서명이 필요한 자리를
- * '평가자 → 내부 참여자 → 외부 참여자 → 승인자' 순서로 한 화면에 모아 보여주고,
- * 이름을 누르면 그 자리에서 서명 캔버스가 펼쳐진다(참여자 단계의 개별 서명 다이얼로그와
- * 달리 팝업 하나 안에서 목록과 서명을 오간다).
+ * '평가자 → 내부 참여자 → 외부 참여자 → 담당자(이름이 채워진 세부내역 행만) → 승인자'
+ * 순서로 한 화면에 모아 보여주고, 이름을 누르면 그 자리에서 서명 캔버스가 펼쳐진다
+ * (참여자 단계의 개별 서명 다이얼로그와 달리 팝업 하나 안에서 목록과 서명을 오간다).
  *
  * 승인자는 설정(작업평가 서명 규칙)에 따라 평가자·내부·외부 서명이 어느 정도
  * 갖춰져야 열린다 — approverSignEnabled가 그 규칙을 판단한다.
@@ -14,7 +14,7 @@ import { Eraser, PenLine, X } from "lucide-react";
 import { Button, Dialog, DialogHeader, DialogTitle } from "@/components/ui";
 import { SignatureCanvas, signatureDataUrl } from "@/components/signature";
 import { usePhotoUrl } from "@/components/photo";
-import { approverSignEnabled, type JobAssessment, type JobParticipant } from "@/lib/jobAssessment";
+import { approverSignEnabled, type JobAssessment, type JobParticipant, type JobRow } from "@/lib/jobAssessment";
 import { cn } from "@/lib/utils";
 
 export function JobAssessmentSignPopup({
@@ -39,6 +39,8 @@ export function JobAssessmentSignPopup({
   const internal = job.participants.filter((p) => !p.external);
   const external = job.participants.filter((p) => p.external);
   const approverOk = approverSignEnabled(job, approverRequireAll);
+  // 담당자 이름이 채워진 행만 — 세부내역에 몇 줄이 있든 이름 없는 행은 서명할 자리가 없다
+  const ownerRows = job.rows.filter((r) => r.owner.trim());
 
   return (
     <Dialog open={open} onClose={onClose} className="no-callout max-w-lg sm:max-w-lg">
@@ -102,6 +104,24 @@ export function JobAssessmentSignPopup({
             ))
           )}
         </Section>
+
+        {ownerRows.length > 0 && (
+          <Section title="담당자">
+            {ownerRows.map((r) => (
+              <OwnerRow
+                key={r.id}
+                row={r}
+                expanded={expanded === `row:${r.id}`}
+                onToggle={() => setExpanded((k) => (k === `row:${r.id}` ? null : `row:${r.id}`))}
+                onSave={async (dataUrl) => {
+                  await onSign(`row:${r.id}`, dataUrl);
+                  setExpanded(null);
+                }}
+                onClear={() => void onSign(`row:${r.id}`, null)}
+              />
+            ))}
+          </Section>
+        )}
 
         <Section title="승인자">
           <SignRow
@@ -170,8 +190,37 @@ function ParticipantRow({
   );
 }
 
+/** 세부내역 행의 담당자 한 명 — 이름만으로는 같은 이름이 여러 줄에 나올 수 있어 작업단계를 함께 보여준다 */
+function OwnerRow({
+  row,
+  expanded,
+  onToggle,
+  onSave,
+  onClear,
+}: {
+  row: JobRow;
+  expanded: boolean;
+  onToggle: () => void;
+  onSave: (dataUrl: string) => Promise<void>;
+  onClear: () => void;
+}) {
+  return (
+    <SignRow
+      name={row.owner}
+      subtitle={row.stepName || undefined}
+      emptyHint="이름이 비어 있습니다"
+      sign={row.ownerSign}
+      expanded={expanded}
+      onToggle={onToggle}
+      onSave={onSave}
+      onClear={onClear}
+    />
+  );
+}
+
 function SignRow({
   name,
+  subtitle,
   emptyHint,
   disabled,
   disabledHint,
@@ -182,6 +231,7 @@ function SignRow({
   onClear,
 }: {
   name: string;
+  subtitle?: string;
   emptyHint: string;
   disabled?: boolean;
   disabledHint?: string;
@@ -208,7 +258,10 @@ function SignRow({
           blocked ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-muted",
         )}
       >
-        <span className="flex-1 truncate font-medium">{name?.trim() || "이름 없음"}</span>
+        <span className="flex-1 truncate">
+          <span className="font-medium">{name?.trim() || "이름 없음"}</span>
+          {subtitle && <span className="ml-1.5 text-xs text-muted-foreground">· {subtitle}</span>}
+        </span>
         {url ? (
           <img src={url} alt="" className="h-7 w-14 rounded bg-white object-contain ring-1 ring-foreground/10" />
         ) : (

@@ -169,6 +169,9 @@ export type JobRow = {
   s2: number | null; // 조치 후 강도
   p2: number | null; // 조치 후 빈도
   owner: string; // 담당자
+  /** 담당자 손 서명 — 이름이 채워지면 서명하기 팝업에 이 줄이 뜬다(평가자·참여자와 같은 방식) */
+  ownerSign?: string;
+  ownerSignedAt?: number;
   opinion: string; // 종사자 의견
   finishItems: string[]; // kind==="finish"일 때 체크한 마무리 항목
 };

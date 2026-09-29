@@ -1017,6 +1017,18 @@
   width: 14mm;
   border-bottom: 0.5pt solid #999;
 }
+/* 담당자 칸은 매트릭스 안이라 세로로 좁다 — 이름 아래에 서명을 쌓는다 */
+.sheet-job .owner-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5mm;
+}
+.sheet-job .owner-sign {
+  height: 4mm;
+  max-width: 16mm;
+  object-fit: contain;
+}
 /* 세부내역 */
 .sheet-job .matrix {
   table-layout: fixed;

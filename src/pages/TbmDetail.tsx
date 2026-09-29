@@ -23,6 +23,7 @@ import {
   Select,
   Textarea,
 } from "@/components/ui";
+import { SignatureField } from "@/components/signature";
 import { TbmSheet } from "@/print/TbmSheet";
 import {
   TBM_PMIS_GROUPS,
@@ -504,7 +505,8 @@ export function TbmDetail({
           <CardHeader>
             <CardTitle>TBM 리더와 참석자</CardTitle>
             <CardDescription>
-              손 서명은 등록한 뒤 미리보기 화면의 &lsquo;서명하기&rsquo;에서 받습니다.
+              TBM 리더는 이 화면에서 바로 서명합니다. 참석자·외부업체 손 서명은 등록한 뒤 미리보기
+              화면의 &lsquo;서명하기&rsquo;에서 받습니다.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -530,6 +532,18 @@ export function TbmDetail({
                   </option>
                 ))}
               </Select>
+            </div>
+
+            {/* 리더를 고르면 바로 이 자리에서 손서명을 받는다 — 참석자·평가자는 등록 뒤
+                미리보기의 '서명하기'로 모으지만, 리더는 현장에서 회의를 열며 바로 적는
+                사람이라 등록화면에서 한 번에 끝내는 편이 자연스럽다 */}
+            <div className="max-w-xs">
+              <SignatureField
+                label="TBM 리더 서명"
+                signId={draft.leaderSign}
+                onChange={(id) => patch({ leaderSign: id, leaderSignedAt: id ? Date.now() : undefined })}
+                disabled={!canWrite || !draft.leaderName}
+              />
             </div>
 
             {canWrite &&

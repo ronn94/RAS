@@ -55,6 +55,17 @@ function Attendee({ p }: { p: JobParticipant }) {
   );
 }
 
+/** 담당자 칸 — 이름 아래에 손서명을 둔다(참여자·평가자는 가로, 여긴 칸이 좁아 세로로 쌓는다).
+ * 이름이 없으면 애초에 서명할 자리가 없으므로 이름만 비워 둔다. */
+function OwnerCell({ row }: { row: JobRow }) {
+  return (
+    <span className="owner-cell">
+      <span>{row.owner}</span>
+      {row.owner && row.ownerSign && <img className="owner-sign" src={photoUrl(row.ownerSign)} alt="" />}
+    </span>
+  );
+}
+
 /** 평가자·승인자 칸 — 이름과 '(인)' 자리(서명 없으면 글자, 있으면 손서명)를 한 줄에
  * flex로 같이 두고 칸 세로 가운데에 맞춘다(칸 자체는 vertical-align:middle이 맡는다) */
 function SealName({ name, sign }: { name: string; sign?: string }) {
@@ -396,7 +407,9 @@ function MatrixRow({
           ))}
         </td>
         <td colSpan={3} />
-        <td className="num">{row.owner}</td>
+        <td className="num">
+          <OwnerCell row={row} />
+        </td>
         <td className="wrap">{row.opinion}</td>
       </tr>
     );
@@ -431,7 +444,9 @@ function MatrixRow({
       <td className="num">{row.s2 ?? ""}</td>
       <td className="num">{row.p2 ?? ""}</td>
       <td className="num strong">{post ?? ""}</td>
-      <td className="num">{row.owner}</td>
+      <td className="num">
+        <OwnerCell row={row} />
+      </td>
       <td className="wrap tiny">{row.opinion}</td>
     </tr>
   );

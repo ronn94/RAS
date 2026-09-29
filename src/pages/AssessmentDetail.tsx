@@ -68,6 +68,8 @@ const COLS: { key: string; label: string; sub?: string; className?: string }[] =
 export function AssessmentDetail({ assessment, onBack }: { assessment: Assessment; onBack: () => void }) {
   const { assessments, saveAssessment, settings, stopWorks, surveys, canEdit, canDelete } = useStore();
   const [draft, setDraft] = React.useState<Assessment>(assessment);
+  /** 문서 정보(대상시설·공정명 등)는 헤더에 이미 요약이 보여 기본은 접어 둔다 */
+  const [infoOpen, setInfoOpen] = React.useState(false);
   const [q, setQ] = React.useState("");
   const [fClass, setFClass] = React.useState("");
   const [fStatus, setFStatus] = React.useState("");
@@ -236,35 +238,45 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
 
       {/* 문서 정보 */}
       <Card className="no-print shadow-xs">
-        <CardContent className="grid grid-cols-1 gap-3 py-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-1.5">
-            <Label>대상시설</Label>
-            <Input
-              disabled={!canEdit}
-              value={draft.facility}
-              onChange={(e) => patch({ facility: e.target.value })}
-              placeholder="○○공공하수처리시설"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>공정명</Label>
-            <ProcessSelect value={draft.process} onChange={(v) => patch({ process: v })} disabled={!canEdit} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>평가일시</Label>
-            <Input disabled={!canEdit} type="date" value={draft.date} onChange={(e) => patch({ date: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>공정순번 <span className="text-muted-foreground">(평가코드 중간 숫자)</span></Label>
-            <Input
-              disabled={!canEdit}
-              type="number"
-              min={1}
-              value={draft.processNo}
-              onChange={(e) => patch({ processNo: Math.max(1, Number(e.target.value) || 1) })}
-            />
-          </div>
-        </CardContent>
+        <button
+          type="button"
+          onClick={() => setInfoOpen((v) => !v)}
+          className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium"
+        >
+          문서 정보
+          {infoOpen ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
+        </button>
+        {infoOpen && (
+          <CardContent className="grid grid-cols-1 gap-3 pt-0 pb-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1.5">
+              <Label>대상시설</Label>
+              <Input
+                disabled={!canEdit}
+                value={draft.facility}
+                onChange={(e) => patch({ facility: e.target.value })}
+                placeholder="○○공공하수처리시설"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>공정명</Label>
+              <ProcessSelect value={draft.process} onChange={(v) => patch({ process: v })} disabled={!canEdit} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>평가일시</Label>
+              <Input disabled={!canEdit} type="date" value={draft.date} onChange={(e) => patch({ date: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>공정순번 <span className="text-muted-foreground">(평가코드 중간 숫자)</span></Label>
+              <Input
+                disabled={!canEdit}
+                type="number"
+                min={1}
+                value={draft.processNo}
+                onChange={(e) => patch({ processNo: Math.max(1, Number(e.target.value) || 1) })}
+              />
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       {/* 툴바 */}

@@ -250,6 +250,7 @@ export async function cleanupOrphanPhotos(): Promise<number> {
     for (const p of v.participants) if (p.sign) used.push(p.sign);
     if (v.evaluatorSign) used.push(v.evaluatorSign);
     if (v.approvedBySign) used.push(v.approvedBySign);
+    for (const r of v.rows) if (r.ownerSign) used.push(r.ownerSign);
   }
   // 상시평가도 서명이 R2 사진이다 — TBM은 리더+참석자, 일일교육은 참석자 명단
   for (const v of routines) {

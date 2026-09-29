@@ -31,7 +31,7 @@ import { TbmDetail } from "@/pages/TbmDetail";
 import { TbmPreview } from "@/pages/TbmPreview";
 import { JOB_TEAMS } from "@/lib/jobAssessment";
 import { signedTbmParticipants, tbmFullySigned, tbmWorkLine, type Tbm } from "@/lib/routine";
-import { cn } from "@/lib/utils";
+import { cn, formatDateWithDow } from "@/lib/utils";
 import { useStore } from "@/store";
 
 export function TbmsPage({ openId, onOpen }: { openId: string | null; onOpen: (id: string | null) => void }) {
@@ -193,7 +193,7 @@ export function TbmsPage({ openId, onOpen }: { openId: string | null; onOpen: (i
                     const done = tbmFullySigned(v);
                     return (
                       <TR key={v.id} className="cursor-pointer" onClick={() => onOpen(v.id)}>
-                        <TD className="tabular-nums font-medium">{v.date || "-"}</TD>
+                        <TD className="tabular-nums font-medium">{v.date ? formatDateWithDow(v.date) : "-"}</TD>
                         <TD className="tabular-nums text-muted-foreground">{v.time || "-"}</TD>
                         <TD className="text-muted-foreground">{v.team || "-"}</TD>
                         <TD className="text-muted-foreground">

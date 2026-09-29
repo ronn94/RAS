@@ -36,7 +36,7 @@ import {
   signedEducationAttendees,
   type Education,
 } from "@/lib/routine";
-import { cn } from "@/lib/utils";
+import { cn, formatDateWithDow } from "@/lib/utils";
 import { useStore } from "@/store";
 
 export function EducationsPage({ openId, onOpen }: { openId: string | null; onOpen: (id: string | null) => void }) {
@@ -176,7 +176,7 @@ export function EducationsPage({ openId, onOpen }: { openId: string | null; onOp
                     const minutes = educationMinutes(v);
                     return (
                       <TR key={v.id} className="cursor-pointer" onClick={() => onOpen(v.id)}>
-                        <TD className="tabular-nums font-medium">{v.date || "-"}</TD>
+                        <TD className="tabular-nums font-medium">{v.date ? formatDateWithDow(v.date) : "-"}</TD>
                         <TD className="tabular-nums text-muted-foreground">
                           {v.startTime}~{v.endTime}
                           {minutes > 0 ? ` (${minutes}분)` : ""}

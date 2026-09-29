@@ -38,7 +38,7 @@ import {
   signedParticipants,
   type JobAssessment,
 } from "@/lib/jobAssessment";
-import { cn } from "@/lib/utils";
+import { cn, formatDateWithDow } from "@/lib/utils";
 import { useStore } from "@/store";
 
 /** JRA 등급별 색 — 목록에서 위험한 작업이 먼저 눈에 띄어야 한다 */
@@ -224,7 +224,7 @@ export function JobAssessmentsPage({
                     const signed = signedParticipants(v);
                     return (
                       <TR key={v.id} className="cursor-pointer" onClick={() => onOpen(v.id)}>
-                        <TD className="tabular-nums font-medium">{v.date || "-"}</TD>
+                        <TD className="tabular-nums font-medium">{v.date ? formatDateWithDow(v.date) : "-"}</TD>
                         <TD className="text-muted-foreground">{v.team || "-"}</TD>
                         <TD className="text-center text-muted-foreground">
                           <div className="flex flex-col items-center leading-tight">

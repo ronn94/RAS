@@ -357,6 +357,15 @@ app.post("/api/jobassessments/:id/sign", requirePermission("jobAssessment"), asy
       doc.approvedBySign = signId;
       doc.approvedBySignedAt = signedAt;
     };
+  } else if (target.startsWith("row:")) {
+    // 담당자는 참여자 명단이 아니라 세부내역 행마다 이름 칸 하나라 행 id로 가리킨다
+    const r = doc.rows.find((r) => r.id === target.slice(4));
+    if (!r) return c.json({ error: "세부내역 행을 찾을 수 없습니다." }, 404);
+    previous = r.ownerSign;
+    apply = (signId, signedAt) => {
+      r.ownerSign = signId;
+      r.ownerSignedAt = signedAt;
+    };
   } else {
     const p = doc.participants.find((p) => p.id === target);
     if (!p) return c.json({ error: "참여자를 찾을 수 없습니다." }, 404);
@@ -409,7 +418,15 @@ app.route(
       const kept = signs.get(p.id);
       return p.sign || !kept?.sign ? p : { ...p, sign: kept.sign, signedAt: kept.signedAt };
     });
-    const next = { ...incoming, participants } as JobAssessment;
+    // 담당자 서명(행마다)도 같은 이유로 지킨다
+    const rowSigns = new Map(
+      ((stored.rows as JobAssessment["rows"] | undefined) ?? []).map((r) => [r.id, r]),
+    );
+    const rows = ((incoming.rows as JobAssessment["rows"] | undefined) ?? []).map((r) => {
+      const kept = rowSigns.get(r.id);
+      return r.ownerSign || !kept?.ownerSign ? r : { ...r, ownerSign: kept.ownerSign, ownerSignedAt: kept.ownerSignedAt };
+    });
+    const next = { ...incoming, participants, rows } as JobAssessment;
     // 평가자·승인자 서명도 같은 이유로 지킨다
     if (!next.evaluatorSign && (stored as JobAssessment).evaluatorSign) {
       next.evaluatorSign = (stored as JobAssessment).evaluatorSign;
