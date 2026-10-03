@@ -17,9 +17,11 @@ import { usePhotoUrl } from "@/components/photo";
 import { deletePhoto, uploadPhoto } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
-/** 저장 크기 — 인쇄물에서 서명 칸이 대략 40×15mm라 300dpi 기준으로 넉넉하게 잡았다 */
+/** 그리는 칸 크기(논리 픽셀). 2026-10: 세로를 180→240(2:1)으로 늘려 아이폰에서도 서명할 자리를 넉넉히 줬다.
+ *  아이폰 가로 화면(팝업 최대 높이 약 340px)에서도 스크롤 없이 들어가는 한도 안이다.
+ *  칸이 커져도 저장할 때 획 둘레만 잘라내므로(trimSignature) 인쇄물의 서명 크기는 줄지 않는다. */
 const W = 480;
-const H = 180;
+const H = 240;
 
 /** 그리는 칸 자체. 저장 방식이 다른 화면(회의·교육 실시서의 참석자 서명)도 이걸 그대로 쓴다 */
 export function SignatureCanvas({ onReady }: { onReady: (canvas: HTMLCanvasElement | null) => void }) {
@@ -91,8 +93,42 @@ export function SignatureCanvas({ onReady }: { onReady: (canvas: HTMLCanvasEleme
 }
 
 /** 캔버스를 PNG data URL로 굳힌다 — 서버가 R2에 바로 넣을 수 있는 형태 */
+/**
+ * 획이 있는 부분만 남기고 빈 여백을 잘라낸 캔버스를 돌려준다.
+ * 인쇄 칸은 이미지를 object-contain으로 맞추므로, 여백째 저장하면 칸이 클수록 서명이 작게 찍힌다.
+ * 아무것도 그리지 않았으면 원본을 그대로 돌려준다.
+ */
+export function trimSignature(canvas: HTMLCanvasElement): HTMLCanvasElement {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+  const { width: w, height: h } = canvas;
+  const data = ctx.getImageData(0, 0, w, h).data;
+  let top = h, left = w, right = -1, bottom = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (data[(y * w + x) * 4 + 3] > 8) {
+        if (x < left) left = x;
+        if (x > right) right = x;
+        if (y < top) top = y;
+        if (y > bottom) bottom = y;
+      }
+    }
+  }
+  if (right < 0) return canvas;
+  const pad = Math.round(6 * (window.devicePixelRatio || 1));
+  left = Math.max(0, left - pad);
+  top = Math.max(0, top - pad);
+  right = Math.min(w - 1, right + pad);
+  bottom = Math.min(h - 1, bottom + pad);
+  const out = document.createElement("canvas");
+  out.width = right - left + 1;
+  out.height = bottom - top + 1;
+  out.getContext("2d")?.drawImage(canvas, left, top, out.width, out.height, 0, 0, out.width, out.height);
+  return out;
+}
+
 export function signatureDataUrl(canvas: HTMLCanvasElement): string {
-  return canvas.toDataURL("image/png");
+  return trimSignature(canvas).toDataURL("image/png");
 }
 
 /**
@@ -126,7 +162,7 @@ export function SignatureField({
     if (!canvas) return;
     setBusy(true);
     try {
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+      const blob = await new Promise<Blob | null>((resolve) => trimSignature(canvas).toBlob(resolve, "image/png"));
       if (!blob) throw new Error("서명을 이미지로 만들지 못했습니다");
       const id = await uploadPhoto(blob);
       if (signId) await deletePhoto(signId); // 다시 서명하면 옛 이미지는 지운다
@@ -201,7 +237,7 @@ export function SignatureField({
       </button>
 
       {/* 팝업 전체에 걸어 둔다 — 캔버스를 살짝 벗어나 눌러도 선택·돋보기가 뜨지 않게 */}
-      <Dialog open={open} onClose={() => setOpen(false)} className="no-callout max-w-lg sm:max-w-lg">
+      <Dialog open={open} onClose={() => setOpen(false)} className="no-callout max-w-lg sm:max-w-lg md:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{label} 서명</DialogTitle>
         </DialogHeader>
