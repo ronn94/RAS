@@ -30,7 +30,7 @@ import {
 import { TbmDetail } from "@/pages/TbmDetail";
 import { TbmPreview } from "@/pages/TbmPreview";
 import { JOB_TEAMS } from "@/lib/jobAssessment";
-import { signedTbmParticipants, tbmFullySigned, tbmWorkLine, type Tbm } from "@/lib/routine";
+import { signedTbmParticipants, tbmFullySigned, tbmSignTally, tbmWorkLine, type Tbm } from "@/lib/routine";
 import { cn, formatDateWithDow } from "@/lib/utils";
 import { useStore } from "@/store";
 
@@ -189,7 +189,7 @@ export function TbmsPage({ openId, onOpen }: { openId: string | null; onOpen: (i
                 </THead>
                 <TBody>
                   {sorted.map((v) => {
-                    const signed = signedTbmParticipants(v);
+                    const { signed, total } = tbmSignTally(v);
                     const done = tbmFullySigned(v);
                     return (
                       <TR key={v.id} className="cursor-pointer" onClick={() => onOpen(v.id)}>
@@ -202,17 +202,17 @@ export function TbmsPage({ openId, onOpen }: { openId: string | null; onOpen: (i
                         <TD>{tbmWorkLine(v) || "-"}</TD>
                         <TD>{v.leaderName || "-"}</TD>
                         <TD className="text-center">
-                          {v.participants.length === 0 ? (
+                          {total === 0 ? (
                             <span className="text-muted-foreground">-</span>
                           ) : (
                             <span
                               className={cn(
                                 "inline-flex items-center gap-1 tabular-nums",
-                                signed === v.participants.length ? "text-series-1" : "text-muted-foreground",
+                                signed === total ? "text-series-1" : "text-muted-foreground",
                               )}
                             >
                               <Users className="size-3.5" />
-                              {signed}/{v.participants.length}
+                              {signed}/{total}
                             </span>
                           )}
                         </TD>

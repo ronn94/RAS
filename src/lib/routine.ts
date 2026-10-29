@@ -407,6 +407,15 @@ export function tbmMeasureLines(v: Tbm, risks: TbmRisk[]): { key: string; label:
 /** 서명을 받은 참석자 수 */
 export const signedTbmParticipants = (v: Tbm) => v.participants.filter((p) => p.sign).length;
 
+/** 서명 집계(리더 포함, 2026-10-29) — 리더가 지정돼 있으면 서명 대상에 1명으로 더한다 */
+export function tbmSignTally(v: Tbm): { signed: number; total: number } {
+  const hasLeader = Boolean(v.leaderName?.trim());
+  return {
+    signed: signedTbmParticipants(v) + (hasLeader && v.leaderSign ? 1 : 0),
+    total: v.participants.length + (hasLeader ? 1 : 0),
+  };
+}
+
 /** 리더까지 포함해 서명이 다 찼는가 — 목록의 '완료' 배지가 이 값을 본다 */
 export function tbmFullySigned(v: Tbm): boolean {
   return Boolean(v.leaderSign) && v.participants.length > 0 && v.participants.every((p) => p.sign);
