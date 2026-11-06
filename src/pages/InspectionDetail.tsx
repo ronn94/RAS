@@ -5,6 +5,9 @@ import {
   Button,
   Card,
   CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Checkbox,
   Dialog,
   DialogFooter,
@@ -28,6 +31,7 @@ import { InspectionPhotoSheet, type PhotoLayout } from "@/print/InspectionPhotoS
 import { classOfCode, inspectionMoved } from "@/lib/settings";
 import { emptyAttendee, emptyInspectionItem, emptyRow, type Inspection, type RiskItem } from "@/lib/types";
 import { useStore } from "@/store";
+import { cn } from "@/lib/utils";
 
 export function InspectionDetail({ inspection, onBack }: { inspection: Inspection; onBack: () => void }) {
   const { assessments, saveAssessment, saveInspection, settings, canEdit, canDelete } = useStore();
@@ -61,8 +65,6 @@ export function InspectionDetail({ inspection, onBack }: { inspection: Inspectio
   const patch = (p: Partial<Inspection>) => setDraft((d) => ({ ...d, ...p }));
   const patchItem = (id: string, p: Partial<Inspection["items"][number]>) =>
     setDraft((d) => ({ ...d, items: d.items.map((x) => (x.id === id ? { ...x, ...p } : x)) }));
-  const patchAttendee = (id: string, p: Partial<Inspection["attendees"][number]>) =>
-    setDraft((d) => ({ ...d, attendees: d.attendees.map((x) => (x.id === id ? { ...x, ...p } : x)) }));
 
   /** 이관 여부는 저장된 표시가 아니라 '만든 평가표 행이 아직 있는지'로 본다 */
   const isMoved = React.useCallback(
@@ -112,6 +114,23 @@ export function InspectionDetail({ inspection, onBack }: { inspection: Inspectio
   };
 
   const staff = [...settings.staff].sort((a, b) => a.localeCompare(b, "ko"));
+  // 체크 명단 — 예전에 직원 명단 밖의 이름을 적어 둔 것도 함께 보여 준다
+  const picked = new Set(draft.attendees.map((a) => a.name.trim()).filter(Boolean));
+  const pickList = [...staff, ...[...picked].filter((n) => !staff.includes(n))];
+  const withName = (name: string) => ({ ...emptyAttendee(settings.org.dept), name });
+  const toggleStaff = (name: string) =>
+    setDraft((d) =>
+      d.attendees.some((a) => a.name.trim() === name)
+        ? { ...d, attendees: d.attendees.filter((a) => a.name.trim() !== name) }
+        : { ...d, attendees: [...d.attendees, withName(name)] },
+    );
+  const selectAllStaff = () =>
+    setDraft((d) => {
+      const already = new Set(d.attendees.map((a) => a.name.trim()));
+      const added = staff.filter((n) => !already.has(n)).map(withName);
+      return added.length ? { ...d, attendees: [...d.attendees.filter((a) => a.name.trim()), ...added] } : d;
+    });
+  const deselectAllStaff = () => setDraft((d) => ({ ...d, attendees: [] }));
 
   return (
     <div className="space-y-4">
@@ -273,83 +292,48 @@ export function InspectionDetail({ inspection, onBack }: { inspection: Inspectio
         </CardContent>
       </Card>
 
-      {/* 참석자 명단 */}
-      <Card className="no-print py-0 shadow-xs">
-        <CardContent className="p-0">
-          <TableWrap>
-            <Table>
-              <THead>
-                <TR>
-                  <TH className="w-10 text-center">No.</TH>
-                  <TH className="w-52">소속</TH>
-                  <TH>성명</TH>
-                  <TH className="w-12" />
-                </TR>
-              </THead>
-              <TBody>
-                {draft.attendees.map((a, i) => (
-                  <TR key={a.id}>
-                    <TD className="text-center text-muted-foreground tabular-nums">{i + 1}</TD>
-                    <TD>
-                      <Input
-                        disabled={!canEdit}
-                        className="h-8"
-                        value={a.dept}
-                        onChange={(e) => patchAttendee(a.id, { dept: e.target.value })}
-                        placeholder="예: 운영팀"
-                      />
-                    </TD>
-                    <TD>
-                      {/* 직원 명단에서 고른다 — 명단에 없는 이름이 저장돼 있으면 그 값도 남긴다 */}
-                      <Select
-                        disabled={!canEdit}
-                        className="w-full"
-                        value={a.name}
-                        onChange={(e) => patchAttendee(a.id, { name: e.target.value })}
-                      >
-                        <option value="">-</option>
-                        {(a.name && !staff.includes(a.name) ? [...staff, a.name] : staff).map((n) => (
-                          <option key={n} value={n}>
-                            {n}
-                          </option>
-                        ))}
-                      </Select>
-                    </TD>
-                    <TD>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={!canDelete}
-                        className="text-destructive hover:text-destructive"
-                        onClick={() =>
-                          setDraft((d) => ({ ...d, attendees: d.attendees.filter((x) => x.id !== a.id) }))
-                        }
-                        aria-label="참석자 삭제"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </TD>
-                  </TR>
+      {/* 참석자 명단 — 교육일지와 같은 체크 방식. 소속은 설정의 부서로 채운다 */}
+      <Card className="no-print shadow-xs">
+        <CardHeader>
+          <CardTitle>참석자 명단</CardTitle>
+          <CardDescription>체크한 사람이 명단에 오릅니다. 서명은 인쇄한 뒤 수기로 받습니다.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {pickList.length === 0 ? (
+            <p className="rounded-xl bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground">
+              설정 → 직원 명단이 비어 있습니다. 먼저 직원을 등록하면 여기서 체크할 수 있습니다.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>
+                  참석자 ({picked.size}/{staff.length}명)
+                </Label>
+                <div className="flex gap-1">
+                  <Button variant="outline" size="sm" disabled={!canEdit} onClick={selectAllStaff}>
+                    전체 선택
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={!canEdit} onClick={deselectAllStaff}>
+                    전체 해제
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-1 sm:grid-cols-4 lg:grid-cols-6">
+                {pickList.map((name) => (
+                  <label
+                    key={name}
+                    className={cn(
+                      "flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm",
+                      canEdit ? "cursor-pointer hover:bg-muted" : "opacity-60",
+                    )}
+                  >
+                    <Checkbox checked={picked.has(name)} disabled={!canEdit} onChange={() => toggleStaff(name)} />
+                    <span className="truncate">{name}</span>
+                  </label>
                 ))}
-              </TBody>
-            </Table>
-          </TableWrap>
-          <div className="flex items-center justify-center gap-2 border-t p-2">
-            <span className="text-xs text-muted-foreground">
-              서명은 인쇄한 뒤 수기로 받습니다 · 설정의 직원 명단에서 고릅니다
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={!canEdit}
-              onClick={() =>
-                setDraft((d) => ({ ...d, attendees: [...d.attendees, emptyAttendee(settings.org.dept)] }))
-              }
-              aria-label="참석자 추가"
-            >
-              <Plus />
-            </Button>
-          </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
