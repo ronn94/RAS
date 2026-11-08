@@ -21,6 +21,7 @@ import type { Bindings } from "./bindings";
 import { runDailyDigest } from "./digest";
 import { sendPush } from "./push";
 import { backfillSurveysFromNotes } from "./backfillSurveys";
+import { aiHazard, aiSimilar } from "./ai";
 
 type Variables = { role: "admin" | "guest" };
 
@@ -617,6 +618,10 @@ app.route(
 );
 
 /* ── 설정 (단일 레코드) ────────────────────────────────────── */
+/* ── AI 도우미 (worker/ai.ts) — 글을 쓸 수 있는 사람만 ─────────── */
+app.post("/api/ai/hazard", requirePermission("photo", "survey", "stopwork", "edit"), (c) => aiHazard(c as never));
+app.post("/api/ai/similar", requirePermission("photo", "survey", "stopwork", "edit"), (c) => aiSimilar(c as never));
+
 app.get("/api/settings", async (c) => {
   const row = await c.env.ras_db
     .prepare("SELECT data FROM settings WHERE id = 'app'")

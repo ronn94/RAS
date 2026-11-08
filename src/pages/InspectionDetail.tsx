@@ -1,4 +1,5 @@
 import * as React from "react";
+import { AiButton, SimilarRowsHint, aiHazard } from "@/components/ai";
 import { ArrowLeft, ArrowRightLeft, Images, Plus, Printer, Trash2 } from "lucide-react";
 import {
   Badge,
@@ -121,8 +122,8 @@ export function InspectionDetail({ inspection, onBack }: { inspection: Inspectio
   const toggleStaff = (name: string) =>
     setDraft((d) =>
       d.attendees.some((a) => a.name.trim() === name)
-        ? { ...d, attendees: d.attendees.filter((a) => a.name.trim() !== name) }
-        : { ...d, attendees: [...d.attendees, withName(name)] },
+        ? { ...d, attendees: d.attendees.filter((a) => a.name.trim() && a.name.trim() !== name) }
+        : { ...d, attendees: [...d.attendees.filter((a) => a.name.trim()), withName(name)] },
     );
   const selectAllStaff = () =>
     setDraft((d) => {
@@ -243,6 +244,17 @@ export function InspectionDetail({ inspection, onBack }: { inspection: Inspectio
                         value={it.hazardCode ?? ""}
                         onChange={(e) => patchItem(it.id, { hazardCode: e.target.value })}
                       />
+                      {canEdit && !isMoved(it) && it.content.trim().length >= 4 && (
+                        <AiButton
+                          className="no-print mt-1"
+                          title="발굴 내용을 보고 유해위험 유형을 추천합니다"
+                          run={async () => {
+                            const x = await aiHazard({ hazard: it.content, process: draft.process });
+                            patchItem(it.id, { hazardCode: x.hazardCode });
+                            return `${x.hazardCode} ${x.label}${x.reason ? ` · ${x.reason}` : ""}`;
+                          }}
+                        />
+                      )}
                     </TD>
                     <TD>
                       <PhotoSlot
@@ -358,6 +370,12 @@ export function InspectionDetail({ inspection, onBack }: { inspection: Inspectio
                 </option>
               ))}
           </Select>
+          {moveTargetId && (
+            <SimilarRowsHint
+              texts={draft.items.filter((it) => selected.has(it.id)).map((it) => it.content)}
+              rows={(assessments.find((a) => a.id === moveTargetId)?.rows ?? []).map((r, i) => ({ id: r.id, no: i + 1, text: r.hazard }))}
+            />
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setMoveOpen(false)}>

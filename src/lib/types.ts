@@ -532,7 +532,7 @@ export function emptyInspection(dept = ""): Inspection {
     date: new Date().toISOString().slice(0, 10),
     inspector: "",
     items: [emptyInspectionItem()],
-    attendees: [emptyAttendee(dept)],
+    attendees: [],
     updatedAt: Date.now(),
   };
 }

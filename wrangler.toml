@@ -15,6 +15,10 @@ binding = "ras_db"
 database_name = "ras-db"
 database_id = "923f87c5-ea9d-4c34-893e-024827af7cde"
 
+# AI 도우미(위험요인 분류·대책·중복 찾기) — 버튼을 눌렀을 때만 쓴다
+[ai]
+binding = "AI"
+
 [[r2_buckets]]
 binding = "ras_photos"
 bucket_name = "ras-photos"

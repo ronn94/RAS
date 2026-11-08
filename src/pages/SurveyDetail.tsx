@@ -3,6 +3,7 @@
  * 현장에서 폰으로 한 건씩 올리는 흐름이라 표가 아니라 한 줄에 한 항목씩 둔다.
  */
 import * as React from "react";
+import { AiButton, SimilarRowsHint, aiHazard } from "@/components/ai";
 import { ArrowLeft, ArrowRightLeft, Lock, Printer } from "lucide-react";
 import {
   Badge,
@@ -280,7 +281,24 @@ export function SurveyDetail({
           </div>
 
           <div className="space-y-1.5">
-            <Label>유해위험요인</Label>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <Label>유해위험요인</Label>
+              {canWrite && draft.hazard.trim().length >= 4 && (
+                <AiButton
+                  className="no-print items-end"
+                  label="AI 분류·대책"
+                  title="적은 내용을 보고 위험분류·코드와 개선대책 초안을 빈 칸에 채웁니다"
+                  run={async () => {
+                    const x = await aiHazard({ hazard: draft.hazard, process: draft.process, subProcess: draft.subProcess, withMeasures: true });
+                    const next: Partial<Survey> = {};
+                    if (!draft.hazardCode) { next.hazardClass = x.hazardClass as Survey["hazardClass"]; next.hazardCode = x.hazardCode; }
+                    if (!draft.measure.trim() && x.measure) next.measure = x.measure;
+                    patch(next);
+                    return Object.keys(next).length ? `${x.hazardCode} ${x.label} · ${x.reason || "초안입니다"} (확인 후 고쳐 주세요)` : `추천: ${x.hazardCode} ${x.label} — 이미 채워진 칸은 그대로 두었습니다`;
+                  }}
+                />
+              )}
+            </div>
             <Textarea
               disabled={!canWrite}
               rows={3}
@@ -449,6 +467,12 @@ export function SurveyDetail({
                 </option>
               ))}
           </Select>
+          {moveTargetId && (
+            <SimilarRowsHint
+              texts={[draft.hazard]}
+              rows={(assessments.find((a) => a.id === moveTargetId)?.rows ?? []).map((r, i) => ({ id: r.id, no: i + 1, text: r.hazard }))}
+            />
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setMoveOpen(false)}>

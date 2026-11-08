@@ -24,7 +24,9 @@ export function InspectionSheet({ inspection: v }: { inspection: Inspection }) {
   const items = [...v.items];
   while (items.length < MIN_ITEMS) items.push({ id: `pad-${items.length}`, content: "", hazardCode: "" });
 
-  const rows = Math.max(MIN_ATTENDEE_ROWS, Math.ceil(v.attendees.length / ATTENDEE_COLS));
+  // 이름 없는 행(예전 빈 줄)은 건너뛴다 — 명단 중간에 공란이 생기지 않게
+  const people = v.attendees.filter((a) => a.name.trim());
+  const rows = Math.max(MIN_ATTENDEE_ROWS, Math.ceil(people.length / ATTENDEE_COLS));
 
   return (
     <div className="print-root sheet sheet-inspection">
@@ -112,7 +114,7 @@ export function InspectionSheet({ inspection: v }: { inspection: Inspection }) {
               <tr key={r}>
                 {Array.from({ length: ATTENDEE_COLS }, (_, c) => {
                   // 세로로 먼저 채운다 — 왼쪽 세트를 다 쓰고 오른쪽으로 넘어간다
-                  const a = v.attendees[c * rows + r];
+                  const a = people[c * rows + r];
                   return (
                     <ColumnCells key={c} dept={a?.dept ?? ""} name={a?.name ?? ""} />
                   );

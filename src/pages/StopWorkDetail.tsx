@@ -10,6 +10,7 @@
  * 한꺼번에 찍힌다(다른 화면에서 이미 겪은 문제).
  */
 import * as React from "react";
+import { SimilarRowsHint } from "@/components/ai";
 import { ArrowLeft, Lock, OctagonAlert, Printer, Send, TriangleAlert } from "lucide-react";
 import {
   Badge,
@@ -499,6 +500,12 @@ export function StopWorkDetail({
             </option>
           ))}
         </Select>
+        {target && (
+          <SimilarRowsHint
+            texts={[draft.reason]}
+            rows={(assessments.find((a) => a.id === target)?.rows ?? []).map((r, i) => ({ id: r.id, no: i + 1, text: r.hazard }))}
+          />
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={() => setMoveOpen(false)}>
             취소

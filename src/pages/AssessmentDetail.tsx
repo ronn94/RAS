@@ -1,4 +1,5 @@
 import * as React from "react";
+import { AiButton, aiHazard } from "@/components/ai";
 import { ArrowLeft, ArrowRightLeft, ChevronDown, ChevronUp, Copy, FileDown, FileUp, Plus, Printer, Trash2 } from "lucide-react";
 import {
   Badge,
@@ -381,6 +382,23 @@ export function AssessmentDetail({ assessment, onBack }: { assessment: Assessmen
                             value={r.hazard}
                             onChange={(e) => patchRow(r.id, { hazard: e.target.value })}
                           />
+                          {canEdit && r.hazard.trim().length >= 4 && (
+                            /* AI 초안 — 빈 칸(위험분류·코드·현재조치·개선대책)만 채운다 */
+                            <AiButton
+                              className="no-print mt-1"
+                              title="유해위험요인을 보고 위험분류·코드와 현재조치·개선대책 초안을 빈 칸에 채웁니다"
+                              run={async () => {
+                                const x = await aiHazard({ hazard: r.hazard, process: draft.process, subProcess: r.subProcess, withMeasures: true });
+                                const patch: Partial<RiskItem> = {};
+                                if (!r.hazardCode) { patch.hazardClass = x.hazardClass as RiskItem["hazardClass"]; patch.hazardCode = x.hazardCode; }
+                                if (!r.currentControl.trim() && x.currentControl) patch.currentControl = x.currentControl;
+                                if (!r.measure.trim() && x.measure) patch.measure = x.measure;
+                                patchRow(r.id, patch);
+                                const filled = Object.keys(patch).length;
+                                return filled ? `${x.hazardCode} ${x.label} · ${x.reason || "초안입니다"} (확인 후 고쳐 주세요)` : `추천: ${x.hazardCode} ${x.label} — 이미 채워진 칸은 그대로 두었습니다`;
+                              }}
+                            />
+                          )}
                         </TD>
                         <TD className="whitespace-normal">
                           <CellTextarea
