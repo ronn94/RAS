@@ -524,7 +524,8 @@ export function emptyAttendee(dept = ""): InspectionAttendee {
   return { id: crypto.randomUUID(), dept, name: "" };
 }
 
-export function emptyInspection(dept = ""): Inspection {
+// dept는 예전 빈 참석자 줄의 소속이었다 — 지금은 빈 명단으로 시작하지만 호출부와 맞추려고 받는다
+export function emptyInspection(_dept = ""): Inspection {
   return {
     id: crypto.randomUUID(),
     facility: "",
