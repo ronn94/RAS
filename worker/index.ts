@@ -12,7 +12,7 @@
  */
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
-import { login, loginGuest, logout, readSession } from "./auth";
+import { extendSession, login, loginGuest, logout, readSession } from "./auth";
 import { DEFAULT_SETTINGS, withDefaults, type AppSettings } from "../src/lib/settings";
 import type { PriorityAction, StopWork, Survey, Training, TrainingAttendee } from "../src/lib/types";
 import { handSignaturesComplete, type JobAssessment, type JobParticipant } from "../src/lib/jobAssessment";
@@ -85,8 +85,9 @@ app.get("/api/auth/status", async (c) => {
 app.get("/api/identity", async (c) => {
   const session = await readSession(c);
   if (!session) return c.json({ authenticated: false });
-  return c.json({ authenticated: true, name: session.sub, role: session.sub === "guest" ? "guest" : "admin" });
+  return c.json({ authenticated: true, name: session.sub, role: session.sub === "guest" ? "guest" : "admin", exp: session.exp });
 });
+app.post("/api/auth/extend", (c) => extendSession(c));
 
 /**
  * 문서가 새로 등록될 때(즉 이 id가 처음 생길 때) 바로 보낼 알림.

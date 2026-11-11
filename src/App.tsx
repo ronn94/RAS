@@ -17,6 +17,7 @@ import { SettingsPage } from "@/pages/Settings";
 import { BackupPage } from "@/pages/Backup";
 import { LoginPage } from "@/pages/Login";
 import { checkAuth, logout as apiLogout, type Identity } from "@/lib/auth";
+import { SessionTimer } from "@/components/sessionTimer";
 import { StoreProvider, useStore } from "@/store";
 
 const TITLES: Record<ViewKey, string> = {
@@ -96,7 +97,12 @@ function Router({ identity }: { identity: Identity }) {
       }}
       title={TITLES[activeView]}
       /* 헤더 오른쪽 끝 — 어느 메뉴에 있든 같은 자리에서 자료를 다시 받는다 */
-      actions={<RefreshButton />}
+      actions={
+        <>
+          <SessionTimer initialExp={identity.exp} />
+          <RefreshButton />
+        </>
+      }
       user={{ name: displayName, role: displayRole }}
       onLogout={() => void logout()}
       hiddenViews={isAdmin ? undefined : ADMIN_ONLY_VIEWS}

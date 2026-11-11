@@ -10,6 +10,8 @@ export type Identity = {
   name: string;
   role: Role;
   authenticated: boolean;
+  /** 로그인 만료 시각(ms) — 1시간. 화면 타이머가 쓴다 */
+  exp?: number;
 };
 
 /** 로그인 여부만 조용히 확인한다(실패해도 예외를 던지지 않음) */
@@ -17,8 +19,8 @@ export async function checkAuth(): Promise<Identity> {
   try {
     const res = await fetch("/api/identity", { credentials: "same-origin" });
     if (!res.ok) return { name: "", role: "guest", authenticated: false };
-    const data = (await res.json()) as { authenticated: boolean; name?: string; role?: Role };
-    return { authenticated: data.authenticated, name: data.name ?? "", role: data.role ?? "guest" };
+    const data = (await res.json()) as { authenticated: boolean; name?: string; role?: Role; exp?: number };
+    return { authenticated: data.authenticated, name: data.name ?? "", role: data.role ?? "guest", exp: data.exp };
   } catch {
     return { name: "", role: "guest", authenticated: false };
   }

@@ -42,7 +42,8 @@ function readCookie(header: string | undefined | null, name: string): string | u
 type SessionPayload = { sub: string; exp: number };
 type AuthEnv = { ADMIN_USERNAME?: string; ADMIN_PASSWORD?: string; SESSION_SECRET?: string };
 
-const SESSION_HOURS = 12;
+// 로그인 유지 1시간(2026-11-11 지시, work-permit과 같게) — 화면의 [연장]으로 다시 1시간
+const SESSION_HOURS = 1;
 const COOKIE_NAME = "ras_session";
 
 export async function readSession<Env extends { Bindings: AuthEnv }>(c: Context<Env>): Promise<SessionPayload | null> {
@@ -102,4 +103,16 @@ export async function loginGuest<Env extends { Bindings: AuthEnv }>(c: Context<E
 export function logout(c: Context) {
   c.header("set-cookie", `${COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`);
   return c.json({ ok: true });
+}
+
+/** 로그인 연장 — 유효한 세션일 때만, 지금부터 다시 1시간 */
+export async function extendSession<Env extends { Bindings: AuthEnv }>(c: Context<Env>) {
+  const secret = c.env.SESSION_SECRET;
+  const session = await readSession(c);
+  if (!session || !secret) return c.json({ error: "로그인이 만료되었습니다. 다시 로그인해 주세요." }, 401);
+  const exp = Date.now() + SESSION_HOURS * 60 * 60 * 1000;
+  const payloadB64 = b64(encoder.encode(JSON.stringify({ sub: session.sub, exp })));
+  const token = `${payloadB64}.${b64(await sign(payloadB64, secret))}`;
+  c.header("set-cookie", `${COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_HOURS * 3600}`);
+  return c.json({ ok: true, exp });
 }
