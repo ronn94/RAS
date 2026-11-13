@@ -141,6 +141,13 @@ function SidebarInner({
       </div>
       <div className="flex flex-col gap-2 p-2">
         {secondary.length > 0 && <NavList items={secondary} view={view} onSelect={onSelect} />}
+        <div className="mx-1 flex items-center gap-3 rounded-xl border bg-white p-2">
+          <img src="/ras-qr.svg" alt="RAS 접속 QR코드" className="size-20 shrink-0" />
+          <div className="text-xs leading-snug text-neutral-600">
+            <b className="block text-neutral-900">RAS 바로가기</b>
+            휴대폰 카메라로 찍으면 접속됩니다
+          </div>
+        </div>
         <div className="flex h-12 items-center gap-2 rounded-xl px-3">
           <div className="grid size-8 shrink-0 place-content-center rounded-lg bg-sidebar-accent text-xs font-medium text-sidebar-accent-foreground">
             {user.name.slice(0, 1).toUpperCase()}
