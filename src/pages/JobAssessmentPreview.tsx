@@ -7,12 +7,12 @@
  * '수정' 버튼으로 넘어간다 — 실수로 값을 건드릴 걱정 없이 훑어볼 수 있다.
  */
 import * as React from "react";
-import { ArrowLeft, Pencil, Printer, Signature } from "lucide-react";
+import { ArrowLeft, Pencil, Printer, Signature, Plus, X } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { JobAssessmentContinuousSheet, JobAssessmentSheet } from "@/print/JobAssessmentSheet";
 import { JobAssessmentSignPopup } from "@/pages/JobAssessmentSignPopup";
 import { SignablePreview } from "@/components/signablePreview";
-import { approverSignEnabled } from "@/lib/jobAssessment";
+import { approverSignEnabled, emptyJobParticipant } from "@/lib/jobAssessment";
 import { jraGrade, jraLabel, jraScore, signedParticipants, type JobAssessment } from "@/lib/jobAssessment";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
@@ -98,6 +98,42 @@ export function JobAssessmentPreview({
           여러 장)와는 모양이 다를 수 있다. 이 블록은 진짜 .print-root가 아니라서
           no-print를 붙여도 인쇄 내용에는 영향이 없다(오히려 화면 전용 프리뷰가 그대로
           찍히는 걸 막아 준다) */}
+      {/* '미정' 칸 관리 — 이 화면에서 바로 늘리거나 지운다(이름은 서명할 때 받는다) */}
+      {canSign && (
+        <div className="no-print flex flex-wrap items-center gap-1.5 rounded-2xl border bg-card px-3 py-2 text-sm">
+          <span className="mr-1 text-muted-foreground">미정 칸</span>
+          {job.participants.filter((p) => p.undecided).map((p, i) => (
+            <span key={p.id} className="inline-flex items-center gap-1 rounded-full border bg-muted/50 py-0.5 pl-2.5 pr-1 text-xs">
+              {p.external ? "외부" : "내부"} 미정 {i + 1}
+              <button
+                type="button"
+                className="grid size-5 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                aria-label="미정 칸 삭제"
+                title="이 미정 칸 삭제"
+                onClick={() => {
+                  if (!confirm("이 미정 칸을 삭제할까요?")) return;
+                  void saveJobAssessment({ ...job, participants: job.participants.filter((x) => x.id !== p.id) }).catch((e) => alert(`삭제하지 못했습니다: ${e instanceof Error ? e.message : e}`));
+                }}
+              >
+                <X className="size-3" />
+              </button>
+            </span>
+          ))}
+          {(["내부", "외부"] as const).map((t) => (
+            <Button
+              key={t}
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                void saveJobAssessment({ ...job, participants: [...job.participants, { ...emptyJobParticipant(t === "외부"), undecided: true }] }).catch((e) => alert(`추가하지 못했습니다: ${e instanceof Error ? e.message : e}`))
+              }
+            >
+              <Plus className="size-3.5" /> {t} 미정
+            </Button>
+          ))}
+        </div>
+      )}
+
       {/* 문서 위 서명 — 서명 칸을 눌러 바로 서명, PC는 오른쪽에 서명 현황. 승인자는 다른 서명이 갖춰진 뒤에 */}
       <SignablePreview
         canSign={canSign}
