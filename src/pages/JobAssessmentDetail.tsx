@@ -110,12 +110,17 @@ export function JobAssessmentDetail({
 
   const patch = (p: Partial<JobAssessment>) => setDraft((d) => ({ ...d, ...p }));
 
+  const overLimit = (r: JobAssessment["rows"][number]) => { const v = riskOf(r.p, r.s); return v !== null && v >= threshold; };
   const missing = [
     !draft.mainCategory && "대분류",
     !draft.content && "작업내용",
     !draft.date && "평가일자",
     !draft.team && "구분",
     !draft.evaluator && "평가자",
+    !draft.approvedBy.trim() && "승인자",
+    // 필수(2026-11-14) — 담당자(작업 완료 행·조치 후 점수를 적은 행), 허용 불가능 행의 위험감소대책
+    draft.rows.some((r) => !r.owner.trim() && needsOwner(r)) && `담당자(${draft.rows.filter((r) => !r.owner.trim() && needsOwner(r)).length}개 행)`,
+    draft.rows.some((r) => r.kind === "normal" && overLimit(r) && !r.measure.trim()) && `위험감소대책(${draft.rows.filter((r) => r.kind === "normal" && overLimit(r) && !r.measure.trim()).length}개 행)`,
   ].filter(Boolean) as string[];
 
   /** 이전에 등록된 문서의 분류·작업전준비·세부내역 행을 그대로 가져와 새 문서의 출발점으로 삼는다.
@@ -1377,6 +1382,9 @@ function StepPreJob({
 /** 등록 전에 놓치기 쉬운 빈칸 — 누르면 해당 값을 채우는 단계로 곧장 넘어간다 */
 type Blank = { label: string; step: number };
 
+/** 담당자가 꼭 있어야 하는 행 — '작업 완료'(마무리) 행, 또는 조치 후 강도·빈도를 하나라도 적은 일반 행 */
+const needsOwner = (r: JobAssessment["rows"][number]) => r.kind === "finish" || r.s2 !== null || r.p2 !== null;
+
 function findBlanks(draft: JobAssessment, threshold: number): Blank[] {
   const blanks: Blank[] = [];
   if (!draft.mainCategory) blanks.push({ label: "대분류가 비어 있습니다", step: 1 });
@@ -1384,10 +1392,13 @@ function findBlanks(draft: JobAssessment, threshold: number): Blank[] {
   if (!draft.date) blanks.push({ label: "평가일자가 비어 있습니다", step: 2 });
   if (!draft.team) blanks.push({ label: "구분이 비어 있습니다", step: 2 });
   if (!draft.evaluator) blanks.push({ label: "위험성 평가자가 비어 있습니다", step: 2 });
+  if (!draft.approvedBy.trim()) blanks.push({ label: "승인자가 비어 있습니다", step: 2 });
 
   draft.rows.forEach((r, i) => {
-    if (r.kind !== "normal") return;
     const no = i + 1;
+    // 담당자 — '작업 완료' 행은 필수, 일반 행은 조치 후 강도·빈도(등급)를 적었으면 필수(2026-11-14)
+    if (!r.owner.trim() && needsOwner(r)) blanks.push({ label: `${no}번 행 — 담당자 미입력`, step: 3 });
+    if (r.kind !== "normal") return;
     if (!r.stepName.trim()) blanks.push({ label: `${no}번 행 — 공정/작업순서 미입력`, step: 3 });
     if (!r.hazardCode) blanks.push({ label: `${no}번 행 — 위험분류 미선택`, step: 3 });
     if (!r.factor.trim()) blanks.push({ label: `${no}번 행 — 위험요인 미입력`, step: 3 });
