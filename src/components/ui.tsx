@@ -53,12 +53,50 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
   },
 );
 
+/* field-sizing:content를 못 쓰는 브라우저(일부 Safari)는 글 길이에 맞춰 높이를 직접 늘린다 — 글이 잘려 숨지 않게 */
+const FIELD_SIZING = typeof CSS !== "undefined" && CSS.supports?.("field-sizing", "content");
 export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const ref = React.useRef<HTMLTextAreaElement>(null);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (FIELD_SIZING || !el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight + 2}px`;
+  }, [props.value]);
   return (
     <textarea
+      ref={ref}
       className={cn(FIELD_BASE, "flex field-sizing-content min-h-16 resize-none px-2.5 py-2", className)}
       {...props}
     />
+  );
+}
+
+/** 글이 길면 줄을 바꿔 세로로 늘어나는 선택 상자 — 보이는 칸은 글, 실제 선택은 위에 겹친 투명 select가 받는다 */
+export function WrapSelect({ className, value, children, placeholder = "선택하세요", ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { placeholder?: string }) {
+  const ref = React.useRef<HTMLSelectElement>(null);
+  const [label, setLabel] = React.useState("");
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    setLabel(el && el.selectedIndex >= 0 && el.value !== "" ? el.options[el.selectedIndex].text : "");
+  }, [value, children]);
+  return (
+    <div className={cn("relative", className)}>
+      <div
+        aria-hidden="true"
+        className={cn(
+          "flex min-h-8 w-full items-start justify-between gap-1 rounded-2xl bg-input/50 px-2.5 py-1.5 text-xs leading-snug break-keep",
+          props.disabled && "opacity-50",
+          !label && "text-muted-foreground",
+        )}
+      >
+        <span className="min-w-0 whitespace-normal">{label || placeholder}</span>
+        <span className="shrink-0 pt-px text-muted-foreground">▾</span>
+      </div>
+      <select ref={ref} value={value} {...props} className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed">
+        {children}
+      </select>
+    </div>
   );
 }
 

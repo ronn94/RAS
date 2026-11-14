@@ -50,6 +50,7 @@ import {
   TR,
   TableWrap,
   Textarea,
+  WrapSelect,
 } from "@/components/ui";
 import { ApproverSelect } from "@/components/approver";
 import { SignatureCanvas, signatureDataUrl } from "@/components/signature";
@@ -934,26 +935,26 @@ function StepMatrix({
       <Card className="py-0 shadow-xs">
         <CardContent className="p-0">
           <TableWrap>
-            <Table className="min-w-[104rem] [&_:is(th,td)]:px-2 [&_:is(th,td)]:align-top">
+            <Table className="min-w-[110rem] [&_:is(th,td)]:px-2 [&_:is(th,td)]:align-top [&_td]:break-keep [&_th]:whitespace-nowrap">
               <THead>
                 <TR>
-                  <TH className="w-10 text-center">No.</TH>
-                  <TH className="w-40">공정/작업순서</TH>
-                  <TH className="w-48">보호구</TH>
-                  <TH className="w-44">위험분류</TH>
-                  <TH className="w-40">위험요인</TH>
-                  <TH className="w-64">현재 조치사항</TH>
-                  <TH className="w-20 text-center">강도</TH>
-                  <TH className="w-20 text-center">빈도</TH>
-                  <TH className="w-16 text-center">등급</TH>
-                  <TH className="w-24 text-center">허용여부</TH>
-                  <TH className="w-52">감소대책</TH>
-                  <TH className="w-20 text-center">조치후 강도</TH>
-                  <TH className="w-20 text-center">조치후 빈도</TH>
-                  <TH className="w-16 text-center">조치후 등급</TH>
-                  <TH className="w-28">담당자</TH>
-                  <TH className="w-36">종사자 의견</TH>
-                  {canWrite && <TH className="w-28" />}
+                  <TH className="w-10 min-w-10 text-center">No.</TH>
+                  <TH className="w-40 min-w-40">공정/작업순서</TH>
+                  <TH className="w-48 min-w-48">보호구</TH>
+                  <TH className="w-44 min-w-44">위험분류</TH>
+                  <TH className="w-40 min-w-40">위험요인</TH>
+                  <TH className="w-64 min-w-64">현재 조치사항</TH>
+                  <TH className="w-20 min-w-20 text-center">강도</TH>
+                  <TH className="w-20 min-w-20 text-center">빈도</TH>
+                  <TH className="w-16 min-w-16 text-center">등급</TH>
+                  <TH className="w-24 min-w-24 text-center">허용여부</TH>
+                  <TH className="w-52 min-w-52">감소대책</TH>
+                  <TH className="w-20 min-w-20 text-center">조치후 강도</TH>
+                  <TH className="w-20 min-w-20 text-center">조치후 빈도</TH>
+                  <TH className="w-16 min-w-16 text-center">조치후 등급</TH>
+                  <TH className="w-28 min-w-28">담당자</TH>
+                  <TH className="w-36 min-w-36">종사자 의견</TH>
+                  {canWrite && <TH className="w-28 min-w-28" />}
                 </TR>
               </THead>
               <TBody>
@@ -1041,17 +1042,19 @@ function MatrixRow({
           </div>
         </TD>
         <TD>
-          <Input
-            className="h-8 text-xs"
+          <Textarea
+            rows={1}
+            className="min-h-8 py-1.5 text-xs"
             disabled={!canWrite}
             value={row.owner}
-            onChange={(e) => patchRow(row.id, { owner: e.target.value })}
+            onChange={(e) => patchRow(row.id, { owner: e.target.value.replace(/\n/g, " ") })}
             placeholder="담당자"
           />
         </TD>
         <TD>
-          <Input
-            className="h-8 text-xs"
+          <Textarea
+            rows={1}
+            className="min-h-8 py-1.5 text-xs"
             disabled={!canWrite}
             value={row.opinion}
             onChange={(e) => patchRow(row.id, { opinion: e.target.value })}
@@ -1091,8 +1094,9 @@ function MatrixRow({
             </label>
           ))}
         </div>
-        <Input
-          className="mt-1 h-7 text-[11px]"
+        <Textarea
+          rows={1}
+          className="mt-1 min-h-7 px-2 py-1 text-[11px]"
           disabled={!canWrite}
           value={row.ppeEtc}
           onChange={(e) => patchRow(row.id, { ppeEtc: e.target.value })}
@@ -1101,8 +1105,9 @@ function MatrixRow({
       </TD>
       <TD>
         {/* 설정 분류표의 위험코드를 그대로 쓴다 — 고르면 조치사항 후보가 딸려온다 */}
-        <Select
-          className="h-8 w-full text-xs"
+        {/* 분류 이름이 길면 줄을 바꿔 칸이 세로로 늘어난다(잘리지 않게) */}
+        <WrapSelect
+          className="w-full"
           disabled={!canWrite}
           value={row.hazardCode}
           onChange={(e) => changeCode(row.id, e.target.value)}
@@ -1113,7 +1118,7 @@ function MatrixRow({
               {t.code} {t.label}
             </option>
           ))}
-        </Select>
+        </WrapSelect>
       </TD>
       <TD>
         <Textarea
@@ -1148,8 +1153,9 @@ function MatrixRow({
         {/* 목록에 없는 조치는 직접 적는다 */}
         {row.customActions.map((text, i) => (
           <div key={i} className="mt-1 flex items-center gap-1">
-            <Input
-              className="h-7 text-[11px]"
+            <Textarea
+              rows={1}
+              className="min-h-7 px-2 py-1 text-[11px]"
               disabled={!canWrite}
               value={text}
               onChange={(e) =>
@@ -1250,11 +1256,12 @@ function MatrixRow({
         <Badge className={riskBadgeClass(post)}>{post ?? "-"}</Badge>
       </TD>
       <TD>
-        <Input
-          className="h-8 text-xs"
+        <Textarea
+          rows={1}
+          className="min-h-8 py-1.5 text-xs"
           disabled={!canWrite}
           value={row.owner}
-          onChange={(e) => patchRow(row.id, { owner: e.target.value })}
+          onChange={(e) => patchRow(row.id, { owner: e.target.value.replace(/\n/g, " ") })}
           placeholder="담당자"
         />
       </TD>
@@ -1328,7 +1335,7 @@ function ScoreSelect({
 }) {
   return (
     <Select
-      className="h-8 w-full px-1.5 text-xs"
+      className="h-8 w-full min-w-12 px-1.5 text-center text-xs"
       disabled={disabled}
       title={hint}
       value={value === null ? "" : String(value)}
