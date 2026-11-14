@@ -179,7 +179,8 @@ export function JobAssessmentDetail({
 
   /** 위험코드를 바꾸면 그 코드의 조치사항 후보를 **전부 켠 상태**로 갈아 끼운다(원본과 같다) */
   const changeCode = (id: string, code: string) =>
-    patchRow(id, { hazardCode: code, actions: [...actionsForCode(settings, code)] });
+    // 분류를 고르면 조치 후보만 보여 주고 체크는 비운다(2026-11-14 — 실제로 한 조치만 사람이 체크)
+    patchRow(id, { hazardCode: code, actions: [] });
 
   const toggleIn = (list: string[], value: string) =>
     list.includes(value) ? list.filter((x) => x !== value) : [...list, value];

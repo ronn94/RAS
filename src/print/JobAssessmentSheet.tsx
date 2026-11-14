@@ -1,9 +1,10 @@
 import { signSlot } from "@/lib/signSlots";
+import { actionsForCode } from "@/lib/settings";
 /**
  * 작업 위험성평가 인쇄 서식 — A4 가로.
  *
  * RAS의 다른 인쇄 서식과 같은 어휘를 쓴다: 결재란 없이 큰 제목 하나,
- * 구간은 번호(1./2./3.)로 나누고, 체크리스트는 ■(켬)/□(끔) 기호로 표시한다.
+ * 구간은 번호(1./2./3.)로 나누고, 체크리스트는 ☑(켬)/☐(끔) 체크박스 기호로 표시한다.
  *
  * 세부내역 표는 위험성평가표(AssessmentSheet)와 같은 방식으로 페이지를 나눈다 —
  * 고정 행수가 아니라 **화면 밖에서 한 번 그려 실제 행 높이를 잰 뒤** 그 값으로
@@ -149,7 +150,7 @@ function OverviewSections({ v }: { v: JobAssessment }) {
             <tr key={r}>
               {PRE_JOB_ITEMS.slice(r * 3, r * 3 + 3).map((item) => (
                 <td key={item}>
-                  <span className="box">{v.preJobs.includes(item) ? "■" : "□"}</span> {item}
+                  <span className="box">{v.preJobs.includes(item) ? "☑" : "☐"}</span> {item}
                 </td>
               ))}
             </tr>
@@ -404,7 +405,7 @@ function MatrixRow({
         <td className="wrap tiny">
           {FINISH_ITEMS.map((item) => (
             <span key={item} className="chk">
-              {row.finishItems.includes(item) ? "■" : "□"} {item}
+              {row.finishItems.includes(item) ? "☑" : "☐"} {item}
             </span>
           ))}
         </td>
@@ -420,7 +421,13 @@ function MatrixRow({
   const risk = riskOf(row.p, row.s);
   const post = riskOf(row.p2, row.s2);
   const ppes = [...row.ppes, ...(row.ppeEtc ? [row.ppeEtc] : [])];
-  const actions = [...row.actions, ...row.customActions.filter(Boolean)];
+  // 분류의 조치 후보는 모두 적고 체크한 것만 ☑, 직접 적은 조치는 ☑(2026-11-14)
+  const candidates = row.hazardCode ? actionsForCode(settings, row.hazardCode) : [];
+  const actions: [string, boolean][] = [
+    ...candidates.map((a): [string, boolean] => [a, row.actions.includes(a)]),
+    ...row.actions.filter((a) => !candidates.includes(a)).map((a): [string, boolean] => [a, true]),
+    ...row.customActions.filter(Boolean).map((a): [string, boolean] => [a, true]),
+  ];
 
   return (
     <tr>
@@ -430,9 +437,9 @@ function MatrixRow({
       <td className="wrap tiny">{row.hazardCode ? codeLabel(settings, row.hazardCode) : ""}</td>
       <td className="wrap">{row.factor}</td>
       <td className="wrap tiny">
-        {actions.map((a) => (
-          <span key={a} className="chk">
-            ■ {a}
+        {actions.map(([a, on], i) => (
+          <span key={a + i} className="chk">
+            {on ? "☑" : "☐"} {a}
           </span>
         ))}
       </td>
