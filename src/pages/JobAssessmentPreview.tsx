@@ -35,7 +35,7 @@ export function JobAssessmentPreview({
   onBack: () => void;
   onEdit: () => void;
 }) {
-  const { settings, signJobAssessment, identity } = useStore();
+  const { settings, signJobAssessment, saveJobAssessment, identity } = useStore();
   const grade = jraGrade(jraScore(job));
   const signed = signedParticipants(job);
   const [signOpen, setSignOpen] = React.useState(false);
@@ -102,7 +102,11 @@ export function JobAssessmentPreview({
       <SignablePreview
         canSign={canSign}
         deps={job}
-        onSign={(target, image) => signJobAssessment(job.id, target, image).then(() => undefined)}
+        onSign={async (target, image, name) => {
+          // '미정' 자리 — 이름을 먼저 채워 저장한 뒤 서명한다
+          if (name) await saveJobAssessment({ ...job, participants: job.participants.map((p) => (p.id === target ? { ...p, name, undecided: false } : p)) });
+          await signJobAssessment(job.id, target, image);
+        }}
         blocked={(t) => (t === "approver" && !approverSignEnabled(job, settings.jobAssessment.approverRequireAll) ? "평가자·내부·외부 참여자 서명이 아직 다 갖춰지지 않았습니다." : null)}
       >
         <JobAssessmentContinuousSheet job={job} />

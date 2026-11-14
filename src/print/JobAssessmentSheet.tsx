@@ -43,7 +43,8 @@ const PX_PER_MM = 96 / 25.4;
  * 칸에 바로 붙인다. 아직 서명을 못 받았으면 빈 칸을 남겨 인쇄 후 수기로 받을 수 있게 한다.
  * '미정' 자리는 이름 대신 밑줄만 남긴다. */
 function Attendee({ p }: { p: JobParticipant }) {
-  if (p.undecided) return <span className="who">________</span>;
+  // '미정' 자리도 문서 위에서 서명할 수 있다 — 누르면 이름을 받고 서명한다(SignablePreview)
+  if (p.undecided) return <span className="who" {...signSlot(p.id, p.external ? "외부 참여자" : "내부 참여자", "미정 (이름 입력 후 서명)", false, true)}>________</span>;
   return (
     <span className="who" {...(p.name.trim() ? signSlot(p.id, p.external ? "외부 참여자" : "내부 참여자", p.name, !!p.sign) : {})}>
       {p.name || "-"}

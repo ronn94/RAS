@@ -3,7 +3,7 @@ import { Dialog, DialogHeader, DialogTitle } from "@/components/ui";
 import { InlineSigner } from "@/components/signList";
 import { cn } from "@/lib/utils";
 
-type Slot = { target: string; sec: string; label: string; signed: boolean };
+type Slot = { target: string; sec: string; label: string; signed: boolean; askName: boolean };
 
 /**
  * 완성본 미리보기 + 문서 위 서명(2026-11-14).
@@ -20,7 +20,8 @@ export function SignablePreview({
 }: {
   children: React.ReactNode;
   canSign: boolean;
-  onSign: (target: string, image: string | null) => Promise<void>;
+  /** name: '미정' 자리에서 받은 이름(있을 때만) — 저장하는 쪽이 이름을 먼저 채운 뒤 서명한다 */
+  onSign: (target: string, image: string | null, name?: string) => Promise<void>;
   blocked?: (target: string) => string | null;
   /** 문서 내용이 바뀌면 서명 현황을 다시 읽는다 */
   deps: unknown;
@@ -28,6 +29,7 @@ export function SignablePreview({
   const ref = React.useRef<HTMLDivElement>(null);
   const [slots, setSlots] = React.useState<Slot[]>([]);
   const [open, setOpen] = React.useState<Slot | null>(null);
+  const [askedName, setAskedName] = React.useState("");
   React.useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -38,6 +40,7 @@ export function SignablePreview({
           sec: x.dataset.signSec || "",
           label: x.dataset.signLabel || "",
           signed: x.dataset.signed === "1",
+          askName: x.dataset.signAskName === "1",
         })),
       );
     read();
@@ -50,6 +53,7 @@ export function SignablePreview({
     if (!canSign) return alert("서명 권한이 없거나 잠긴 문서입니다.");
     const why = blocked?.(s.target);
     if (why) return alert(why);
+    setAskedName("");
     setOpen(s);
   };
   const secs: [string, Slot[]][] = [];
@@ -114,11 +118,18 @@ export function SignablePreview({
         <DialogHeader>
           <DialogTitle>{open ? `${open.label} 서명` : "서명"}</DialogTitle>
         </DialogHeader>
+        {open?.askName && (
+          <label className="grid gap-1 text-sm">
+            <span className="text-muted-foreground">'미정' 자리입니다. 서명할 사람의 이름을 적어 주세요.</span>
+            <input className="h-9 rounded-xl border border-input bg-transparent px-3" value={askedName} onChange={(e) => setAskedName(e.target.value)} placeholder="이름" autoFocus />
+          </label>
+        )}
         {open && (
           <InlineSigner
             onCancel={() => setOpen(null)}
             onSave={async (dataUrl) => {
-              await onSign(open.target, dataUrl);
+              if (open.askName && !askedName.trim()) throw new Error("이름을 먼저 적어 주세요.");
+              await onSign(open.target, dataUrl, open.askName ? askedName.trim() : undefined);
               setOpen(null);
             }}
             onClear={

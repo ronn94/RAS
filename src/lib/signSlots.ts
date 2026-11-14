@@ -3,7 +3,8 @@
  * 서식의 서명 칸에 이 표시를 붙여 두면 SignablePreview가 강조하고, 누르면 그 자리에서 서명하고,
  * 오른쪽 '서명 현황'을 만든다. target은 기존 서명 팝업이 쓰던 값 그대로(store의 sign 함수에 넘긴다).
  */
-export const signSlot = (target: string, sec: string, label: string, signed: boolean) => ({
+export const signSlot = (target: string, sec: string, label: string, signed: boolean, askName = false) => ({
+  ...(askName ? { "data-sign-ask-name": "1" } : {}),
   "data-sign": target,
   "data-sign-sec": sec,
   "data-sign-label": label,
