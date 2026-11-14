@@ -138,6 +138,7 @@ export function JobAssessmentPreview({
       <SignablePreview
         canSign={canSign}
         deps={job}
+        sections={["평가자 · 승인자", "내부 참여자", "외부 참여자", "담당자"]}
         onSign={async (target, image, name) => {
           // '미정' 자리 — 이름을 먼저 채워 저장한 뒤 서명한다
           if (name) await saveJobAssessment({ ...job, participants: job.participants.map((p) => (p.id === target ? { ...p, name, undecided: false } : p)) });

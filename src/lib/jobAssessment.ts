@@ -317,6 +317,10 @@ export function approverSignEnabled(v: JobAssessment, requireAll: boolean): bool
  */
 export function handSignaturesComplete(v: JobAssessment): boolean {
   if (!v.evaluatorSign) return false;
+  // 자동 잠금 조건(2026-11-14) — '미정' 칸이 남아 있으면 아직 서명받을 사람이 있으므로 잠그지 않는다
+  if (v.participants.some((p) => p.undecided)) return false;
+  // 담당자(이름이 있는 세부내역 행)의 서명도 다 모여야 한다
+  if (v.rows.some((r) => r.owner.trim() && !r.ownerSign)) return false;
   const internal = v.participants.filter((p) => !p.external);
   const external = v.participants.filter((p) => p.external);
   return sectionAllSigned(internal) && sectionAllSigned(external);

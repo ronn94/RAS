@@ -17,6 +17,7 @@ export function SignablePreview({
   onSign,
   blocked,
   deps,
+  sections,
 }: {
   children: React.ReactNode;
   canSign: boolean;
@@ -25,6 +26,8 @@ export function SignablePreview({
   blocked?: (target: string) => string | null;
   /** 문서 내용이 바뀌면 서명 현황을 다시 읽는다 */
   deps: unknown;
+  /** 서명 현황에 늘 보일 구역(순서대로) — 칸이 0개면 '해당 없음'으로 표시 */
+  sections?: string[];
 }) {
   const ref = React.useRef<HTMLDivElement>(null);
   const [slots, setSlots] = React.useState<Slot[]>([]);
@@ -56,7 +59,7 @@ export function SignablePreview({
     setAskedName("");
     setOpen(s);
   };
-  const secs: [string, Slot[]][] = [];
+  const secs: [string, Slot[]][] = (sections ?? []).map((n) => [n, []]);
   for (const s of slots) {
     const g = secs.find((x) => x[0] === s.sec);
     if (g) g[1].push(s);
@@ -93,6 +96,7 @@ export function SignablePreview({
         {secs.map(([sec, list]) => (
           <section key={sec} className="mt-3">
             <h4 className="mb-1.5 border-b pb-1 text-xs font-semibold text-muted-foreground">{sec}</h4>
+            {list.length === 0 && <p className="rounded-xl bg-muted/50 px-3 py-2 text-xs text-muted-foreground">해당 없음</p>}
             <ul className="grid gap-1.5">
               {list.map((s) => (
                 <li key={s.target}>
