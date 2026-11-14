@@ -85,7 +85,7 @@ export function SignRow({
 }
 
 /** 목록 줄 아래에 펼쳐지는 서명 캔버스 — 저장하면 접힌다 */
-function InlineSigner({
+export function InlineSigner({
   onSave,
   onCancel,
   onClear,

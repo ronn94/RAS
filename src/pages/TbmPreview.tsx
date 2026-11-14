@@ -9,6 +9,7 @@ import { ArrowLeft, Pencil, Printer, Signature } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { TbmContinuousSheet, TbmSheet } from "@/print/TbmSheet";
 import { TbmSignPopup } from "@/pages/TbmSignPopup";
+import { SignablePreview } from "@/components/signablePreview";
 import { signedTbmParticipants, tbmFullySigned, type Tbm } from "@/lib/routine";
 import { useStore } from "@/store";
 
@@ -85,9 +86,10 @@ export function TbmPreview({
 
       {/* 화면 미리보기는 쪽을 나누지 않고 이어서 보여준다 — .print-root가 아니라서
           no-print를 붙여도 실제 인쇄 내용에는 영향이 없다 */}
-      <div className="screen-preview rounded-2xl no-print">
+      {/* 문서 위 서명 — 서명 칸을 눌러 바로 서명, PC는 오른쪽에 서명 현황 */}
+      <SignablePreview canSign={canSign} deps={tbm} onSign={(target, image) => signRoutine(tbm.id, target, image).then(() => undefined)}>
         <TbmContinuousSheet tbm={tbm} />
-      </div>
+      </SignablePreview>
 
       {/* 실제 인쇄물 — 평소에는 화면 밖에 숨어 있다가 인쇄할 때만 나타난다 */}
       <TbmSheet tbm={tbm} />

@@ -11,6 +11,8 @@ import { ArrowLeft, Pencil, Printer, Signature } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { JobAssessmentContinuousSheet, JobAssessmentSheet } from "@/print/JobAssessmentSheet";
 import { JobAssessmentSignPopup } from "@/pages/JobAssessmentSignPopup";
+import { SignablePreview } from "@/components/signablePreview";
+import { approverSignEnabled } from "@/lib/jobAssessment";
 import { jraGrade, jraLabel, jraScore, signedParticipants, type JobAssessment } from "@/lib/jobAssessment";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
@@ -96,9 +98,15 @@ export function JobAssessmentPreview({
           여러 장)와는 모양이 다를 수 있다. 이 블록은 진짜 .print-root가 아니라서
           no-print를 붙여도 인쇄 내용에는 영향이 없다(오히려 화면 전용 프리뷰가 그대로
           찍히는 걸 막아 준다) */}
-      <div className="screen-preview rounded-2xl no-print">
+      {/* 문서 위 서명 — 서명 칸을 눌러 바로 서명, PC는 오른쪽에 서명 현황. 승인자는 다른 서명이 갖춰진 뒤에 */}
+      <SignablePreview
+        canSign={canSign}
+        deps={job}
+        onSign={(target, image) => signJobAssessment(job.id, target, image).then(() => undefined)}
+        blocked={(t) => (t === "approver" && !approverSignEnabled(job, settings.jobAssessment.approverRequireAll) ? "평가자·내부·외부 참여자 서명이 아직 다 갖춰지지 않았습니다." : null)}
+      >
         <JobAssessmentContinuousSheet job={job} />
-      </div>
+      </SignablePreview>
 
       {/* 실제 인쇄물은 이쪽이다 — 기본적으로 화면에는 숨겨져 있고(.print-root 규칙)
           인쇄할 때만 A4 여러 장으로 나뉘어 찍힌다. */}

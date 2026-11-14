@@ -1915,3 +1915,18 @@
   margin-top: 3mm;
   font-size: 8pt;
 }
+
+/* 미리보기 문서 위 서명(2026-11-14) — PC: 왼쪽 문서 · 오른쪽 서명 현황 / 휴대폰: 서명 현황 숨김, 칸 강조 */
+.signable-split { display: block; }
+.sign-status { display: none; }
+@media (min-width: 1024px) {
+  .signable-split { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+  .sign-status { display: block; position: sticky; top: 72px; max-height: calc(100vh - 96px); overflow: auto; border-radius: 1rem; border: 1px solid var(--border); background: var(--card); padding: 14px; }
+}
+.signable [data-sign] { cursor: pointer; position: relative; }
+.signable [data-sign][data-signed="0"] { background: #ffe08a !important; outline: 3px solid #f59f00; outline-offset: -3px; animation: ras-sign-pulse 1.6s ease-in-out infinite; }
+.signable [data-sign][data-signed="1"] { background: #e6f9f3 !important; outline: 2px solid #12b886; outline-offset: -2px; }
+.signable [data-sign]:hover { filter: brightness(.97); }
+@keyframes ras-sign-pulse { 50% { outline-color: #ffc94d; } }
+@media (prefers-reduced-motion: reduce) { .signable [data-sign][data-signed="0"] { animation: none; } }
+@media print { .signable [data-sign] { background: none !important; outline: none !important; animation: none !important; } }

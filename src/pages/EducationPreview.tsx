@@ -9,6 +9,7 @@ import { ArrowLeft, Pencil, Printer, Signature } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { EducationContinuousSheet, EducationSheet } from "@/print/EducationSheet";
 import { EducationSignPopup } from "@/pages/EducationSignPopup";
+import { SignablePreview } from "@/components/signablePreview";
 import { educationFullySigned, signedEducationAttendees, type Education } from "@/lib/routine";
 import { useStore } from "@/store";
 
@@ -83,9 +84,10 @@ export function EducationPreview({
       />
 
       {/* 화면 미리보기는 쪽을 나누지 않고 이어서 보여준다 */}
-      <div className="screen-preview rounded-2xl no-print">
+      {/* 문서 위 서명 — 서명 칸을 눌러 바로 서명, PC는 오른쪽에 서명 현황 */}
+      <SignablePreview canSign={canSign} deps={education} onSign={(target, image) => signRoutine(education.id, target, image).then(() => undefined)}>
         <EducationContinuousSheet education={education} />
-      </div>
+      </SignablePreview>
 
       {/* 실제 인쇄물 — 평소에는 화면 밖에 숨어 있다가 인쇄할 때만 나타난다 */}
       <EducationSheet education={education} />

@@ -1,3 +1,4 @@
+import { signSlot } from "@/lib/signSlots";
 /**
  * 작업 위험성평가 인쇄 서식 — A4 가로.
  *
@@ -44,7 +45,7 @@ const PX_PER_MM = 96 / 25.4;
 function Attendee({ p }: { p: JobParticipant }) {
   if (p.undecided) return <span className="who">________</span>;
   return (
-    <span className="who">
+    <span className="who" {...(p.name.trim() ? signSlot(p.id, p.external ? "외부 참여자" : "내부 참여자", p.name, !!p.sign) : {})}>
       {p.name || "-"}
       {p.sign ? (
         <img className="who-sign" src={photoUrl(p.sign)} alt="" />
@@ -59,7 +60,7 @@ function Attendee({ p }: { p: JobParticipant }) {
  * 이름이 없으면 애초에 서명할 자리가 없으므로 이름만 비워 둔다. */
 function OwnerCell({ row }: { row: JobRow }) {
   return (
-    <span className="owner-cell">
+    <span className="owner-cell" {...(row.owner.trim() ? signSlot(`row:${row.id}`, "담당자", row.owner, !!row.ownerSign) : {})}>
       <span>{row.owner}</span>
       {row.owner && row.ownerSign && <img className="owner-sign" src={photoUrl(row.ownerSign)} alt="" />}
     </span>
@@ -113,11 +114,11 @@ function OverviewSections({ v }: { v: JobAssessment }) {
             <td className="lbl">평가일자</td>
             <td className="num">{v.date}</td>
             <td className="lbl">평가자</td>
-            <td className="seal">
+            <td className="seal" {...(v.evaluator.trim() ? signSlot("evaluator", "평가자 · 승인자", `평가자 · ${v.evaluator}`, !!v.evaluatorSign) : {})}>
               <SealName name={v.evaluator} sign={v.evaluatorSign} />
             </td>
             <td className="lbl">승인자</td>
-            <td className="seal">
+            <td className="seal" {...(v.approvedBy.trim() ? signSlot("approver", "평가자 · 승인자", `승인자 · ${v.approvedBy}`, !!v.approvedBySign) : {})}>
               <SealName name={v.approvedBy} sign={v.approvedBySign} />
             </td>
           </tr>

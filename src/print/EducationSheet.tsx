@@ -1,3 +1,4 @@
+import { signSlot } from "@/lib/signSlots";
 /**
  * 안전보건교육일지 인쇄 서식 — A4 세로.
  *
@@ -203,7 +204,7 @@ function AttendeeCells({ no, a }: { no: number; a?: EducationAttendee }) {
       <td className="center no">{no}</td>
       <td className="center">{a?.dept ?? ""}</td>
       <td className="center">{a?.name ?? ""}</td>
-      <td className="sign-cell">{a?.sign ? <img src={photoUrl(a.sign)} alt="" /> : null}</td>
+      <td className="sign-cell" {...(a && a.name.trim() ? signSlot(a.id, "참석자", a.dept ? `${a.name} (${a.dept})` : a.name, !!a.sign) : {})}>{a?.sign ? <img src={photoUrl(a.sign)} alt="" /> : null}</td>
     </>
   );
 }

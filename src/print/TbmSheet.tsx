@@ -1,3 +1,4 @@
+import { signSlot } from "@/lib/signSlots";
 /**
  * TBM 회의록 인쇄 서식 — A4 세로.
  *
@@ -145,7 +146,7 @@ function Overview({ v, risks }: { v: Tbm; risks: TbmRisk[] }) {
 
       <div className="leader">
         <div className="sec">■ 참석자 명단</div>
-        <div className="leader-info">
+        <div className="leader-info" {...(v.leaderName.trim() ? signSlot("leader", "TBM 리더", v.leaderName, !!v.leaderSign) : {})}>
           <strong>TBM 리더 : {v.leaderName}</strong>
           {v.leaderSign ? <img src={photoUrl(v.leaderSign)} alt="" /> : <span className="leader-blank" />}
         </div>
@@ -185,7 +186,7 @@ function SignTable({ rows }: { rows: TbmParticipant[][] }) {
                 <React.Fragment key={i}>
                   <td className="who">{p ? p.name : ""}</td>
                   {/* 서명을 못 받았으면 빈칸으로 남겨 인쇄 후 수기로 받는다 */}
-                  <td className="sign-cell">{p?.sign ? <img src={photoUrl(p.sign)} alt="" /> : null}</td>
+                  <td className="sign-cell" {...(p && p.name.trim() ? signSlot(p.id, p.external ? "외부업체 참석자" : "참석자 (우리 직원)", p.name, !!p.sign) : {})}>{p?.sign ? <img src={photoUrl(p.sign)} alt="" /> : null}</td>
                 </React.Fragment>
               );
             })}
