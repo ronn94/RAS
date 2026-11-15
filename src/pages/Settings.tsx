@@ -1,7 +1,7 @@
 import { teamTone } from "@/lib/settings";
 import * as React from "react";
 import { Bell, BellOff, ListPlus, Plus, RotateCcw, Save, X } from "lucide-react";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Input, Label } from "@/components/ui";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Input, Label, Textarea } from "@/components/ui";
 import { DEFAULT_SETTINGS, type AppSettings, type ScaleLabel } from "@/lib/settings";
 import { JOB_TEAMS } from "@/lib/jobAssessment";
 import type { EducationTopic, TbmRisk } from "@/lib/routine";
@@ -523,7 +523,8 @@ type SectionKey =
   | "risk"
   | "tbmRisks"
   | "educationTopics"
-  | "educationDefaults";
+  | "educationDefaults"
+  | "loginNotice";
 
 export function SettingsPage() {
   const { settings, updateSettings } = useStore();
@@ -539,7 +540,7 @@ export function SettingsPage() {
   React.useEffect(() => {
     setDraft((d) => {
       const next = { ...settings };
-      for (const k of ["profile", "org", "hazardFactors", "risk", "tbmRisks", "educationTopics", "educationDefaults"] as SectionKey[]) {
+      for (const k of ["profile", "org", "hazardFactors", "risk", "tbmRisks", "educationTopics", "educationDefaults", "loginNotice"] as SectionKey[]) {
         if (JSON.stringify(d[k]) !== JSON.stringify(settings[k])) (next as Record<string, unknown>)[k] = d[k];
       }
       return next;
@@ -563,7 +564,7 @@ export function SettingsPage() {
 
   const dirty = (k: SectionKey) => JSON.stringify(draft[k]) !== JSON.stringify(settings[k]);
   const anyDirty = (
-    ["profile", "org", "hazardFactors", "risk", "tbmRisks", "educationTopics", "educationDefaults"] as SectionKey[]
+    ["profile", "org", "hazardFactors", "risk", "tbmRisks", "educationTopics", "educationDefaults", "loginNotice"] as SectionKey[]
   ).some(dirty);
 
   const save = async (k: SectionKey, label: string) => {
@@ -634,6 +635,20 @@ export function SettingsPage() {
               onChange={(e) => edit({ profile: { ...draft.profile, role: e.target.value } })}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* 로그인 화면 공지사항 */}
+      <Card className="shadow-xs">
+        <CardHeader className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle>로그인 화면 공지사항</CardTitle>
+            <CardDescription>로그인 화면의 로고와 로그인 칸 사이에 보입니다. 비우면 공지 칸이 숨겨집니다.</CardDescription>
+          </div>
+          <SaveButton section="loginNotice" label="공지사항" />
+        </CardHeader>
+        <CardContent>
+          <Textarea rows={4} maxLength={2000} value={draft.loginNotice} onChange={(e) => edit({ loginNotice: e.target.value })} placeholder="예: 11월 20일 18시~20시 시스템 점검이 있습니다." />
         </CardContent>
       </Card>
 

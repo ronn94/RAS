@@ -35,7 +35,14 @@ app.post("/api/auth/login", login);
 app.post("/api/auth/login-guest", loginGuest);
 app.post("/api/auth/logout", logout);
 
-const PUBLIC_PATHS = new Set(["/api/auth/login", "/api/auth/login-guest", "/api/auth/logout"]);
+const PUBLIC_PATHS = new Set(["/api/auth/login", "/api/auth/login-guest", "/api/auth/logout", "/api/auth/notice"]);
+/* 로그인 화면 공지사항 — 로그인 전에 보여야 하므로 공개, 공지 문구만 내려준다 */
+app.get("/api/auth/notice", async (c) => {
+  const row = await c.env.ras_db.prepare("SELECT data FROM settings WHERE id = 'app'").first<{ data: string }>();
+  let notice = "";
+  try { const v = row ? JSON.parse(row.data).loginNotice : ""; notice = typeof v === "string" ? v.slice(0, 2000) : ""; } catch { /* 무시 */ }
+  return c.json({ notice }, 200, { "cache-control": "no-store" });
+});
 
 /* BP 안전포털 연계(worker/link.ts) — 로그인 대신 연계 비밀키·보기 토큰으로 스스로 확인한다 */
 app.all("/api/link/*", (c) => linkRoutes(c as never));

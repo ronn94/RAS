@@ -5,6 +5,8 @@ import { login, loginGuest } from "@/lib/auth";
 import { InstallAppButton } from "@/components/installApp";
 
 export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
+  const [notice, setNotice] = React.useState("");
+  React.useEffect(() => { fetch("/api/auth/notice").then((r) => r.json()).then((d: { notice?: string }) => setNotice((d.notice ?? "").trim())).catch(() => undefined); }, []);
   const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -50,6 +52,13 @@ export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
             <p className="text-xs text-muted-foreground">위험성평가 시스템</p>
           </div>
         </div>
+
+        {notice && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950">
+            <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-amber-700">📢 공지사항</div>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed">{notice}</p>
+          </div>
+        )}
 
         <Card className="shadow-xs">
           <CardContent>
