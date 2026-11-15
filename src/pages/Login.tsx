@@ -41,6 +41,8 @@ export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div className="flex min-h-svh items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-sm space-y-4">
+        {/* 회사 로고(2026-11-15) — BP 안전포털과 같은 그림 */}
+        <img src="/renewus-logo.png" alt="renewus" className="mx-auto h-9 w-auto mix-blend-multiply" />
         <div className="flex items-center gap-2.5">
           <div className="grid size-9 shrink-0 place-content-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">
             R
@@ -111,7 +113,7 @@ export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
         <InstallAppButton />
 
         <p className="text-center text-sm text-muted-foreground">
-          게스트는 조회만 가능합니다. 편집 권한은 관리자가 설정에서 켤 수 있습니다.
+          게스트는 조회만 가능합니다.
         </p>
       </div>
     </div>
