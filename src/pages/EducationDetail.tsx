@@ -32,7 +32,8 @@ import {
   emptyEducationAttendee,
   type Education,
 } from "@/lib/routine";
-import { supervisorNames } from "@/lib/settings";
+import { supervisorNames, teamTone } from "@/lib/settings";
+import { JOB_TEAMS } from "@/lib/jobAssessment";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
 
@@ -91,7 +92,10 @@ export function EducationDetail({
     }));
 
   /* ── 참석자 ────────────────────────────────────────────── */
-  const staff = [...settings.staff].sort((a, b) => a.localeCompare(b, "ko"));
+  // 소속(설정 → 직원 명단 → 소속) 순서 → 이름 순서, 소속 없는 사람은 맨 뒤 — 작업평가·TBM 명단과 같게
+  const teamOf = (n: string) => settings.staffTeams?.[n] ?? "";
+  const teamRank = (n: string) => { const t = teamOf(n); const i = (JOB_TEAMS as readonly string[]).indexOf(t); return t ? (i < 0 ? 50 : i) : 99; };
+  const staff = [...settings.staff].sort((a, b) => teamRank(a) - teamRank(b) || a.localeCompare(b, "ko"));
   const supervisors = supervisorNames(settings);
   const picked = new Set(draft.attendees.map((a) => a.name.trim()));
 
@@ -450,7 +454,10 @@ export function EducationDetail({
                       )}
                     >
                       <Checkbox checked={picked.has(name)} disabled={!canWrite} onChange={() => toggleStaff(name)} />
-                      <span className="truncate">{name}</span>
+                      <span className="min-w-0 truncate">{name}</span>
+                      {teamOf(name) && (
+                        <span className={cn("shrink-0 rounded-full px-1.5 py-px text-[10px] font-semibold ring-1", teamTone(teamOf(name)))}>{teamOf(name)}</span>
+                      )}
                     </label>
                   ))}
                 </div>
