@@ -62,11 +62,14 @@ export async function linkRoutes(c: C) {
   const id = parts[1];
   if (!id && c.req.method === "GET") {
     const q = (c.req.query("q") ?? "").trim();
-    const from = c.req.query("from") || "0000-00-00", to = c.req.query("to") || "9999-99-99";
+    // 작업평가는 작업 전에 미리 쓰는 경우가 많다 — 시작 30일 전부터 끝 7일 뒤까지, 검색어가 있으면 기간 무시
+    const shift = (v: string | undefined, days: number, dflt: string) => { if (!v || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return dflt; const t = new Date(`${v}T00:00:00Z`); t.setUTCDate(t.getUTCDate() + days); return t.toISOString().slice(0, 10); };
+    const from = q ? "0000-00-00" : shift(c.req.query("from"), -30, "0000-00-00"), to = q ? "9999-99-99" : shift(c.req.query("to") || c.req.query("from"), 7, "9999-99-99");
     const rows = (await c.env.ras_db.prepare("SELECT data FROM job_assessments ORDER BY updated_at DESC LIMIT 400").all<{ data: string }>()).results;
     const list = rows.map((r) => JSON.parse(r.data) as JobAssessment)
-      .filter((d) => d.evaluatorSign && (!d.date || (d.date >= from && d.date <= to)))
+      .filter((d) => !d.date || (d.date >= from && d.date <= to))
       .filter((d) => !q || [d.content, d.mainCategory, d.subCategory, d.detailCategory, d.team, d.evaluator].some((x) => (x ?? "").includes(q)))
+      .sort((a, b) => Number(!!b.evaluatorSign) - Number(!!a.evaluatorSign))
       .slice(0, 50);
     return c.json(await Promise.all(list.map(summary)));
   }
