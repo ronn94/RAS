@@ -35,7 +35,7 @@ import {
   type Tbm,
   type TbmParticipant,
 } from "@/lib/routine";
-import { supervisorNames, workNamesOf } from "@/lib/settings";
+import { supervisorNames, teamTone, workNamesOf } from "@/lib/settings";
 import { JOB_TEAMS } from "@/lib/jobAssessment";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
@@ -91,7 +91,10 @@ export function TbmDetail({
     list.includes(value) ? list.filter((x) => x !== value) : [...list, value];
 
   /* ── 참석자 ────────────────────────────────────────────── */
-  const staff = [...settings.staff].sort((a, b) => a.localeCompare(b, "ko"));
+  // 소속(설정 → 직원 명단 → 소속) 순서 → 이름 순서, 소속 없는 사람은 맨 뒤 — 작업평가 참여자 명단과 같게
+  const teamOf = (n: string) => settings.staffTeams?.[n] ?? "";
+  const teamRank = (n: string) => { const t = teamOf(n); const i = (JOB_TEAMS as readonly string[]).indexOf(t); return t ? (i < 0 ? 50 : i) : 99; };
+  const staff = [...settings.staff].sort((a, b) => teamRank(a) - teamRank(b) || a.localeCompare(b, "ko"));
   /** TBM 리더는 설정에서 '관리감독자'로 지정한 사람 중에서만 고른다 */
   const supervisors = supervisorNames(settings);
   /** 그 팀에 등록해 둔 되풀이 작업명 — 구분을 고르기 전에는 비어 있다 */
@@ -581,7 +584,10 @@ export function TbmDetail({
                             disabled={isLeader}
                             onChange={() => toggleStaff(name)}
                           />
-                          <span className="truncate">{name}</span>
+                          <span className="min-w-0 truncate">{name}</span>
+                          {teamOf(name) && (
+                            <span className={cn("shrink-0 rounded-full px-1.5 py-px text-[10px] font-semibold ring-1", teamTone(teamOf(name)))}>{teamOf(name)}</span>
+                          )}
                         </label>
                       );
                     })}
