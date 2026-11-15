@@ -41,15 +41,13 @@ export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div className="flex min-h-svh items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-sm space-y-4">
-        {/* 회사 로고(2026-11-15) — BP 안전포털과 같은 그림 */}
-        <img src="/renewus-logo.png" alt="renewus" className="mx-auto h-9 w-auto mix-blend-multiply" />
-        <div className="flex items-center gap-2.5">
-          <div className="grid size-9 shrink-0 place-content-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">
-            R
-          </div>
-          <div>
-            <h1 className="font-heading text-base font-semibold">RAS</h1>
-            <p className="text-sm text-muted-foreground">위험성평가 시스템</p>
+        {/* 머리 — BP 안전포털과 같은 짜임: 회사 로고 | 세로 구분선 | 서비스 이름 */}
+        <div className="flex items-center justify-center gap-3 py-2">
+          <img src="/renewus-logo.png" alt="renewus" className="h-7 w-auto mix-blend-multiply" />
+          <span className="h-7 w-px bg-foreground/15" aria-hidden="true" />
+          <div className="leading-tight">
+            <h1 className="font-heading text-lg font-bold">RAS</h1>
+            <p className="text-xs text-muted-foreground">위험성평가 시스템</p>
           </div>
         </div>
 
