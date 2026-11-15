@@ -120,11 +120,14 @@ function SidebarInner({
   return (
     <div className="flex size-full flex-col bg-sidebar [--radius:var(--radius-xl)]">
       <div className="flex flex-col gap-2 p-2">
-        <div className="flex items-center gap-2 rounded-xl p-1.5">
-          <div className="grid size-5 shrink-0 place-content-center rounded-md bg-sidebar-primary text-[10px] font-bold text-sidebar-primary-foreground">
-            R
+        {/* 로그인 화면과 같은 머리 — 회사 로고 | 세로 구분선 | 서비스 이름 */}
+        <div className="flex items-center gap-2.5 rounded-xl px-2 py-2">
+          <img src="/renewus-logo.png" alt="renewus" className="h-5 w-auto shrink-0 mix-blend-multiply" />
+          <span className="h-6 w-px shrink-0 bg-foreground/15" aria-hidden="true" />
+          <div className="min-w-0 leading-tight">
+            <div className="font-heading text-sm font-bold">RAS</div>
+            <div className="truncate text-[11px] text-muted-foreground">위험성평가 시스템</div>
           </div>
-          <span className="text-base font-semibold">RAS</span>
         </div>
       </div>
       <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-auto overscroll-contain">
