@@ -90,6 +90,8 @@ export async function linkRoutes(c: C) {
     const ext = doc.participants.filter((p) => p.external);
     let p: JobParticipant | undefined = body.target ? ext.find((x) => x.id === body.target) : undefined;
     if (p && !p.undecided && p.name.trim() && p.name.trim() !== name) p = undefined;
+    // 미정 칸·새 칸을 눌렀으면 어느 칸을 눌렀든 등록된 미정 칸을 앞에서부터 차례로 채운다
+    if (p?.undecided) p = undefined;
     p ??= ext.find((x) => !x.undecided && x.name.trim() === name) ?? ext.find((x) => x.undecided && !x.sign);
     let added = false;
     if (!p) { p = { id: crypto.randomUUID(), name, external: true, undecided: false }; doc.participants.push(p); added = true; }
