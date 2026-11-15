@@ -1,3 +1,4 @@
+import { teamTone } from "@/lib/settings";
 /**
  * 작업 위험성평가 작성 — 원본 프로그램(위험성평가 작성 프로그램 ver.3.3)의 5단계 흐름을
  * 우리 앱 서식으로 옮긴 화면.
@@ -210,7 +211,10 @@ export function JobAssessmentDetail({
     });
 
   /* ── 참여자 ────────────────────────────────────────────── */
-  const staff = [...settings.staff].sort((a, b) => a.localeCompare(b, "ko"));
+  // 소속(설정 → 직원 명단 → 소속) 순서 → 이름 순서. 소속이 없는 사람은 맨 뒤
+  const teamOf = (n: string) => settings.staffTeams?.[n] ?? "";
+  const teamRank = (n: string) => { const t = teamOf(n); const i = (JOB_TEAMS as readonly string[]).indexOf(t); return t ? (i < 0 ? 50 : i) : 99; };
+  const staff = [...settings.staff].sort((a, b) => teamRank(a) - teamRank(b) || a.localeCompare(b, "ko"));
   const internalNames = new Set(draft.participants.filter((p) => !p.external).map((p) => p.name.trim()));
 
   const toggleStaff = (name: string) =>
@@ -656,6 +660,8 @@ function StepParticipants({
   onSign: (p: JobParticipant) => void;
   onClearSign: (id: string) => void;
 }) {
+  const { settings: st } = useStore();
+  const teamOf = (n: string) => st.staffTeams?.[n] ?? "";
   const external = draft.participants.filter((p) => p.external);
   const internal = draft.participants.filter((p) => !p.external);
 
@@ -752,7 +758,10 @@ function StepParticipants({
                       className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-sm hover:bg-muted"
                     >
                       <Checkbox checked={internalNames.has(name)} onChange={() => toggleStaff(name)} />
-                      <span className="truncate">{name}</span>
+                      <span className="min-w-0 truncate">{name}</span>
+                      {teamOf(name) && (
+                        <span className={cn("shrink-0 rounded-full px-1.5 py-px text-[10px] font-semibold ring-1", teamTone(teamOf(name)))}>{teamOf(name)}</span>
+                      )}
                     </label>
                   ))}
                 </div>

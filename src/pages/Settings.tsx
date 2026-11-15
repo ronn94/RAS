@@ -1,3 +1,4 @@
+import { teamTone } from "@/lib/settings";
 import * as React from "react";
 import { Bell, BellOff, ListPlus, Plus, RotateCcw, Save, X } from "lucide-react";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Input, Label } from "@/components/ui";
@@ -826,6 +827,7 @@ export function SettingsPage() {
                 // 명단에서 빠진 사람은 역할에서도 함께 뺀다 — 명단이 정본이다
                 void patch({
                   staff: v,
+                  staffTeams: Object.fromEntries(Object.entries(settings.staffTeams).filter(([n]) => v.includes(n))),
                   roles: {
                     supervisors: settings.roles.supervisors.filter((n) => v.includes(n)),
                     approvers: settings.roles.approvers.filter((n) => v.includes(n)),
@@ -853,6 +855,35 @@ export function SettingsPage() {
                 picked={settings.roles.approvers}
                 onChange={(approvers) => void patch({ roles: { ...settings.roles, approvers } })}
               />
+              {/* 소속 — 참여자 명단에서 이름 옆 작은 색 태그로 보인다(2026-11-15) */}
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <Label>소속</Label>
+                  <span className="text-xs text-muted-foreground">작업평가 참여자 명단에서 이름 옆에 색 태그로 보입니다.</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
+                  {[...settings.staff].sort((a, b) => a.localeCompare(b, "ko")).map((name) => (
+                    <label key={name} className="flex items-center gap-2 rounded-xl border px-2 py-1 text-sm">
+                      <span className="min-w-0 flex-1 truncate">{name}</span>
+                      <select
+                        className={cn("h-7 rounded-full px-2 text-xs ring-1", settings.staffTeams[name] ? teamTone(settings.staffTeams[name]) : "bg-transparent text-muted-foreground ring-border")}
+                        value={settings.staffTeams[name] ?? ""}
+                        onChange={(e) => {
+                          const next = { ...settings.staffTeams };
+                          if (e.target.value) next[name] = e.target.value;
+                          else delete next[name];
+                          void patch({ staffTeams: next });
+                        }}
+                      >
+                        <option value="">소속 없음</option>
+                        {JOB_TEAMS.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </CardContent>

@@ -60,6 +60,8 @@ export type AppSettings = {
    * - approvers: 승인자 — 작업평가의 승인자·인쇄물 결재란의 '승인'에 들어갈 사람
    */
   roles: { supervisors: string[]; approvers: string[] };
+  /** 직원별 소속(이름 → 기계팀·전기팀·공정팀·실험실 등) — 참여자 명단에서 소속을 색 태그로 보여 준다 */
+  staffTeams: Record<string, string>;
   /**
    * 팀별로 되풀이하는 작업 이름 — TBM 등록 화면에서 토글 버튼으로 뜬다.
    * 키는 구분(기계팀·전기팀·공정팀·실험실)이고, 없는 팀은 빈 목록으로 본다.
@@ -115,6 +117,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   owners: [],
   staff: [],
   roles: { supervisors: [], approvers: [] },
+  staffTeams: {},
   workNames: {},
   risk: {
     threshold: 8,
@@ -177,6 +180,7 @@ export function withDefaults(saved: Partial<AppSettings> | undefined | null): Ap
     owners: saved.owners ?? [],
     staff: saved.staff ?? [],
     // 직원 명단에서 빠진 이름은 역할에서도 뺀다 — 명단이 정본이라 유령 이름이 남으면 안 된다
+    staffTeams: Object.fromEntries(Object.entries(saved.staffTeams ?? {}).filter(([n, t]) => (saved.staff ?? []).includes(n) && typeof t === "string" && t)),
     roles: {
       supervisors: (saved.roles?.supervisors ?? []).filter((n) => (saved.staff ?? []).includes(n)),
       approvers: (saved.roles?.approvers ?? []).filter((n) => (saved.staff ?? []).includes(n)),
@@ -280,3 +284,12 @@ export function inspectionMoved(
   if (!movedTo.rowId) return assessments.some((a) => a.id === movedTo.assessmentId);
   return assessments.some((a) => a.rows.some((r) => r.id === movedTo.rowId));
 }
+
+/** 소속 색(작은 태그) — 정해진 4개 팀은 고정 색, 그 밖의 소속은 회색 */
+export const TEAM_TONE: Record<string, string> = {
+  기계팀: "bg-sky-100 text-sky-700 ring-sky-200",
+  전기팀: "bg-amber-100 text-amber-800 ring-amber-200",
+  공정팀: "bg-emerald-100 text-emerald-700 ring-emerald-200",
+  실험실: "bg-violet-100 text-violet-700 ring-violet-200",
+};
+export const teamTone = (team: string) => TEAM_TONE[team] ?? "bg-muted text-muted-foreground ring-border";
