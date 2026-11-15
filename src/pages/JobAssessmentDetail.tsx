@@ -900,37 +900,7 @@ function StepMatrix({
 }) {
   return (
     <div className="space-y-4">
-      {/* 척도 안내 — 원본의 설명표를 그대로 옮겼다. 점수를 매기며 바로 옆에서 본다 */}
-      {/* 피해강도(4단계, 설명이 짧다)는 좁게, 사고빈도(5단계, 설명이 길다)는 넓게 — PC 화면 기준 비율 */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_3fr]">
-        <Card className="shadow-xs">
-          <CardHeader>
-            <CardTitle className="text-sm">피해강도 추정</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 text-xs">
-            {SEVERITY_GUIDE.map((g) => (
-              <p key={g.value}>
-                <strong className="mr-1.5">{g.value}점</strong>
-                {g.label}
-              </p>
-            ))}
-          </CardContent>
-        </Card>
-        <Card className="shadow-xs">
-          <CardHeader>
-            <CardTitle className="text-sm">사고빈도 추정</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 text-xs">
-            {FREQUENCY_GUIDE.map((g) => (
-              <p key={g.value}>
-                <strong className="mr-1.5">{g.value}점</strong>
-                {g.label}
-              </p>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-
+      {/* 척도 안내 카드는 없앴다(2026-11-15) — 강도·빈도 칸의 드롭다운에 점수별 설명이 함께 나온다 */}
       {canWrite && (
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => addRow("normal")}>
@@ -1203,7 +1173,7 @@ function MatrixRow({
           value={row.s}
           max={4}
           onChange={(v) => patchRow(row.id, { s: v })}
-          labels={settings.risk.severity}
+          labels={SEVERITY_GUIDE}
         />
       </TD>
       <TD>
@@ -1212,7 +1182,7 @@ function MatrixRow({
           value={row.p}
           max={5}
           onChange={(v) => patchRow(row.id, { p: v })}
-          labels={settings.risk.likelihood}
+          labels={FREQUENCY_GUIDE}
         />
       </TD>
       <TD className="text-center">
@@ -1249,7 +1219,7 @@ function MatrixRow({
           value={row.s2}
           max={4}
           onChange={(v) => patchRow(row.id, { s2: v })}
-          labels={settings.risk.severity}
+          labels={SEVERITY_GUIDE}
         />
       </TD>
       <TD>
@@ -1259,7 +1229,7 @@ function MatrixRow({
           value={row.p2}
           max={5}
           onChange={(v) => patchRow(row.id, { p2: v })}
-          labels={settings.risk.likelihood}
+          labels={FREQUENCY_GUIDE}
         />
       </TD>
       <TD className="text-center">
@@ -1341,23 +1311,29 @@ function ScoreSelect({
   onChange: (v: number | null) => void;
   disabled?: boolean;
   hint?: string;
-  labels: { value: number; label: string }[];
+  labels: readonly { value: number; label: string }[];
 }) {
+  // 칸에는 점수만 보이고, 누르면 열리는 목록에는 점수별 설명(피해강도·사고빈도 추정표)이 함께 나온다
   return (
-    <Select
-      className="h-8 w-full min-w-12 px-1.5 text-center text-xs"
-      disabled={disabled}
-      title={hint}
-      value={value === null ? "" : String(value)}
-      onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
-    >
-      <option value="">-</option>
-      {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
-        <option key={n} value={n} title={labels.find((l) => l.value === n)?.label}>
-          {n}
-        </option>
-      ))}
-    </Select>
+    <div className="relative" title={hint ?? (value ? labels.find((l) => l.value === value)?.label : undefined)}>
+      <div className={cn("flex h-8 items-center justify-center gap-1 rounded-2xl bg-input/50 px-1.5 text-xs tabular-nums", disabled && "opacity-50")} aria-hidden="true">
+        <span>{value ?? "-"}</span>
+        <span className="text-muted-foreground">▾</span>
+      </div>
+      <select
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+        disabled={disabled}
+        value={value === null ? "" : String(value)}
+        onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+      >
+        <option value="">- (선택 안 함)</option>
+        {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
+          <option key={n} value={n}>
+            {n}점 · {labels.find((l) => l.value === n)?.label ?? ""}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
 
