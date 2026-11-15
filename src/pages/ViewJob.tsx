@@ -7,7 +7,7 @@
  */
 import * as React from "react";
 import { StoreContext } from "@/store";
-import { JobAssessmentContinuousSheet, JobAssessmentSheet } from "@/print/JobAssessmentSheet";
+import { BpNewSlotContext, JobAssessmentContinuousSheet, JobAssessmentSheet } from "@/print/JobAssessmentSheet";
 import type { JobAssessment } from "@/lib/jobAssessment";
 
 export function ViewJobPage() {
@@ -38,7 +38,7 @@ export function ViewJobPage() {
     <StoreContext.Provider value={store}>
       <div className={signMode ? "ras-bp-sign" : undefined} style={{ padding: 8 }}>
         <div className="screen-preview rounded-2xl no-print">
-          <JobAssessmentContinuousSheet job={data.job} />
+          <BpNewSlotContext.Provider value={signMode && !data.job.locked}><JobAssessmentContinuousSheet job={data.job} /></BpNewSlotContext.Provider>
         </div>
       </div>
       <JobAssessmentSheet job={data.job} />

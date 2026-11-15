@@ -1,3 +1,4 @@
+import { createContext, useContext } from "react";
 import { signSlot } from "@/lib/signSlots";
 import { actionsForCode } from "@/lib/settings";
 /**
@@ -81,7 +82,11 @@ function SealName({ name, sign }: { name: string; sign?: string }) {
 }
 
 /** 1쪽에만 싣는 개요·작업전준비·참여자 서명 구간 */
+/** BP 서명 모드(/view/job?sign=1) — 외부 참여자 끝에 '새 칸'을 붙여 명단에 없는 작업자도 이름을 넣고 서명한다 */
+export const BpNewSlotContext = createContext(false);
+
 function OverviewSections({ v }: { v: JobAssessment }) {
+  const bpNew = useContext(BpNewSlotContext);
   const internal = v.participants.filter((p) => !p.external);
   const external = v.participants.filter((p) => p.external);
 
@@ -137,7 +142,8 @@ function OverviewSections({ v }: { v: JobAssessment }) {
             <td colSpan={5} className="wrap attendees">
               {external.length
                 ? external.map((p) => <Attendee key={p.id} p={p} />)
-                : "-"}
+                : bpNew ? null : "-"}
+              {bpNew && <span className="who" {...signSlot("new", "외부 참여자", "새 칸 (이름 입력 후 서명)", false, true)}>+ 명단에 없으면 여기를 눌러 서명</span>}
             </td>
           </tr>
         </tbody>
