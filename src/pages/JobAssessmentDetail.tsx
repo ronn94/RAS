@@ -1,3 +1,4 @@
+import { AiButton, aiJobRow } from "@/components/ai";
 import { teamTone } from "@/lib/settings";
 /**
  * 작업 위험성평가 작성 — 원본 프로그램(위험성평가 작성 프로그램 ver.3.3)의 5단계 흐름을
@@ -953,6 +954,8 @@ function StepMatrix({
                     moveRow={moveRow}
                     duplicateRow={duplicateRow}
                     onRemove={() => setDraft((d) => ({ ...d, rows: d.rows.filter((x) => x.id !== r.id) }))}
+                    jobContent={draft.content}
+                    jobCategory={[draft.mainCategory, draft.subCategory, draft.detailCategory].filter(Boolean).join(" · ")}
                   />
                 ))}
               </TBody>
@@ -977,7 +980,11 @@ function MatrixRow({
   moveRow,
   duplicateRow,
   onRemove,
+  jobContent,
+  jobCategory,
 }: {
+  jobContent: string;
+  jobCategory: string;
   row: JobRow;
   index: number;
   canWrite: boolean;
@@ -1060,6 +1067,28 @@ function MatrixRow({
           onChange={(e) => patchRow(row.id, { stepName: e.target.value })}
           placeholder="예: 밸브 개폐 조작"
         />
+        {canWrite && (
+          <AiButton
+            className="mt-1 w-full [&>span:last-child]:max-w-full"
+            label="AI 추천"
+            title="작업순서로 보호구·위험분류·위험요인·현재 조치·점수·감소대책 초안을 채웁니다(빈 칸만)"
+            disabled={!row.stepName.trim()}
+            run={async () => {
+              const r = await aiJobRow({ stepName: row.stepName, content: jobContent, category: jobCategory });
+              // 이미 적은 칸은 그대로 두고 빈 칸만 채운다(초안 — 사람이 확인)
+              const patch: Partial<JobRow> = {};
+              const filled: string[] = [];
+              if (!row.ppes.length && r.ppes.length) { patch.ppes = r.ppes; filled.push("보호구"); }
+              if (!row.hazardCode && r.hazardCode) { patch.hazardCode = r.hazardCode; filled.push("위험분류"); if (!row.actions.length && r.actions.length) { patch.actions = r.actions; filled.push("현재 조치"); } }
+              if (!row.factor.trim() && r.factor) { patch.factor = r.factor; filled.push("위험요인"); }
+              if (row.s === null && r.s) { patch.s = r.s; filled.push("강도"); }
+              if (row.p === null && r.p) { patch.p = r.p; filled.push("빈도"); }
+              if (!row.measure.trim() && r.measure) { patch.measure = r.measure; filled.push("감소대책"); if (row.s2 === null && r.s2) patch.s2 = r.s2; if (row.p2 === null && r.p2) patch.p2 = r.p2; }
+              patchRow(row.id, patch);
+              return filled.length ? `${filled.join("·")}을(를) 채웠습니다(초안 — 확인 후 고쳐 쓰세요).` : "채울 빈 칸이 없습니다.";
+            }}
+          />
+        )}
       </TD>
       <TD>
         <div className="max-h-32 space-y-0.5 overflow-auto rounded-lg bg-muted/40 p-1.5">

@@ -18,6 +18,9 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 export const aiHazard = (body: { hazard: string; process?: string; subProcess?: string; withMeasures?: boolean }) =>
   post<AiHazardResult>("/ai/hazard", body);
 
+export type AiJobRowResult = { ppes: string[]; hazardCode: string; factor: string; actions: string[]; s: number | null; p: number | null; measure: string; s2: number | null; p2: number | null; reason: string };
+export const aiJobRow = (body: { stepName: string; content?: string; category?: string }) => post<AiJobRowResult>("/ai/jobrow", body);
+
 /** 작은 ✨ 버튼 — 누르는 동안 돌고, 결과 한 줄을 버튼 옆(아래)에 남긴다 */
 export function AiButton({ run, disabled, label = "AI", title, className }: {
   run: () => Promise<string>; disabled?: boolean; label?: string; title?: string; className?: string;
