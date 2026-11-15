@@ -19,6 +19,7 @@ import { LoginPage } from "@/pages/Login";
 import { checkAuth, logout as apiLogout, type Identity } from "@/lib/auth";
 import { SessionTimer } from "@/components/sessionTimer";
 import { StoreProvider, useStore } from "@/store";
+import { ViewJobPage } from "@/pages/ViewJob";
 
 const TITLES: Record<ViewKey, string> = {
   dashboard: "대시보드",
@@ -149,6 +150,12 @@ function Router({ identity }: { identity: Identity }) {
 type AuthState = { status: "checking" } | { status: "out" } | { status: "in"; identity: Identity };
 
 export default function App() {
+  // BP 안전포털에서 여는 작업평가 보기·서명 화면 — 로그인 없이 보기 토큰으로 연다
+  if (typeof window !== "undefined" && window.location.pathname === "/view/job") return <ViewJobPage />;
+  return <MainApp />;
+}
+
+function MainApp() {
   const [state, setState] = React.useState<AuthState>({ status: "checking" });
 
   React.useEffect(() => {

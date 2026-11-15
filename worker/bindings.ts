@@ -9,6 +9,8 @@ export type Bindings = {
   VAPID_PUBLIC_KEY?: string;
   VAPID_PRIVATE_KEY?: string;
   VAPID_SUBJECT?: string;
+  /** BP 안전포털 연계 비밀키(worker/link.ts) — Cloudflare 비밀값 */
+  LINK_SECRET?: string;
   /** Workers AI — 위험요인 분류·대책·중복 찾기(버튼을 눌렀을 때만) */
   AI?: { run: (model: string, input: unknown) => Promise<unknown> };
 };

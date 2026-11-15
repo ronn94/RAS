@@ -214,7 +214,7 @@ function rowFromSurvey(row: RiskItem, v: Survey): RiskItem | null {
   return same ? null : next;
 }
 
-const StoreContext = React.createContext<Ctx | null>(null);
+export const StoreContext = React.createContext<Ctx | null>(null);
 
 export function StoreProvider({ identity, children }: { identity: Identity; children: React.ReactNode }) {
   const [assessments, setAssessments] = React.useState<Assessment[]>([]);

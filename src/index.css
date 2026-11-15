@@ -1930,3 +1930,8 @@
 @keyframes ras-sign-pulse { 50% { outline-color: #ffc94d; } }
 @media (prefers-reduced-motion: reduce) { .signable [data-sign][data-signed="0"] { animation: none; } }
 @media print { .signable [data-sign] { background: none !important; outline: none !important; animation: none !important; } }
+
+/* BP 안전포털 서명 모드(/view/job?sign=1) — 외부 참여자 칸만 강조, 눌러서 서명 */
+.ras-bp-sign [data-sign][data-sign-sec="외부 참여자"] { cursor: pointer; position: relative; }
+.ras-bp-sign [data-sign][data-sign-sec="외부 참여자"][data-signed="0"] { background: #ffe08a !important; outline: 3px solid #f59f00; outline-offset: -3px; animation: ras-sign-pulse 1.6s ease-in-out infinite; }
+.ras-bp-sign [data-sign][data-sign-sec="외부 참여자"][data-signed="1"] { background: #e6f9f3 !important; outline: 2px solid #12b886; outline-offset: -2px; }

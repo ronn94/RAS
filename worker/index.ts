@@ -22,6 +22,7 @@ import { runDailyDigest } from "./digest";
 import { sendPush } from "./push";
 import { backfillSurveysFromNotes } from "./backfillSurveys";
 import { aiHazard, aiSimilar } from "./ai";
+import { linkRoutes, viewRoutes } from "./link";
 
 type Variables = { role: "admin" | "guest" };
 
@@ -36,9 +37,13 @@ app.post("/api/auth/logout", logout);
 
 const PUBLIC_PATHS = new Set(["/api/auth/login", "/api/auth/login-guest", "/api/auth/logout"]);
 
+/* BP 안전포털 연계(worker/link.ts) — 로그인 대신 연계 비밀키·보기 토큰으로 스스로 확인한다 */
+app.all("/api/link/*", (c) => linkRoutes(c as never));
+app.get("/api/view/*", (c) => viewRoutes(c as never));
+
 /** 로그인·로그아웃을 제외한 모든 /api/*는 유효한 세션이 있어야 통과한다 */
 app.use("/api/*", async (c, next) => {
-  if (PUBLIC_PATHS.has(c.req.path)) return next();
+  if (PUBLIC_PATHS.has(c.req.path) || c.req.path.startsWith("/api/link/") || c.req.path.startsWith("/api/view/")) return next();
   const session = await readSession(c);
   if (!session) return c.json({ error: "로그인이 필요합니다." }, 401);
   c.set("role", session.sub === "guest" ? "guest" : "admin");

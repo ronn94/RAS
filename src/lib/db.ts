@@ -156,7 +156,9 @@ export const setLastBackup = async (t: number) => {
 };
 
 /* ── 사진 ───────────────────────────────────────────────── */
-export const photoUrl = (id: string) => `/api/photos/${id}`;
+/** BP 안전포털 보기 화면(/view/job?vt=…)에서는 보기 토큰으로 그 문서의 서명 그림만 연다 */
+const VIEW_TOKEN = typeof window !== "undefined" && window.location.pathname === "/view/job" ? new URLSearchParams(window.location.search).get("vt") ?? "" : "";
+export const photoUrl = (id: string) => (VIEW_TOKEN ? `/api/view/photo/${id}?vt=${encodeURIComponent(VIEW_TOKEN)}` : `/api/photos/${id}`);
 
 export async function uploadPhoto(blob: Blob): Promise<string> {
   const res = await fetch("/api/photos", {
