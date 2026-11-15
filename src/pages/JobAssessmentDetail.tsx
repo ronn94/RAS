@@ -1071,19 +1071,20 @@ function MatrixRow({
           <AiButton
             className="mt-1 w-full [&>span:last-child]:max-w-full"
             label="AI 추천"
-            title="작업순서로 보호구·위험분류·위험요인·현재 조치·점수·감소대책 초안을 채웁니다(빈 칸만)"
+            title="작업순서로 보호구·위험분류·위험요인·현재 조치·감소대책 초안을 채웁니다(점수는 직접)"
             disabled={!row.stepName.trim()}
             run={async () => {
               const r = await aiJobRow({ stepName: row.stepName, content: jobContent, category: jobCategory });
               // 이미 적은 칸은 그대로 두고 빈 칸만 채운다(초안 — 사람이 확인)
               const patch: Partial<JobRow> = {};
               const filled: string[] = [];
-              if (!row.ppes.length && r.ppes.length) { patch.ppes = r.ppes; filled.push("보호구"); }
+              // 보호구는 이미 고른 것에 더한다(빠진 것만)
+              const morePpe = r.ppes.filter((x) => !row.ppes.includes(x));
+              if (morePpe.length) { patch.ppes = [...row.ppes, ...morePpe]; filled.push("보호구"); }
               if (!row.hazardCode && r.hazardCode) { patch.hazardCode = r.hazardCode; filled.push("위험분류"); if (!row.actions.length && r.actions.length) { patch.actions = r.actions; filled.push("현재 조치"); } }
               if (!row.factor.trim() && r.factor) { patch.factor = r.factor; filled.push("위험요인"); }
-              if (row.s === null && r.s) { patch.s = r.s; filled.push("강도"); }
-              if (row.p === null && r.p) { patch.p = r.p; filled.push("빈도"); }
-              if (!row.measure.trim() && r.measure) { patch.measure = r.measure; filled.push("감소대책"); if (row.s2 === null && r.s2) patch.s2 = r.s2; if (row.p2 === null && r.p2) patch.p2 = r.p2; }
+              // 강도·빈도(조치 후 포함) 점수는 사람이 직접 매긴다(2026-11-15) — AI는 채우지 않는다
+              if (!row.measure.trim() && r.measure) { patch.measure = r.measure; filled.push("감소대책"); }
               patchRow(row.id, patch);
               return filled.length ? `${filled.join("·")}을(를) 채웠습니다(초안 — 확인 후 고쳐 쓰세요).` : "채울 빈 칸이 없습니다.";
             }}

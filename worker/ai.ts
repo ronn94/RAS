@@ -149,12 +149,16 @@ ${catalog}`;
     const user = `작업: ${clip(body.content, 200) || "-"} / 분류: ${clip(body.category, 80) || "-"}
 공정/작업순서: ${step}`;
     const out = await chatJson(c.env, system, user, 500);
-    const code = clip(out.code, 10).replace(/[^\d.]/g, "");
-    const t = types.find((x) => x.code === code);
+    // 위험코드 — "1.3", "1.3 기계의 맞음…", 이름만 온 경우까지 맞춘다(2026-11-15: 실제 응답에서 코드가 비는 일이 있었다)
+    const rawCode = String(out.code ?? "");
+    const num = (rawCode.match(/\d+(?:\.\d+)?/) ?? [""])[0];
+    const t = types.find((x) => x.code === num) ?? types.find((x) => rawCode && (rawCode.includes(x.label) || x.label.includes(rawCode.trim())))
+      ?? types.find((x) => String(out.factor ?? "").includes(x.label.split(/[,·\s]/)[0]));
     const int = (v: unknown, max: number) => { const n = Number(v); return Number.isInteger(n) && n >= 1 && n <= max ? n : null; };
     const s = int(out.s, 4), p = int(out.p, 5);
     const measure = clip(out.measure, 100);
-    const ppes = [...new Set((Array.isArray(out.ppes) ? out.ppes : []).map(String).filter((x) => ppeItems.includes(x)))].slice(0, 5);
+    // 보호구 — 목록 이름과 정확히 같지 않아도(예: "안전모 착용") 목록 이름이 들어 있으면 그 이름으로
+    const ppes = [...new Set((Array.isArray(out.ppes) ? out.ppes : []).map(String).map((x) => ppeItems.find((it) => x === it || x.includes(it) || it.includes(x.trim()))).filter((x): x is string => !!x))].slice(0, 5);
     // 현재 조치 — 그 코드의 후보 중 위험요인·작업과 낱말이 겹치는 것(없으면 앞에서 2개)을 초안으로
     const factor = clip(out.factor, 80);
     const words = `${step} ${factor}`.split(/[\s,·/()]+/).filter((w) => w.length >= 2);
