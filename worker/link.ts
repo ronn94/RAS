@@ -88,30 +88,45 @@ export async function linkRoutes(c: C) {
     if (!/^[가-힣]{2,20}$/.test(name)) return c.json({ error: "이름은 한글로 입력해 주세요." }, 422);
     if (!sign.startsWith("data:image/png;base64,") || sign.length > 400000) return c.json({ error: "서명 이미지가 올바르지 않습니다." }, 422);
     if (body.version && body.version !== (await version(doc))) return c.json({ error: "작업평가 내용이 바뀌었습니다. 다시 확인해 주세요." }, 409);
-    // 외부 참여자만 — 누른 칸(target) → 같은 이름 → 비어 있는 '미정' 칸 → 새 줄 순서로 찾는다
-    const ext = doc.participants.filter((p) => p.external);
-    let p: JobParticipant | undefined = body.target ? ext.find((x) => x.id === body.target) : undefined;
-    if (p && !p.undecided && p.name.trim() && p.name.trim() !== name) p = undefined;
-    // 미정 칸·새 칸을 눌렀으면 어느 칸을 눌렀든 등록된 미정 칸을 앞에서부터 차례로 채운다
-    if (p?.undecided) p = undefined;
-    p ??= ext.find((x) => !x.undecided && x.name.trim() === name) ?? ext.find((x) => x.undecided && !x.sign);
-    let added = false;
-    if (!p) { p = { id: crypto.randomUUID(), name, external: true, undecided: false }; doc.participants.push(p); added = true; }
-    if (p.undecided || !p.name.trim()) { p.name = name; p.undecided = false; }
     const bin = atob(sign.slice(sign.indexOf(",") + 1));
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     const signId = crypto.randomUUID();
     await c.env.ras_photos.put(signId, bytes, { httpMetadata: { contentType: "image/png" } });
     await c.env.ras_db.prepare("INSERT INTO photo_meta (id, size, content_type, created_at) VALUES (?1, ?2, ?3, ?4)").bind(signId, bytes.byteLength, "image/png", Date.now()).run();
-    const previous = p.sign;
-    p.sign = signId; p.signedAt = Date.now();
-    if (previous) { await c.env.ras_photos.delete(previous); await c.env.ras_db.prepare("DELETE FROM photo_meta WHERE id = ?1").bind(previous).run(); }
-    // 서명이 다 모이면 저절로 잠근다(worker/index.ts applyAutoLock과 같은 규칙)
-    if (handSignaturesComplete(doc)) { doc.locked = true; doc.autoLocked = true; }
-    doc.updatedAt = Date.now();
-    await c.env.ras_db.prepare("UPDATE job_assessments SET data = ?2, updated_at = ?3 WHERE id = ?1").bind(doc.id, JSON.stringify(doc), doc.updatedAt).run();
-    return c.json({ ok: true, added });
+    // 여러 사람이 동시에 서명해도 서로 덮어쓰지 않게(2026-11-18) — 읽은 내용 그대로일 때만 쓰고, 그새 바뀌었으면 다시 읽어 처음부터
+    let raw = (await c.env.ras_db.prepare("SELECT data FROM job_assessments WHERE id = ?1").bind(doc.id).first<{ data: string }>())?.data ?? JSON.stringify(doc);
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const d = JSON.parse(raw) as JobAssessment;
+      if (d.autoLocked && !handSignaturesComplete(d)) { d.locked = false; d.autoLocked = false; }
+      if (d.locked) return c.json({ error: "잠긴(서명 완료된) 작업평가라 서명을 더 받을 수 없습니다." }, 409);
+      // 외부 참여자만 — 누른 칸(target) → 같은 이름 → 비어 있는 '미정' 칸 → 새 줄 순서로 찾는다
+      const ext = d.participants.filter((x) => x.external);
+      let p: JobParticipant | undefined = body.target ? ext.find((x) => x.id === body.target) : undefined;
+      if (p && !p.undecided && p.name.trim() && p.name.trim() !== name) p = undefined;
+      // 미정 칸·새 칸을 눌렀으면 어느 칸을 눌렀든 등록된 미정 칸을 앞에서부터 차례로 채운다
+      if (p?.undecided) p = undefined;
+      // 이미 다른 사람 서명이 들어간 칸은 건너뛴다(동시에 같은 칸을 누른 경우)
+      if (p && p.sign && p.name.trim() !== name) p = undefined;
+      p ??= ext.find((x) => !x.undecided && x.name.trim() === name) ?? ext.find((x) => x.undecided && !x.sign);
+      let added = false;
+      if (!p) { p = { id: crypto.randomUUID(), name, external: true, undecided: false }; d.participants.push(p); added = true; }
+      if (p.undecided || !p.name.trim()) { p.name = name; p.undecided = false; }
+      const previous = p.sign;
+      p.sign = signId; p.signedAt = Date.now();
+      // 서명이 다 모이면 저절로 잠근다(worker/index.ts applyAutoLock과 같은 규칙)
+      if (handSignaturesComplete(d)) { d.locked = true; d.autoLocked = true; }
+      d.updatedAt = Date.now();
+      const res = await c.env.ras_db.prepare("UPDATE job_assessments SET data = ?2, updated_at = ?3 WHERE id = ?1 AND data = ?4").bind(d.id, JSON.stringify(d), d.updatedAt, raw).run();
+      if (res.meta?.changes) {
+        if (previous) { await c.env.ras_photos.delete(previous); await c.env.ras_db.prepare("DELETE FROM photo_meta WHERE id = ?1").bind(previous).run(); }
+        return c.json({ ok: true, added });
+      }
+      const again = await c.env.ras_db.prepare("SELECT data FROM job_assessments WHERE id = ?1").bind(d.id).first<{ data: string }>();
+      if (!again) return c.json({ error: "작업평가를 찾지 못했습니다." }, 404);
+      raw = again.data;
+    }
+    return c.json({ error: "동시에 서명하는 사람이 많아 저장하지 못했습니다. 잠시 뒤 다시 제출해 주세요." }, 409);
   }
   return c.json({ error: "지원하지 않는 요청입니다." }, 405);
 }
