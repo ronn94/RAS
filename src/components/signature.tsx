@@ -20,8 +20,8 @@ import { cn } from "@/lib/utils";
 /** 그리는 칸 크기(논리 픽셀). 2026-10: 세로를 180→240(2:1)으로 늘려 아이폰에서도 서명할 자리를 넉넉히 줬다.
  *  아이폰 가로 화면(팝업 최대 높이 약 340px)에서도 스크롤 없이 들어가는 한도 안이다.
  *  칸이 커져도 저장할 때 획 둘레만 잘라내므로(trimSignature) 인쇄물의 서명 크기는 줄지 않는다. */
-const W = 480;
-const H = 240;
+const W = 720;   // 2026-11-18 팝업을 키우면서 480×240 → 720×360(같은 2:1)
+const H = 360;
 
 /** 그리는 칸 자체. 저장 방식이 다른 화면(회의·교육 실시서의 참석자 서명)도 이걸 그대로 쓴다 */
 export function SignatureCanvas({ onReady }: { onReady: (canvas: HTMLCanvasElement | null) => void }) {
@@ -38,7 +38,7 @@ export function SignatureCanvas({ onReady }: { onReady: (canvas: HTMLCanvasEleme
     const ctx = canvas.getContext("2d");
     if (ctx) {
       ctx.scale(dpr, dpr);
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 3.5;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.strokeStyle = "#111";
@@ -60,8 +60,9 @@ export function SignatureCanvas({ onReady }: { onReady: (canvas: HTMLCanvasEleme
     <canvas
       ref={ref}
       // no-callout: 꾹 누르고 그리는 동작이라 복사·붙여넣기 메뉴와 돋보기가 뜨면 획이 끊긴다
-      className="no-callout w-full touch-none rounded-xl bg-input/40 ring-1 ring-foreground/10"
-      style={{ aspectRatio: `${W} / ${H}` }}
+      className="no-callout mx-auto block w-full touch-none rounded-xl bg-input/40 ring-1 ring-foreground/10"
+      // 화면 높이가 낮으면(휴대폰·태블릿 가로) 폭을 줄여 팝업이 화면 밖으로 넘치지 않게 — 비율은 그대로
+      style={{ aspectRatio: `${W} / ${H}`, maxWidth: `calc((100dvh - 230px) * ${W / H})` }}
       onContextMenu={(e) => e.preventDefault()}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -237,7 +238,7 @@ export function SignatureField({
       </button>
 
       {/* 팝업 전체에 걸어 둔다 — 캔버스를 살짝 벗어나 눌러도 선택·돋보기가 뜨지 않게 */}
-      <Dialog open={open} onClose={() => setOpen(false)} className="no-callout max-w-lg sm:max-w-lg md:max-w-2xl">
+      <Dialog open={open} onClose={() => setOpen(false)} className="no-callout max-w-lg sm:max-w-2xl md:max-w-4xl">
         <DialogHeader>
           <DialogTitle>{label} 서명</DialogTitle>
         </DialogHeader>
