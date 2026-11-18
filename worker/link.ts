@@ -85,7 +85,7 @@ export async function linkRoutes(c: C) {
     const body = (await c.req.json().catch(() => ({}))) as { name?: string; sign?: string; version?: string; target?: string };
     const name = String(body.name ?? "").trim();
     const sign = String(body.sign ?? "");
-    if (!/^[가-힣]{2,20}$/.test(name)) return c.json({ error: "이름은 한글로 입력해 주세요." }, 422);
+    if (!/^[\p{L}\p{M}][\p{L}\p{M} .'-]{0,39}$/u.test(name)) return c.json({ error: "이름을 입력해 주세요(글자만, 40자 이내)." }, 422);
     if (!sign.startsWith("data:image/png;base64,") || sign.length > 400000) return c.json({ error: "서명 이미지가 올바르지 않습니다." }, 422);
     if (body.version && body.version !== (await version(doc))) return c.json({ error: "작업평가 내용이 바뀌었습니다. 다시 확인해 주세요." }, 409);
     const bin = atob(sign.slice(sign.indexOf(",") + 1));
