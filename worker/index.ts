@@ -128,12 +128,15 @@ function collection<T extends { id: string } = Record<string, unknown> & { id: s
   preserve?: (incoming: Record<string, unknown>, stored: Record<string, unknown>) => Record<string, unknown>,
 ) {
   const r = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+  // 작업 위험성평가 — 2026-11-18부터 승인자 서명까지 다 모여야 자동 잠금. 그 전 기준으로 저절로 잠긴 문서는 읽을 때 풀어 둔다
+  const relock = (d: Record<string, unknown>) =>
+    table === "job_assessments" && d.autoLocked && !handSignaturesComplete(d as unknown as JobAssessment) ? { ...d, locked: false, autoLocked: false } : d;
 
   r.get("/", async (c) => {
     const { results } = await c.env.ras_db
       .prepare(`SELECT data FROM ${table} ORDER BY updated_at DESC`)
       .all<{ data: string }>();
-    return c.json(results.map((row) => JSON.parse(row.data)));
+    return c.json(results.map((row) => relock(JSON.parse(row.data))));
   });
 
   /**
@@ -145,7 +148,7 @@ function collection<T extends { id: string } = Record<string, unknown> & { id: s
     if (c.get("role") !== "guest") return false;
     const row = await c.env.ras_db.prepare(`SELECT data FROM ${table} WHERE id = ?1`).bind(id).first<{ data: string }>();
     if (!row) return false; // 아직 없는 문서 = 새로 만드는 중
-    return (JSON.parse(row.data) as { locked?: boolean }).locked === true;
+    return (relock(JSON.parse(row.data)) as { locked?: boolean }).locked === true;
   };
 
   r.put("/:id", requirePermission(...perms.write), async (c) => {
@@ -352,6 +355,8 @@ app.post("/api/jobassessments/:id/sign", requirePermission("jobAssessment"), asy
     .first<{ data: string }>();
   if (!row) return c.json({ error: "문서를 찾을 수 없습니다." }, 404);
   const doc = JSON.parse(row.data) as JobAssessment;
+  // 승인자 서명 전에 예전 기준으로 저절로 잠긴 문서는 풀어서 본다(2026-11-18)
+  if (doc.autoLocked && !handSignaturesComplete(doc)) { doc.locked = false; doc.autoLocked = false; }
   if (doc.locked && c.get("role") === "guest") {
     return c.json({ error: "잠긴 문서에는 서명할 수 없습니다." }, 403);
   }

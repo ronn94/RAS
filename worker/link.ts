@@ -50,7 +50,7 @@ const loadJob = async (c: C, id: string) => {
 const title = (d: JobAssessment) => d.content || [d.mainCategory, d.subCategory, d.detailCategory].filter(Boolean).join(" · ") || "(작업내용 없음)";
 const summary = async (d: JobAssessment) => ({
   id: d.id, title: title(d), date: d.date, team: d.team, category: [d.mainCategory, d.subCategory, d.detailCategory].filter(Boolean).join(" · "),
-  evaluator: d.evaluator, evaluated: !!d.evaluatorSign, approved: !!d.approvedBySign, locked: !!d.locked, version: await version(d),
+  evaluator: d.evaluator, evaluated: !!d.evaluatorSign, approved: !!d.approvedBySign, locked: !!d.locked && !(d.autoLocked && !handSignaturesComplete(d)), version: await version(d),
   external: d.participants.filter((p) => p.external).map((p) => ({ name: p.undecided ? "" : p.name, signed: !!p.sign, undecided: !!p.undecided })),
 });
 
@@ -79,6 +79,8 @@ export async function linkRoutes(c: C) {
     return c.json({ ...(await summary(doc)), view_path: `/view/job?vt=${encodeURIComponent(await viewToken(doc.id, secret))}` });
   }
   if (parts[2] === "sign" && c.req.method === "POST") {
+    // 승인자 서명 전에 예전 기준으로 저절로 잠긴 문서는 풀어서 본다(2026-11-18 — 승인자까지 서명해야 잠금)
+    if (doc.autoLocked && !handSignaturesComplete(doc)) { doc.locked = false; doc.autoLocked = false; }
     if (doc.locked) return c.json({ error: "잠긴(서명 완료된) 작업평가라 서명을 더 받을 수 없습니다." }, 409);
     const body = (await c.req.json().catch(() => ({}))) as { name?: string; sign?: string; version?: string; target?: string };
     const name = String(body.name ?? "").trim();

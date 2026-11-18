@@ -310,13 +310,14 @@ export function approverSignEnabled(v: JobAssessment, requireAll: boolean): bool
 }
 
 /**
- * 자동 잠금 기준 — **승인자 서명과 무관하게**, 손 서명이 다 들어왔는가.
- * 평가자와 내부·외부 참여자(미정 제외) 전원이 서명하면 참이다. 승인자는 결재
- * 절차라 서명이 늦어질 수 있어 잠금 기준에서 뺀다 — '상태' 열의 승인/대기
- * 배지는 이 값과 별개로 승인자 서명 유무만 본다.
+ * 자동 잠금 기준 — 손 서명이 다 들어왔는가.
+ * 평가자, 승인자, 담당자, 내부·외부 참여자(미정 없음) 전원이 서명하면 참이다.
+ * (2026-11-18부터 승인자 서명도 포함 — 승인자까지 서명해야 잠긴다)
  */
 export function handSignaturesComplete(v: JobAssessment): boolean {
   if (!v.evaluatorSign) return false;
+  // 승인자 서명까지 다 모여야 잠근다(2026-11-18 변경 — 예전엔 승인자는 빼고 잠갔다)
+  if (!v.approvedBySign) return false;
   // 자동 잠금 조건(2026-11-14) — '미정' 칸이 남아 있으면 아직 서명받을 사람이 있으므로 잠그지 않는다
   if (v.participants.some((p) => p.undecided)) return false;
   // 담당자(이름이 있는 세부내역 행)의 서명도 다 모여야 한다
