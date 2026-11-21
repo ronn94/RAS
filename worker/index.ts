@@ -116,7 +116,7 @@ type NotifyOnCreate<T> = {
 
 /* ── 공용: JSON 문서 컬렉션(assessments / hazard_infos) ──────── */
 function collection<T extends { id: string } = Record<string, unknown> & { id: string }>(
-  table: "assessments" | "hazard_infos" | "inspections" | "surveys" | "stop_works" | "priority_actions" | "trainings" | "annual_plans" | "job_assessments" | "routine_assessments" | "cert_reviews",
+  table: "assessments" | "hazard_infos" | "inspections" | "surveys" | "stop_works" | "priority_actions" | "trainings" | "annual_plans" | "job_assessments" | "routine_assessments" | "near_misses" | "cert_reviews",
   /** 이 컬렉션을 쓰기 위해 필요한 권한. 설문지는 전역 편집권한과 분리해 survey로 연다 */
   perms: { write: PermissionKey[]; remove: PermissionKey[] } = { write: ["edit"], remove: ["delete"] },
   notifyOnCreate?: NotifyOnCreate<T>,
@@ -223,6 +223,26 @@ app.route(
     view: "stopworks",
     title: () => "작업중지 요청 접수",
     body: (v) => `${v.dept || "소속 미입력"} · ${v.workName || v.process || "작업명 미입력"}`,
+  }),
+);
+// 아차사고·개선요청 제보(2026-11-21) — 근로자가 게스트로 직접 내는 서식이라 작업중지권과 같은 stopwork 권한. 삭제는 관리자(delete)
+// 표는 마이그레이션(0011)으로 만들지만, 원격 마이그레이션을 못 돌린 환경에서도 바로 쓰도록 처음 부를 때 한 번 만든다
+let nearMissReady: Promise<unknown> | null = null;
+app.use("/api/nearmisses/*", async (c, next) => {
+  nearMissReady ??= c.env.ras_db.batch([
+    c.env.ras_db.prepare("CREATE TABLE IF NOT EXISTS near_misses (id TEXT PRIMARY KEY, data TEXT NOT NULL, facility TEXT NOT NULL DEFAULT '', process TEXT NOT NULL DEFAULT '', updated_at INTEGER NOT NULL)"),
+    c.env.ras_db.prepare("CREATE INDEX IF NOT EXISTS idx_near_misses_updated ON near_misses(updated_at DESC)"),
+  ]).catch((e) => { nearMissReady = null; throw e; });
+  await nearMissReady;
+  await next();
+});
+app.route(
+  "/api/nearmisses",
+  collection<{ id: string; name?: string; location?: string; fields?: string[] }>("near_misses", { write: ["stopwork"], remove: ["delete"] }, {
+    settingKey: "newStopwork",
+    view: "nearmiss",
+    title: () => "아차사고·개선요청 제보 접수",
+    body: (v) => `${v.name || "이름 미입력"} · ${v.location || "위치 미입력"}${v.fields?.length ? ` · ${v.fields.join(", ")}` : ""}`,
   }),
 );
 app.route(

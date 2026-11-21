@@ -9,6 +9,7 @@ import { HazardInfoPage } from "@/pages/HazardInfo";
 import { InspectionsPage } from "@/pages/Inspections";
 import { SurveysPage } from "@/pages/Surveys";
 import { StopWorksPage } from "@/pages/StopWorks";
+import { NearMissesPage } from "@/pages/NearMisses";
 import { TrainingsPage } from "@/pages/Trainings";
 import { AnnualPlanPage } from "@/pages/AnnualPlan";
 import { CertReviewsPage } from "@/pages/CertReviews";
@@ -29,6 +30,7 @@ const TITLES: Record<ViewKey, string> = {
   inspections: "순회점검",
   surveys: "설문지",
   stopworks: "작업중지권",
+  nearmiss: "아차사고",
   annualplan: "연간계획",
   trainings: "실시서·공람표",
   certreviews: "정기·사후심사",
@@ -122,6 +124,7 @@ function Router({ identity }: { identity: Identity }) {
       {activeView === "inspections" && <InspectionsPage openId={openId} onOpen={setOpenId} />}
       {activeView === "surveys" && <SurveysPage openId={openId} onOpen={setOpenId} />}
       {activeView === "stopworks" && <StopWorksPage openId={openId} onOpen={setOpenId} />}
+      {activeView === "nearmiss" && <NearMissesPage openId={openId} onOpen={setOpenId} />}
       {activeView === "annualplan" && <AnnualPlanPage />}
       {activeView === "trainings" && <TrainingsPage openId={openId} onOpen={setOpenId} />}
       {activeView === "certreviews" && <CertReviewsPage />}

@@ -11,6 +11,7 @@ import {
   GraduationCap,
   MessageSquareText,
   OctagonAlert,
+  TriangleAlert,
   PanelLeftClose,
   PanelLeftOpen,
   Settings2,
@@ -28,6 +29,7 @@ export type ViewKey =
   | "inspections"
   | "surveys"
   | "stopworks"
+  | "nearmiss"
   | "annualplan"
   | "trainings"
   | "certreviews"
@@ -60,6 +62,8 @@ const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
       // 작업중지권 — 근로자가 급박한 위험에 작업을 멈추고 요청서를 내는 자리라
       // 설문지와 같은 '의견청취' 묶음에 둔다(둘 다 근로자가 직접 쓰는 서식이다)
       { key: "stopworks", title: "작업중지권", icon: <OctagonAlert /> },
+      // 아차사고·개선요청 제보(2026-11-21) — 근로자가 게스트로 직접 제보
+      { key: "nearmiss", title: "아차사고", icon: <TriangleAlert /> },
     ],
   },
   {

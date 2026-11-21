@@ -7,6 +7,7 @@
  * store.tsx 쪽 변경을 최소화했다. 사진만 예외 — 서버가 id를 발급하므로
  * putPhoto(id, blob) 대신 uploadPhoto(blob) → id 형태다.
  */
+import type { NearMiss } from "./nearMiss";
 import type { Assessment, HazardInfo, Inspection, PriorityAction, StopWork, Survey, Training } from "./types";
 import type { AnnualPlan } from "./annualPlan";
 import type { CertReview } from "./certReview";
@@ -93,6 +94,9 @@ export const putAnnualPlan = (v: AnnualPlan) =>
 export const deleteAnnualPlan = (id: string) => api(`/annualplans/${id}`, { method: "DELETE" });
 
 /* ── 이력 관리 · 정기·사후심사 ──────────────────────────── */
+export const listNearMisses = () => api<NearMiss[]>("/nearmisses");
+export const putNearMiss = (v: NearMiss) => api<NearMiss>(`/nearmisses/${v.id}`, { method: "PUT", body: JSON.stringify(v) });
+export const deleteNearMiss = (id: string) => api(`/nearmisses/${id}`, { method: "DELETE" });
 export const listCertReviews = () => api<CertReview[]>("/certreviews");
 export const putCertReview = (v: CertReview) =>
   api<CertReview>(`/certreviews/${v.id}`, { method: "PUT", body: JSON.stringify(v) });
@@ -208,6 +212,7 @@ export async function cleanupOrphanPhotos(): Promise<number> {
     routines,
     annualPlans,
     certReviews,
+    nearMisses,
   ] = await Promise.all([
     listAssessments(),
     listInspections(),
@@ -219,8 +224,11 @@ export async function cleanupOrphanPhotos(): Promise<number> {
     listRoutines(),
     listAnnualPlans(),
     listCertReviews(),
+    // 아차사고 제보의 사진·서명도 반드시 센다 — 빠뜨리면 정리 때 지워진다
+    listNearMisses(), // 실패하면 정리를 통째로 멈춘다(빈 목록으로 보면 사진이 지워진다)
   ]);
-  const used: string[] = [];
+  const usedNearMiss = nearMisses.flatMap((v) => [v.beforePhoto, v.afterPhoto, v.sign].filter((x): x is string => !!x));
+  const used: string[] = [...usedNearMiss];
   for (const a of assessments) {
     for (const r of a.rows) {
       if (r.beforePhoto) used.push(r.beforePhoto);
