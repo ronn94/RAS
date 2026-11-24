@@ -148,8 +148,8 @@ function SidebarInner({
       </div>
       <div className="flex flex-col gap-2 p-2">
         {secondary.length > 0 && <NavList items={secondary} view={view} onSelect={onSelect} />}
-        <div className="mx-1 flex rounded-xl border bg-white p-2">
-          <img src="/ras-qr.svg" alt="RAS 접속 QR코드" className="size-20 shrink-0" />
+        <div className="mx-1 w-fit self-start overflow-hidden rounded-md border bg-white">
+          <img src="/ras-qr.svg" alt="RAS 접속 QR코드" className="block size-20 shrink-0" />
         </div>
         <div className="flex h-12 items-center gap-2 rounded-xl px-3">
           <div className="grid size-8 shrink-0 place-content-center rounded-lg bg-sidebar-accent text-xs font-medium text-sidebar-accent-foreground">
