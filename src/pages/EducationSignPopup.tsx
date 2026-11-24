@@ -30,7 +30,7 @@ export function EducationSignPopup({
   const signed = signedEducationAttendees(education);
 
   return (
-    <Dialog open={open} onClose={onClose} className="no-callout max-w-lg sm:max-w-lg md:max-w-2xl">
+    <Dialog open={open} onClose={onClose} className="no-callout max-w-lg sm:max-w-3xl md:max-w-5xl xl:max-w-6xl">
       <DialogHeader>
         <DialogTitle>서명하기</DialogTitle>
       </DialogHeader>

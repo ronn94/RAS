@@ -43,7 +43,7 @@ export function JobAssessmentSignPopup({
   const ownerRows = job.rows.filter((r) => r.owner.trim());
 
   return (
-    <Dialog open={open} onClose={onClose} className="no-callout max-w-lg sm:max-w-2xl md:max-w-4xl">
+    <Dialog open={open} onClose={onClose} className="no-callout max-w-lg sm:max-w-3xl md:max-w-5xl xl:max-w-6xl">
       <DialogHeader>
         <DialogTitle>서명하기</DialogTitle>
       </DialogHeader>

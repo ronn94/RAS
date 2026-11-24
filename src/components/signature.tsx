@@ -238,7 +238,7 @@ export function SignatureField({
       </button>
 
       {/* 팝업 전체에 걸어 둔다 — 캔버스를 살짝 벗어나 눌러도 선택·돋보기가 뜨지 않게 */}
-      <Dialog open={open} onClose={() => setOpen(false)} className="no-callout max-w-lg sm:max-w-2xl md:max-w-4xl">
+      <Dialog open={open} onClose={() => setOpen(false)} className="no-callout max-w-lg sm:max-w-3xl md:max-w-5xl xl:max-w-6xl">
         <DialogHeader>
           <DialogTitle>{label} 서명</DialogTitle>
         </DialogHeader>
