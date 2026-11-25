@@ -118,7 +118,7 @@ export function SignablePreview({
         ))}
       </aside>
 
-      <Dialog open={!!open} onClose={() => setOpen(null)} className="no-callout max-w-lg">
+      <Dialog open={!!open} onClose={() => setOpen(null)} className="no-callout max-w-lg sm:max-w-[min(96vw,1600px)] max-h-[96vh]">
         <DialogHeader>
           <DialogTitle>{open ? `${open.label} 서명` : "서명"}</DialogTitle>
         </DialogHeader>

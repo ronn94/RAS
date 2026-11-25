@@ -1551,7 +1551,7 @@ function SignDialog({
   };
 
   return (
-    <Dialog open={!!participant} onClose={onClose} className="no-callout max-w-lg sm:max-w-3xl md:max-w-5xl xl:max-w-6xl">
+    <Dialog open={!!participant} onClose={onClose} className="no-callout max-w-lg sm:max-w-[min(96vw,1600px)] max-h-[96vh]">
       <DialogHeader>
         <DialogTitle>{participant?.name || "참여자"} 서명</DialogTitle>
       </DialogHeader>
